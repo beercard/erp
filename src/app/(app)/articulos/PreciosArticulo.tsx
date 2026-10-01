@@ -7,7 +7,7 @@ import { formatearMonto } from '@/lib/dinero'
 import { fechaCorta } from '@/lib/fechas'
 import type { PrecioDeLista } from '@/modulos/maestros/articulo'
 
-import { fijarPrecioAccion } from './acciones'
+import { fijarPrecioAccion, quitarPrecioEspecialAccion } from './acciones'
 
 const SIMBOLO: Record<string, string> = { PES: '$', DOL: 'US$', '060': '€' }
 
@@ -36,20 +36,33 @@ function FilaBase({
       {p.programado && (
         <p className="mt-1">
           <Chip tono="info">
-            Pasa a {formatearMonto(p.programado.precio, simbolo)} el {fechaCorta(p.programado.desde)}
+            Pasa a {formatearMonto(p.programado.precio, SIMBOLO[p.programado.moneda] ?? p.programado.moneda)} el{' '}
+            {fechaCorta(p.programado.desde)}
           </Chip>
         </p>
       )}
       {!soloLectura && (
         <form action={accion} className="mt-2 flex flex-wrap items-end gap-2">
           <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-[11px] font-medium text-texto-2">Nuevo precio ({simbolo})</span>
+            <span className="text-[11px] font-medium text-texto-2">Nuevo precio</span>
             <input
               name="precio"
               inputMode="decimal"
               required
               className="cifras h-8 w-full min-w-24 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento"
             />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium text-texto-2">Moneda</span>
+            <select
+              name="moneda"
+              defaultValue={p.moneda}
+              className="h-8 rounded-md border border-borde bg-superficie px-1 text-sm"
+            >
+              <option value="PES">$</option>
+              <option value="DOL">US$</option>
+              <option value="060">€</option>
+            </select>
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-[11px] font-medium text-texto-2">Rige desde</span>
@@ -75,12 +88,89 @@ function FilaBase({
             {p.historial.slice(1).map((h) => (
               <li key={h.desde} className="cifras flex justify-between">
                 <span>{fechaCorta(h.desde)}</span>
-                <span>{formatearMonto(h.precio, simbolo)}</span>
+                <span>{formatearMonto(h.precio, SIMBOLO[h.moneda] ?? h.moneda)}</span>
               </li>
             ))}
           </ul>
         </details>
       )}
+    </li>
+  )
+}
+
+/**
+ * Lista calculada: muestra el precio que resulta de su base, o el precio
+ * especial del artículo si tiene uno (reemplaza al calculado).
+ */
+function FilaDerivada({
+  articuloId,
+  p,
+  hoy,
+  soloLectura,
+}: {
+  articuloId: string
+  p: PrecioDeLista
+  hoy: string
+  soloLectura: boolean
+}) {
+  const [estado, accion, enviando] = useActionState(fijarPrecioAccion.bind(null, articuloId, p.listaId), undefined)
+  return (
+    <li className="px-4 py-2.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block text-sm">{p.lista}</span>
+          <span className="block text-xs text-texto-3">
+            {p.especial ? (
+              <Chip tono="aviso">Precio especial</Chip>
+            ) : (
+              <>
+                {p.base} {Number(p.porcentaje) >= 0 ? '+' : '−'} {Math.abs(Number(p.porcentaje)).toLocaleString('es-AR')} %
+              </>
+            )}
+          </span>
+        </span>
+        <span className="cifras text-sm whitespace-nowrap">
+          {p.vigente ? formatearMonto(p.vigente, SIMBOLO[p.moneda] ?? p.moneda) : <span className="text-texto-3">—</span>}
+        </span>
+      </div>
+      {!soloLectura &&
+        (p.especial ? (
+          <form action={quitarPrecioEspecialAccion.bind(null, articuloId, p.listaId)} className="mt-1">
+            <button type="submit" className="text-xs font-medium text-acento hover:underline">
+              Quitar el precio especial y volver al calculado
+            </button>
+          </form>
+        ) : (
+          <details className="mt-1 text-xs">
+            <summary className="cursor-pointer text-texto-3">Poner un precio especial</summary>
+            <form action={accion} className="mt-2 flex flex-wrap items-end gap-2">
+              <input type="hidden" name="desde" value={hoy} />
+              <label className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="text-[11px] font-medium text-texto-2">Precio</span>
+                <input
+                  name="precio"
+                  inputMode="decimal"
+                  required
+                  className="cifras h-8 w-full rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento"
+                />
+              </label>
+              <select
+                name="moneda"
+                defaultValue={p.moneda}
+                aria-label="Moneda"
+                className="h-8 rounded-md border border-borde bg-superficie px-1 text-sm"
+              >
+                <option value="PES">$</option>
+                <option value="DOL">US$</option>
+                <option value="060">€</option>
+              </select>
+              <Boton type="submit" disabled={enviando} className="h-8">
+                Grabar
+              </Boton>
+            </form>
+            {estado?.error && <p className="mt-1 text-error">{estado.error}</p>}
+          </details>
+        ))}
     </li>
   )
 }
@@ -113,17 +203,7 @@ export function PreciosArticulo({
           </h3>
           <ul className="divide-y divide-borde">
             {derivadas.map((p) => (
-              <li key={p.listaId} className="flex items-baseline justify-between gap-3 px-4 py-2.5">
-                <span className="min-w-0">
-                  <span className="block text-sm">{p.lista}</span>
-                  <span className="block text-xs text-texto-3">
-                    {p.base} {Number(p.porcentaje) >= 0 ? '+' : '−'} {Math.abs(Number(p.porcentaje)).toLocaleString('es-AR')} %
-                  </span>
-                </span>
-                <span className="cifras text-sm whitespace-nowrap">
-                  {p.vigente ? formatearMonto(p.vigente, SIMBOLO[p.moneda] ?? p.moneda) : <span className="text-texto-3">—</span>}
-                </span>
-              </li>
+              <FilaDerivada key={p.listaId} articuloId={articuloId} p={p} hoy={hoy} soloLectura={soloLectura} />
             ))}
           </ul>
         </>

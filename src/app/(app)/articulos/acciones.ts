@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
-import { fijarPrecio, guardarArticulo } from '@/modulos/maestros/articulo'
+import { fijarPrecio, guardarArticulo, quitarPrecioEspecial } from '@/modulos/maestros/articulo'
 
 export type EstadoArticulo = { errores?: Record<string, string>; mensaje?: string; valores?: Record<string, string> } | undefined
 
@@ -33,7 +33,11 @@ export async function fijarPrecioAccion(
 ): Promise<EstadoPrecio> {
   try {
     const r = await enLaEmpresa('maestros.articulos', (tx, s) =>
-      fijarPrecio(tx, s.usuario.id, articuloId, listaId, { precio: formData.get('precio'), desde: formData.get('desde') }),
+      fijarPrecio(tx, s.usuario.id, articuloId, listaId, {
+        precio: formData.get('precio'),
+        desde: formData.get('desde'),
+        moneda: formData.get('moneda'),
+      }),
     )
     if (!r.ok) return { error: r.error }
   } catch (e) {
@@ -43,4 +47,10 @@ export async function fijarPrecioAccion(
   revalidatePath(`/articulos/${articuloId}`)
   revalidatePath('/articulos')
   return { ok: true }
+}
+
+export async function quitarPrecioEspecialAccion(articuloId: string, listaId: string) {
+  await enLaEmpresa('maestros.articulos', (tx, s) => quitarPrecioEspecial(tx, s.usuario.id, articuloId, listaId))
+  revalidatePath(`/articulos/${articuloId}`)
+  revalidatePath('/articulos')
 }

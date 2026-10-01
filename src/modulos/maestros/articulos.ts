@@ -23,26 +23,45 @@ export async function listasDisponibles(tx: Transaccion) {
     .orderBy(asc(listasPrecios.codigo))
 }
 
+export type PrecioVigente = { precio: string; moneda: string; especial: boolean }
+
+async function vigentesDeLista(tx: Transaccion, listaId: string) {
+  return tx
+    .selectDistinctOn([precios.articuloId], { articuloId: precios.articuloId, precio: precios.precio, moneda: precios.moneda })
+    .from(precios)
+    .where(and(eq(precios.listaId, listaId), lte(precios.vigenteDesde, hoyArgentina())))
+    .orderBy(precios.articuloId, desc(precios.vigenteDesde))
+}
+
 /**
  * Precio vigente de cada artículo en una lista: el de mayor vigente_desde
  * hasta hoy. Si la lista es derivada, sale de su lista base con el
- * porcentaje aplicado (Tarjeta 3 cuotas = Lista general + 30 %).
+ * porcentaje aplicado (Tarjeta 3 cuotas = Lista general + 30 %), salvo que
+ * el artículo tenga un precio especial cargado en la propia lista derivada:
+ * ese manda.
  */
-async function preciosVigentes(tx: Transaccion, listaId: string): Promise<Map<string, string>> {
-  const [lista] = await tx.select().from(listasPrecios).where(eq(listasPrecios.id, listaId))
-  if (!lista) return new Map()
-  const origen = lista.listaBaseId ?? lista.id
-  const filas = await tx
-    .selectDistinctOn([precios.articuloId], { articuloId: precios.articuloId, precio: precios.precio })
-    .from(precios)
-    .where(and(eq(precios.listaId, origen), lte(precios.vigenteDesde, hoyArgentina())))
-    .orderBy(precios.articuloId, desc(precios.vigenteDesde))
-  return new Map(
-    filas.map((f) => [
-      f.articuloId,
-      lista.listaBaseId && lista.porcentaje ? aImporte(aplicarPorcentaje(f.precio, lista.porcentaje)) : aImporte(f.precio),
-    ]),
-  )
+export async function preciosVigentes(tx: Transaccion, listaId: string): Promise<Map<string, PrecioVigente>> {
+  const [elegida] = await tx.select().from(listasPrecios).where(eq(listasPrecios.id, listaId))
+  if (!elegida) return new Map()
+  const resultado = new Map<string, PrecioVigente>()
+  if (elegida.listaBaseId) {
+    const [base] = await tx.select().from(listasPrecios).where(eq(listasPrecios.id, elegida.listaBaseId))
+    for (const f of await vigentesDeLista(tx, elegida.listaBaseId)) {
+      resultado.set(f.articuloId, {
+        precio: elegida.porcentaje ? aImporte(aplicarPorcentaje(f.precio, elegida.porcentaje)) : aImporte(f.precio),
+        moneda: f.moneda ?? base?.moneda ?? elegida.moneda,
+        especial: false,
+      })
+    }
+  }
+  for (const f of await vigentesDeLista(tx, elegida.id)) {
+    resultado.set(f.articuloId, {
+      precio: aImporte(f.precio),
+      moneda: f.moneda ?? elegida.moneda,
+      especial: Boolean(elegida.listaBaseId),
+    })
+  }
+  return resultado
 }
 
 export async function listarArticulos(tx: Transaccion, filtro: FiltroArticulos = {}, limite = 300) {
@@ -73,6 +92,11 @@ export async function listarArticulos(tx: Transaccion, filtro: FiltroArticulos =
     .where(and(...condiciones))
     .orderBy(asc(articulos.nombre))
     .limit(limite)
-  const vigentes = filtro.listaId ? await preciosVigentes(tx, filtro.listaId) : new Map<string, string>()
-  return filas.map((a) => ({ ...a, precio: vigentes.get(a.id) ?? null }))
+  const vigentes = filtro.listaId ? await preciosVigentes(tx, filtro.listaId) : new Map<string, PrecioVigente>()
+  return filas.map((a) => ({
+    ...a,
+    precio: vigentes.get(a.id)?.precio ?? null,
+    monedaPrecio: vigentes.get(a.id)?.moneda ?? null,
+    precioEspecial: vigentes.get(a.id)?.especial ?? false,
+  }))
 }

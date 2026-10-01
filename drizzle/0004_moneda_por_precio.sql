@@ -1,0 +1,2 @@
+ALTER TABLE "precios" ADD COLUMN "moneda" text;--> statement-breakpoint
+ALTER TABLE "precios" ADD CONSTRAINT "precios_moneda_monedas_codigo_fk" FOREIGN KEY ("moneda") REFERENCES "public"."monedas"("codigo") ON DELETE no action ON UPDATE no action;

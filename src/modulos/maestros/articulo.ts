@@ -109,17 +109,19 @@ export type PrecioDeLista = {
   base: string | null
   vigente: string | null
   desde: string | null
+  /** En una lista derivada: el artículo tiene un precio propio que reemplaza al calculado. */
+  especial: boolean
   /** Últimos cambios (solo en listas base). */
-  historial: { precio: string; desde: string }[]
+  historial: { precio: string; desde: string; moneda: string }[]
   /** Precio que entra en vigencia más adelante, si hay. */
-  programado: { precio: string; desde: string } | null
+  programado: { precio: string; desde: string; moneda: string } | null
 }
 
 /** Precio de un artículo en cada lista activa, con historial y lo programado. */
 export async function preciosDeArticulo(tx: Transaccion, articuloId: string): Promise<PrecioDeLista[]> {
   const listas = await tx.select().from(listasPrecios).where(eq(listasPrecios.activa, true)).orderBy(asc(listasPrecios.codigo))
   const filas = await tx
-    .select({ listaId: precios.listaId, precio: precios.precio, desde: precios.vigenteDesde })
+    .select({ listaId: precios.listaId, precio: precios.precio, desde: precios.vigenteDesde, moneda: precios.moneda })
     .from(precios)
     .where(eq(precios.articuloId, articuloId))
     .orderBy(desc(precios.vigenteDesde))
@@ -129,29 +131,33 @@ export async function preciosDeArticulo(tx: Transaccion, articuloId: string): Pr
 
   return listas.map((l) => {
     const origen = l.listaBaseId ?? l.id
-    const v = vigenteDe(origen)
+    // En una derivada, un precio cargado en la propia lista (especial) manda sobre el calculado.
+    const propio = l.listaBaseId ? vigenteDe(l.id) : null
+    const v = propio ?? vigenteDe(origen)
     const futuro =
       deLista(origen)
         .filter((f) => f.desde > hoy)
         .at(-1) ?? null
+    const monedaLista = listas.find((x) => x.id === origen)?.moneda ?? l.moneda
     const ajustar = (precio: string) =>
       l.listaBaseId && l.porcentaje ? aImporte(aplicarPorcentaje(precio, l.porcentaje)) : aImporte(precio)
     return {
       listaId: l.id,
       lista: l.nombre,
-      moneda: listas.find((x) => x.id === origen)?.moneda ?? l.moneda,
+      moneda: v?.moneda ?? (propio ? l.moneda : monedaLista),
       derivada: Boolean(l.listaBaseId),
       porcentaje: l.porcentaje,
       base: l.listaBaseId ? (listas.find((x) => x.id === l.listaBaseId)?.nombre ?? null) : null,
-      vigente: v ? ajustar(v.precio) : null,
+      vigente: propio ? aImporte(propio.precio) : v ? ajustar(v.precio) : null,
+      especial: Boolean(propio),
       desde: v?.desde ?? null,
       historial: l.listaBaseId
         ? []
         : deLista(l.id)
             .filter((f) => f.desde <= hoy)
             .slice(0, 5)
-            .map((f) => ({ precio: aImporte(f.precio), desde: f.desde })),
-      programado: futuro ? { precio: ajustar(futuro.precio), desde: futuro.desde } : null,
+            .map((f) => ({ precio: aImporte(f.precio), desde: f.desde, moneda: f.moneda ?? monedaLista })),
+      programado: futuro ? { precio: ajustar(futuro.precio), desde: futuro.desde, moneda: futuro.moneda ?? monedaLista } : null,
     }
   })
 }
@@ -163,24 +169,26 @@ const EsquemaPrecio = z.object({
     .transform((v) => v.replace(/\./g, '').replace(',', '.'))
     .pipe(z.string().regex(/^\d+(\.\d{1,4})?$/, { error: 'Escribí un precio válido.' })),
   desde: z.iso.date({ error: 'Elegí la fecha desde la que rige.' }),
+  moneda: z.enum(['PES', 'DOL', '060']).optional(),
 })
 
 /**
- * Fija el precio de un artículo en una lista base desde una fecha. Queda el
+ * Fija el precio de un artículo en una lista desde una fecha. Queda el
  * historial: no se pisa el precio anterior, salvo que sea de la misma fecha.
+ * En una lista derivada queda como precio especial: reemplaza al calculado
+ * hasta que se quite.
  */
 export async function fijarPrecio(
   tx: Transaccion,
   usuarioId: string,
   articuloId: string,
   listaId: string,
-  entrada: { precio: unknown; desde: unknown },
+  entrada: { precio: unknown; desde: unknown; moneda?: unknown },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const p = EsquemaPrecio.safeParse(entrada)
+  const p = EsquemaPrecio.safeParse({ ...entrada, moneda: entrada.moneda || undefined })
   if (!p.success) return { ok: false, error: p.error.issues[0].message }
   const [lista] = await tx.select().from(listasPrecios).where(eq(listasPrecios.id, listaId))
   if (!lista) return { ok: false, error: 'Esa lista ya no existe.' }
-  if (lista.listaBaseId) return { ok: false, error: `“${lista.nombre}” se calcula sola: cambiá el precio de su lista base.` }
   const [anterior] = await tx
     .select({ precio: precios.precio, desde: precios.vigenteDesde })
     .from(precios)
@@ -189,10 +197,10 @@ export async function fijarPrecio(
     .limit(1)
   await tx
     .insert(precios)
-    .values({ listaId, articuloId, precio: p.data.precio, vigenteDesde: p.data.desde })
+    .values({ listaId, articuloId, precio: p.data.precio, moneda: p.data.moneda ?? null, vigenteDesde: p.data.desde })
     .onConflictDoUpdate({
       target: [precios.empresaId, precios.listaId, precios.articuloId, precios.vigenteDesde],
-      set: { precio: p.data.precio, actualizado: sql`now()` },
+      set: { precio: p.data.precio, moneda: p.data.moneda ?? null, actualizado: sql`now()` },
     })
   await auditar(tx, {
     usuarioId,
@@ -200,7 +208,36 @@ export async function fijarPrecio(
     entidad: 'precio',
     entidadId: articuloId,
     antes: anterior ?? null,
-    despues: { lista: lista.nombre, precio: p.data.precio, desde: p.data.desde },
+    despues: {
+      lista: lista.nombre,
+      precio: p.data.precio,
+      moneda: p.data.moneda ?? lista.moneda,
+      desde: p.data.desde,
+      especial: Boolean(lista.listaBaseId),
+    },
+  })
+  return { ok: true }
+}
+
+/** Quita el precio especial de un artículo en una lista derivada: vuelve a calcularse. */
+export async function quitarPrecioEspecial(
+  tx: Transaccion,
+  usuarioId: string,
+  articuloId: string,
+  listaId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const [lista] = await tx.select().from(listasPrecios).where(eq(listasPrecios.id, listaId))
+  if (!lista?.listaBaseId) return { ok: false, error: 'Solo las listas calculadas tienen precios especiales.' }
+  const borrados = await tx
+    .delete(precios)
+    .where(and(eq(precios.listaId, listaId), eq(precios.articuloId, articuloId)))
+    .returning()
+  await auditar(tx, {
+    usuarioId,
+    accion: 'baja',
+    entidad: 'precio',
+    entidadId: articuloId,
+    antes: { lista: lista.nombre, precios: borrados },
   })
   return { ok: true }
 }

@@ -241,6 +241,11 @@ export const precios = pgTable(
     listaId: uuid('lista_id').notNull(),
     articuloId: uuid('articulo_id').notNull(),
     precio: precio('precio').notNull(),
+    /**
+     * Moneda de este precio. Nula: la de la lista. Una misma lista puede
+     * tener equipos en dólares e insumos en pesos (así trabaja KOMSA).
+     */
+    moneda: text('moneda').references(() => monedas.codigo),
     /** Queda el historial: el precio vigente es el de mayor vigente_desde <= hoy. */
     vigenteDesde: date('vigente_desde').notNull().defaultNow(),
     ...marcasDeTiempo(),

@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
 import { empresas, listasPrecios } from '../../db/schema'
-import { fijarPrecio, guardarArticulo, preciosDeArticulo } from './articulo'
+import { fijarPrecio, guardarArticulo, preciosDeArticulo, quitarPrecioEspecial } from './articulo'
 
 let empresa: string
 let general: string
@@ -60,12 +60,28 @@ describe('artículos', () => {
     const [g, t] = await conEmpresa(empresa, (tx) => preciosDeArticulo(tx, art.id))
     expect(g.vigente).toBe('1200.50')
     expect(g.historial.map((h) => h.precio)).toEqual(['1200.50', '1000.00'])
-    expect(g.programado).toEqual({ precio: '5000.00', desde: '2999-01-01' })
+    expect(g.programado).toEqual({ precio: '5000.00', desde: '2999-01-01', moneda: 'PES' })
     // Tarjeta = General + 10 %: 1200,50 × 1,10 = 1320,55
     expect(t.vigente).toBe('1320.55')
-    const enDerivada = await conEmpresa(empresa, (tx) =>
-      fijarPrecio(tx, USUARIO, art.id, tarjeta, { precio: '1', desde: '2026-01-01' }),
+    // Un precio especial en la derivada reemplaza al calculado; al quitarlo vuelve el cálculo.
+    await conEmpresa(empresa, (tx) => fijarPrecio(tx, USUARIO, art.id, tarjeta, { precio: '1300', desde: '2026-01-01' }))
+    const [, especial] = await conEmpresa(empresa, (tx) => preciosDeArticulo(tx, art.id))
+    expect([especial.vigente, especial.especial]).toEqual(['1300.00', true])
+    expect(await conEmpresa(empresa, (tx) => quitarPrecioEspecial(tx, USUARIO, art.id, general))).toMatchObject({ ok: false })
+    await conEmpresa(empresa, (tx) => quitarPrecioEspecial(tx, USUARIO, art.id, tarjeta))
+    const [, calculado] = await conEmpresa(empresa, (tx) => preciosDeArticulo(tx, art.id))
+    expect([calculado.vigente, calculado.especial]).toEqual(['1320.55', false])
+  })
+
+  it('un precio en dólares dentro de una lista en pesos conserva su moneda, también en la derivada', async () => {
+    const art = await conEmpresa(empresa, (tx) => guardarArticulo(tx, USUARIO, { ...base, codigo: 'EQ-1' }))
+    if (!art.ok) throw new Error('no grabó')
+    const r = await conEmpresa(empresa, (tx) =>
+      fijarPrecio(tx, USUARIO, art.id, general, { precio: '1450', desde: '2026-01-01', moneda: 'DOL' }),
     )
-    expect(enDerivada.ok).toBe(false)
+    expect(r.ok).toBe(true)
+    const [g, t] = await conEmpresa(empresa, (tx) => preciosDeArticulo(tx, art.id))
+    expect([g.vigente, g.moneda]).toEqual(['1450.00', 'DOL'])
+    expect([t.vigente, t.moneda]).toEqual(['1595.00', 'DOL'])
   })
 })
