@@ -90,8 +90,12 @@ const TONO: Record<string, 'neutro' | 'info' | 'ok' | 'error' | 'aviso' | 'acent
   cancelado: 'neutro',
   emitido: 'ok',
   anulado: 'error',
+  autorizado: 'ok',
+  pendiente_verificacion: 'aviso',
 }
 
+const ETIQUETA: Record<string, string> = { pendiente_verificacion: 'Pendiente de ARCA' }
+
 export function ChipEstado({ estado }: { estado: string }) {
-  return <Chip tono={TONO[estado] ?? 'neutro'}>{estado.charAt(0).toUpperCase() + estado.slice(1)}</Chip>
+  return <Chip tono={TONO[estado] ?? 'neutro'}>{ETIQUETA[estado] ?? estado.charAt(0).toUpperCase() + estado.slice(1)}</Chip>
 }

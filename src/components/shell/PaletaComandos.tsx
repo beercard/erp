@@ -9,10 +9,12 @@ import {
   FileText,
   LogOut,
   Package,
+  Receipt,
   Search,
   Truck,
   UserPlus,
   Users,
+  Wallet,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
@@ -33,6 +35,16 @@ const ACCIONES = [
   },
   { id: 'nuevo-presupuesto', texto: 'Nuevo presupuesto', href: '/presupuestos/nuevo', icono: FilePlus, claves: 'cotizar crear' },
   { id: 'nuevo-pedido', texto: 'Nuevo pedido', href: '/pedidos/nuevo', icono: FilePlus, claves: 'nota venta crear' },
+  { id: 'nueva-factura', texto: 'Nueva factura', href: '/facturas/nueva', icono: Receipt, claves: 'facturar comprobante arca' },
+  {
+    id: 'nueva-cobranza',
+    texto: 'Nueva cobranza',
+    href: '/cobranzas/nueva',
+    icono: Wallet,
+    claves: 'recibo cobrar pago cliente',
+  },
+  { id: 'facturas', texto: 'Ir a facturas', href: '/facturas', icono: Receipt, claves: 'comprobantes notas de credito debito' },
+  { id: 'cuentas', texto: 'Ir a cuentas corrientes', href: '/cuentas', icono: Wallet, claves: 'deudores saldos deuda' },
   { id: 'presupuestos', texto: 'Ir a presupuestos', href: '/presupuestos', icono: FileText, claves: 'cotizaciones' },
   { id: 'pedidos', texto: 'Ir a pedidos', href: '/pedidos', icono: ClipboardList, claves: 'notas de venta pendientes' },
   { id: 'remitos', texto: 'Ir a remitos', href: '/remitos', icono: Truck, claves: 'entregas despacho' },

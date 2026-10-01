@@ -64,3 +64,8 @@ export function revisarCertificado(
     datos: { cuit, vence, emisor: x509.issuer.replace(/\n/g, ', '), titular: x509.subject.replace(/\n/g, ', ') },
   }
 }
+
+/** Días enteros que faltan hasta una fecha (negativo si ya pasó). */
+export function diasHasta(fecha: Date, ahora: Date = new Date()): number {
+  return Math.floor((fecha.getTime() - ahora.getTime()) / 86_400_000)
+}

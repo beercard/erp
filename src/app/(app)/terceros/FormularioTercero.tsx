@@ -227,6 +227,16 @@ export function FormularioTercero({
             inputMode="decimal"
             className="cifras"
           />
+          <Campo
+            id="percepcionIibb"
+            name="percepcionIibb"
+            etiqueta="Percepción IIBB (%)"
+            ayuda="Vacío: la general de la empresa. 0: no se le percibe."
+            defaultValue={v('percepcionIibb')}
+            error={e.percepcionIibb}
+            inputMode="decimal"
+            className="cifras"
+          />
           <Selector
             id="zonaId"
             name="zonaId"

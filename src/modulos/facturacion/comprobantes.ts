@@ -645,7 +645,7 @@ function mensajeError(e: unknown): string {
 export async function obtenerComprobante(tx: Transaccion, id: string) {
   const [c] = await tx.select().from(comprobantes).where(eq(comprobantes.id, id))
   if (!c) return null
-  const [items, iva, tributos, asociados, notas] = await Promise.all([
+  const [items, detalleIva, detalleTributos, asociados, notas] = await Promise.all([
     tx.select().from(comprobantesItems).where(eq(comprobantesItems.comprobanteId, id)).orderBy(asc(comprobantesItems.orden)),
     tx.select().from(comprobantesIva).where(eq(comprobantesIva.comprobanteId, id)).orderBy(asc(comprobantesIva.alicuotaIva)),
     tx.select().from(comprobantesTributos).where(eq(comprobantesTributos.comprobanteId, id)),
@@ -675,7 +675,7 @@ export async function obtenerComprobante(tx: Transaccion, id: string) {
       .where(eq(comprobantesAsociados.asociadoId, id)),
   ])
   const [cliente] = await tx.select().from(terceros).where(eq(terceros.id, c.terceroId))
-  return { ...c, items, iva, tributos, asociados, notas, cliente }
+  return { ...c, items, detalleIva, detalleTributos, asociados, notas, cliente }
 }
 
 export async function listarComprobantes(tx: Transaccion, filtro: { q?: string; estado?: string; terceroId?: string } = {}) {

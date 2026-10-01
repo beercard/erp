@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, ShieldCheck } from 'lucide-react'
+import { Building2, ChevronRight, Landmark, ShieldCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -26,6 +26,13 @@ export default async function Configuracion() {
       texto: 'Quién entra al sistema y qué puede hacer cada uno.',
       icono: ShieldCheck,
       permiso: 'empresa.usuarios',
+    },
+    {
+      href: '/configuracion/arca',
+      titulo: 'ARCA y factura electrónica',
+      texto: 'Certificado, ambiente de prueba o producción y percepción de IIBB.',
+      icono: Landmark,
+      permiso: 'empresa.datos',
     },
   ].filter((e) => puede(e.permiso))
 

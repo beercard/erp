@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  BookOpen,
   Boxes,
   ClipboardList,
   FileText,
@@ -13,6 +14,7 @@ import {
   Truck,
   ShoppingCart,
   Users,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -36,7 +38,19 @@ const SECCIONES: { titulo?: string; items: Item[] }[] = [
       { href: '/pedidos', texto: 'Pedidos', icono: ClipboardList },
       { href: '/remitos', texto: 'Remitos', icono: Truck },
       { href: '/stock', texto: 'Stock', icono: Boxes },
-      { href: '#facturacion', texto: 'Facturación', icono: Receipt, etapa: 'Etapa 2' },
+    ],
+  },
+  {
+    titulo: 'Facturación',
+    items: [
+      { href: '/facturas', texto: 'Facturas y notas', icono: Receipt },
+      { href: '/cobranzas', texto: 'Cobranzas', icono: Wallet },
+      { href: '/cuentas', texto: 'Cuentas corrientes', icono: BookOpen },
+    ],
+  },
+  {
+    titulo: 'Próximas etapas',
+    items: [
       { href: '#compras', texto: 'Compras y pagos', icono: ShoppingCart, etapa: 'Etapa 3' },
       { href: '#tesoreria', texto: 'Caja y bancos', icono: Landmark, etapa: 'Etapa 4' },
     ],

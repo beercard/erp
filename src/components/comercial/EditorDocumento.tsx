@@ -4,9 +4,11 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useActionState, useCallback, useMemo, useRef, useState } from 'react'
 
 import { buscarArticulos, buscarClientes, guardarDocumentoAccion } from '@/app/(app)/comercial/acciones'
-import { Aviso, Boton, BotonEnlace, Panel, Tecla } from '@/components/ui'
+import { guardarComprobanteAccion } from '@/app/(app)/facturacion/acciones'
+import { Aviso, Boton, BotonEnlace, Chip, Panel, Tecla } from '@/components/ui'
 import { formatearMonto, normalizarNumero } from '@/lib/dinero'
 import { calcularLinea, calcularTotales, convertir, TASAS_IVA } from '@/modulos/comercial/calculo'
+import type { Clase } from '@/modulos/facturacion/tipos'
 
 import { Buscador } from './Buscador'
 
@@ -37,7 +39,27 @@ export type CabeceraEditor = {
   validezDias: string
   depositoId: string
   fechaEntrega: string
+  /** Solo comprobantes fiscales. */
+  puntoVenta?: string
+  concepto?: string
+  servicioDesde?: string
+  servicioHasta?: string
+  vencimiento?: string
+  /** Condición de IVA del cliente, para mostrar qué letra va a salir. */
+  condicionIva?: number | null
 }
+
+/** Datos extra del editor cuando arma una factura o una nota. */
+export type ContextoFactura = {
+  clase: Clase
+  asociado: { id: string; texto: string } | null
+  pedidoId: string | null
+  puntosVenta: Opcion[]
+  /** Condición de IVA del cliente → letra que corresponde. */
+  letraDe: Record<number, string>
+}
+
+const NOMBRE_CLASE: Record<Clase, string> = { factura: 'Factura', nota_debito: 'Nota de débito', nota_credito: 'Nota de crédito' }
 
 const SIMBOLO: Record<string, string> = { PES: '$', DOL: 'US$', '060': '€' }
 const ALICUOTAS = [
@@ -59,16 +81,21 @@ export function EditorDocumento({
   lineasIniciales,
   cotizacionDolar,
   opciones,
+  factura,
 }: {
-  tipo: 'presupuesto' | 'pedido'
+  tipo: 'presupuesto' | 'pedido' | 'factura'
   id: string | null
   inicial: CabeceraEditor
   lineasIniciales: LineaEditor[]
   /** Dólar del día (pesos por dólar), para convertir precios. */
   cotizacionDolar: string | null
   opciones: { listas: Opcion[]; vendedores: Opcion[]; condiciones: Opcion[]; depositos: Opcion[] }
+  factura?: ContextoFactura
 }) {
-  const [estado, accion, enviando] = useActionState(guardarDocumentoAccion.bind(null, tipo, id), undefined)
+  const [estado, accion, enviando] = useActionState(
+    tipo === 'factura' ? guardarComprobanteAccion.bind(null, id) : guardarDocumentoAccion.bind(null, tipo, id),
+    undefined,
+  )
   const [cab, setCab] = useState(inicial)
   const [lineas, setLineas] = useState<LineaEditor[]>(lineasIniciales)
   const [dolar, setDolar] = useState(cotizacionDolar ?? '')
@@ -170,6 +197,16 @@ export function EditorDocumento({
     validezDias: cab.validezDias,
     depositoId: cab.depositoId || null,
     fechaEntrega: cab.fechaEntrega || null,
+    ...(factura && {
+      clase: factura.clase,
+      asociadoId: factura.asociado?.id ?? null,
+      pedidoId: factura.pedidoId,
+      puntoVenta: cab.puntoVenta,
+      concepto: cab.concepto,
+      servicioDesde: cab.servicioDesde || null,
+      servicioHasta: cab.servicioHasta || null,
+      vencimiento: cab.vencimiento || null,
+    }),
     items: lineas.map((l) => ({
       articuloId: l.articuloId,
       descripcion: l.descripcion,
@@ -197,19 +234,38 @@ export function EditorDocumento({
       <input type="hidden" name="documento" value={JSON.stringify(documento)} />
       {estado?.error && <Aviso>{estado.error}</Aviso>}
 
+      {factura && (
+        <Panel className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+          <Chip tono="acento">
+            {NOMBRE_CLASE[factura.clase]} {cab.terceroId ? (factura.letraDe[cab.condicionIva ?? 5] ?? 'B') : '—'}
+          </Chip>
+          {factura.asociado ? (
+            <span className="text-texto-2">
+              Corrige: <span className="font-medium text-texto">{factura.asociado.texto}</span>
+            </span>
+          ) : (
+            <span className="text-texto-2">
+              La letra sale de la condición de IVA del cliente. Se graba como borrador y se autoriza en ARCA desde su ficha.
+            </span>
+          )}
+        </Panel>
+      )}
+
       <Panel className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="flex flex-col gap-1 md:col-span-2">
           <span className="text-xs font-medium text-texto-2">Cliente</span>
           {cab.terceroId ? (
             <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-borde bg-superficie-2 px-2.5">
               <span className="truncate text-sm font-medium">{cab.cliente}</span>
-              <button
-                type="button"
-                onClick={() => setCab((c) => ({ ...c, terceroId: '', cliente: '' }))}
-                className="text-xs text-acento hover:underline"
-              >
-                Cambiar
-              </button>
+              {!factura?.asociado && (
+                <button
+                  type="button"
+                  onClick={() => setCab((c) => ({ ...c, terceroId: '', cliente: '' }))}
+                  className="text-xs text-acento hover:underline"
+                >
+                  Cambiar
+                </button>
+              )}
             </div>
           ) : (
             <Buscador<Cliente>
@@ -232,6 +288,7 @@ export function EditorDocumento({
                   listaPreciosId: c.listaPreciosId ?? x.listaPreciosId,
                   vendedorId: c.vendedorId ?? x.vendedorId,
                   condicionPagoId: c.condicionPagoId ?? x.condicionPagoId,
+                  condicionIva: c.condicionIva,
                 }))
               }
             />
@@ -241,7 +298,18 @@ export function EditorDocumento({
           <span className="text-xs font-medium text-texto-2">Fecha</span>
           <input type="date" value={cab.fecha} onChange={campo('fecha')} className={control} required />
         </label>
-        {tipo === 'presupuesto' ? (
+        {factura ? (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-texto-2">Punto de venta</span>
+            <select value={cab.puntoVenta} onChange={campo('puntoVenta')} className={control}>
+              {factura.puntosVenta.map((o) => (
+                <option key={o.valor} value={o.valor}>
+                  {o.texto}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : tipo === 'presupuesto' ? (
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-texto-2">Validez (días)</span>
             <input value={cab.validezDias} onChange={campo('validezDias')} inputMode="numeric" className={`${control} cifras`} />
@@ -316,6 +384,34 @@ export function EditorDocumento({
               ))}
             </select>
           </label>
+        )}
+        {factura && (
+          <>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-texto-2">Concepto</span>
+              <select value={cab.concepto} onChange={campo('concepto')} className={control}>
+                <option value="1">Productos</option>
+                <option value="2">Servicios</option>
+                <option value="3">Productos y servicios</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-texto-2">Vencimiento del pago</span>
+              <input type="date" value={cab.vencimiento} onChange={campo('vencimiento')} className={control} />
+            </label>
+            {cab.concepto !== '1' && (
+              <div className="grid grid-cols-2 gap-2 md:col-span-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-texto-2">Servicio desde</span>
+                  <input type="date" value={cab.servicioDesde} onChange={campo('servicioDesde')} className={control} />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-texto-2">Servicio hasta</span>
+                  <input type="date" value={cab.servicioHasta} onChange={campo('servicioHasta')} className={control} />
+                </label>
+              </div>
+            )}
+          </>
         )}
       </Panel>
 
@@ -490,11 +586,22 @@ export function EditorDocumento({
         <span className="mr-auto hidden items-center gap-1 text-xs text-texto-3 sm:flex">
           <Tecla>Ctrl</Tecla> <Tecla>Enter</Tecla> para grabar
         </span>
-        <BotonEnlace href={id ? `/${tipo}s/${id}` : `/${tipo}s`} variante="fantasma">
+        <BotonEnlace
+          href={tipo === 'factura' ? (id ? `/facturas/${id}` : '/facturas') : id ? `/${tipo}s/${id}` : `/${tipo}s`}
+          variante="fantasma"
+        >
           Cancelar
         </BotonEnlace>
         <Boton type="submit" variante="primario" disabled={enviando || !cab.terceroId || !lineas.length}>
-          {enviando ? 'Grabando…' : id ? 'Grabar cambios' : tipo === 'presupuesto' ? 'Grabar presupuesto' : 'Grabar pedido'}
+          {enviando
+            ? 'Grabando…'
+            : id
+              ? 'Grabar cambios'
+              : tipo === 'presupuesto'
+                ? 'Grabar presupuesto'
+                : tipo === 'pedido'
+                  ? 'Grabar pedido'
+                  : 'Grabar borrador'}
         </Boton>
       </div>
     </form>

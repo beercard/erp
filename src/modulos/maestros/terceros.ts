@@ -156,6 +156,7 @@ export const EsquemaTercero = z
     transporteId: uuidOpcional,
     descuento: numeroOpcional,
     limiteCredito: numeroOpcional,
+    percepcionIibb: numeroOpcional,
     notas: opcional,
   })
   .superRefine((d, ctx) => {

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { ChevronLeft, Pencil, Printer, Truck } from 'lucide-react'
+import { ChevronLeft, Pencil, Printer, Receipt, Truck } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -59,6 +59,11 @@ export default async function Pedido({ params, searchParams }: PageProps<'/pedid
             {puedeEditar && p.estado === 'pendiente' && sinEntregas && (
               <BotonEnlace href={`/pedidos/${p.id}/editar`}>
                 <Pencil aria-hidden className="size-4" /> Modificar
+              </BotonEnlace>
+            )}
+            {tienePermiso(sesion.permisos, 'ventas.facturar') && p.estado !== 'cancelado' && (
+              <BotonEnlace href={`/facturas/nueva?pedido=${p.id}`}>
+                <Receipt aria-hidden className="size-4" /> Facturar
               </BotonEnlace>
             )}
             {puedeEntregar && abierto && (

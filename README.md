@@ -17,12 +17,12 @@ npm run db:semilla    # empresa demo; el usuario y la clave quedan en .data/cred
 npm run dev
 ```
 
-| Comando | Qué hace |
-|---|---|
-| `npm test` | Pruebas (aislamiento entre empresas, sesiones, CUIT, dinero, maestros) |
-| `npm run typecheck` | Verificación de tipos |
+| Comando              | Qué hace                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| `npm test`           | Pruebas (aislamiento entre empresas, sesiones, CUIT, dinero, maestros)                |
+| `npm run typecheck`  | Verificación de tipos                                                                 |
 | `npm run db:generar` | Genera una migración a partir de los cambios del esquema (revisarla antes de aplicar) |
-| `npm run db:migrar` | Aplica las migraciones pendientes |
+| `npm run db:migrar`  | Aplica las migraciones pendientes                                                     |
 
 Toda tabla nueva con `empresa_id` necesita `SELECT erp_aislar_por_empresa('tabla');` en su migración. La prueba `src/db/seguridad.test.ts` falla si falta.
 
@@ -35,3 +35,10 @@ npx tsx scripts/importar-pymexis.ts <carpeta-con-los-csv> --cuit 30715974823 --r
 ```
 
 Se puede correr las veces que haga falta: actualiza por código y no duplica. Mientras PYMEXIS sea el sistema en uso, el stock del ERP lo sigue: la primera vez carga el saldo inicial y después agrega ajustes "Sincronización con PYMEXIS" por la diferencia. Los movimientos hechos en el ERP sobre artículos de PYMEXIS quedan compensados por ese ajuste.
+
+## Variables del servidor
+
+| Variable            | Para qué                                                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`      | Postgres de producción. Sin ella se usa PGlite en `.data/`.                                                                                    |
+| `ERP_CLAVE_MAESTRA` | Cifra las claves privadas de ARCA (al menos 32 caracteres). Si se pierde, hay que volver a subir los certificados. No va en la base ni en git. |

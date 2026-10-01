@@ -18,8 +18,8 @@ export const metadata: Metadata = { title: 'Inicio' }
 const ETAPAS = [
   { n: 0, nombre: 'Cimientos', detalle: 'Empresas, usuarios, permisos, auditoría y maestros', estado: 'listo' },
   { n: 1, nombre: 'Comercial', detalle: 'Presupuestos, pedidos, remitos y stock', estado: 'listo' },
-  { n: 2, nombre: 'Facturación', detalle: 'Factura electrónica ARCA, cuentas corrientes y cobranzas', estado: 'próxima' },
-  { n: 3, nombre: 'Compras y pagos', detalle: 'Mis Comprobantes, órdenes de pago y retenciones', estado: 'pendiente' },
+  { n: 2, nombre: 'Facturación', detalle: 'Factura electrónica ARCA, cuentas corrientes y cobranzas', estado: 'en curso' },
+  { n: 3, nombre: 'Compras y pagos', detalle: 'Mis Comprobantes, órdenes de pago y retenciones', estado: 'próxima' },
   { n: 4, nombre: 'Tesorería', detalle: 'Caja, bancos, conciliación, cheques y ECHEQ', estado: 'pendiente' },
   { n: 5, nombre: 'Contratos', detalle: 'Equipos, contadores y facturación por copias', estado: 'pendiente' },
 ] as const
@@ -113,7 +113,13 @@ export default async function Inicio() {
                   <span className="block text-sm font-medium">{e.nombre}</span>
                   <span className="block text-xs text-texto-2">{e.detalle}</span>
                 </span>
-                <Chip tono={e.estado === 'listo' ? 'ok' : e.estado === 'próxima' ? 'info' : 'neutro'}>{e.estado}</Chip>
+                <Chip
+                  tono={
+                    e.estado === 'listo' ? 'ok' : e.estado === 'en curso' ? 'acento' : e.estado === 'próxima' ? 'info' : 'neutro'
+                  }
+                >
+                  {e.estado}
+                </Chip>
               </li>
             ))}
           </ol>

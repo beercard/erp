@@ -164,12 +164,12 @@ describe('borradores', () => {
     const id = await guardar(factura(inscripto, { items: [item('1000'), item('200', 4)] }))
     const c = await en((tx) => obtenerComprobante(tx, id))
     expect([c?.letra, c?.tipo, c?.estado, c?.numero]).toEqual(['A', 1, 'borrador', null])
-    expect(c?.iva.map((a) => [a.alicuotaIva, a.base, a.importe])).toEqual([
+    expect(c?.detalleIva.map((a) => [a.alicuotaIva, a.base, a.importe])).toEqual([
       [4, '200.00', '21.00'],
       [5, '1000.00', '210.00'],
     ])
     // 3,5 % del cliente (no el 2 % general) sobre 1.200 de neto.
-    expect(c?.tributos.map((t) => [t.importe, t.alicuota])).toEqual([['42.00', '3.5000']])
+    expect(c?.detalleTributos.map((t) => [t.importe, t.alicuota])).toEqual([['42.00', '3.5000']])
     expect(c?.total).toBe('1473.00')
     await en((tx) => eliminarBorrador(tx, U, id))
   })
@@ -177,7 +177,7 @@ describe('borradores', () => {
   it('a un consumidor final es B y sin percepción (solo se percibe en A)', async () => {
     const id = await guardar(factura(consumidor))
     const c = await en((tx) => obtenerComprobante(tx, id))
-    expect([c?.letra, c?.tipo, c?.receptorDocTipo, c?.tributos.length, c?.total]).toEqual(['B', 6, 99, 0, '1210.00'])
+    expect([c?.letra, c?.tipo, c?.receptorDocTipo, c?.detalleTributos.length, c?.total]).toEqual(['B', 6, 99, 0, '1210.00'])
     await en((tx) => eliminarBorrador(tx, U, id))
   })
 

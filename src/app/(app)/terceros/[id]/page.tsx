@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { Aviso, Chip, EncabezadoPagina, Panel } from '@/components/ui'
@@ -8,6 +9,8 @@ import { auditoria, condicionesIva, usuarios } from '@/db/schema'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
 import { tienePermiso } from '@/lib/permisos'
 import { formatearCuit } from '@/lib/cuit'
+import { formatearMonto } from '@/lib/dinero'
+import { cuentaCorriente } from '@/modulos/facturacion/cuentas'
 import { obtenerTercero } from '@/modulos/maestros/terceros'
 
 import { FormularioTercero } from '../FormularioTercero'
@@ -35,7 +38,8 @@ export default async function FichaTercero({ params, searchParams }: PageProps<'
       .where(and(eq(auditoria.entidad, 'tercero'), eq(auditoria.entidadId, id)))
       .orderBy(desc(auditoria.fecha))
       .limit(10)
-    return { tercero, iva, historial, opciones: await opcionesFormulario(tx) }
+    const cuenta = tercero.esCliente ? await cuentaCorriente(tx, id) : null
+    return { tercero, iva, historial, cuenta, opciones: await opcionesFormulario(tx) }
   })
   if (!datos) notFound()
 
@@ -83,12 +87,20 @@ export default async function FichaTercero({ params, searchParams }: PageProps<'
           )}
         />
         <aside className="flex flex-col gap-4">
-          <Panel className="p-4">
-            <h2 className="text-sm font-semibold">Cuenta corriente</h2>
-            <p className="mt-1 text-xs text-texto-2">
-              El saldo, la deuda vencida y los últimos comprobantes aparecen acá desde la etapa de facturación.
-            </p>
-          </Panel>
+          {datos.cuenta && (
+            <Panel className="flex flex-col gap-1 p-4">
+              <h2 className="text-sm font-semibold">Cuenta corriente</h2>
+              <p className="cifras text-xl font-medium">{formatearMonto(datos.cuenta.saldo, '$')}</p>
+              <p className="text-xs text-texto-2">
+                {datos.cuenta.pendientes.length
+                  ? `${datos.cuenta.pendientes.length} comprobantes con deuda`
+                  : 'Sin comprobantes con deuda'}
+              </p>
+              <Link href={`/terceros/${t.id}/cuenta`} className="mt-1 text-xs text-acento hover:underline">
+                Ver movimientos
+              </Link>
+            </Panel>
+          )}
           <Panel>
             <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">Historial</h2>
             <ol className="divide-y divide-borde">

@@ -15,6 +15,8 @@ import { obtenerRemito } from '@/modulos/comercial/remitos'
 import { datosEmpresa } from '@/modulos/empresa/datos'
 
 import { BotonImprimir } from './BotonImprimir'
+import { HojaFactura } from './HojaFactura'
+import { HojaRecibo } from './HojaRecibo'
 
 export const metadata: Metadata = { title: 'Imprimir' }
 
@@ -42,13 +44,16 @@ async function cargar(tx: Transaccion, tipo: Tipo, id: string): Promise<Doc | nu
 const cantidad = (v: string) => Number(v).toLocaleString('es-AR', { maximumFractionDigits: 4 })
 
 /**
- * Hoja A4 de un presupuesto, pedido o remito, fuera del marco de la app.
- * Ninguno es comprobante fiscal: el remito lleva la leyenda de "documento no
- * válido como factura" y la factura electrónica llega en la etapa 2.
+ * Hoja A4 de un documento, fuera del marco de la app. Presupuesto, pedido,
+ * remito y recibo no son fiscales (llevan la "X"); facturas y notas van en
+ * HojaFactura con su CAE y QR.
  */
 export default async function Imprimir({ params }: PageProps<'/imprimir/[tipo]/[id]'>) {
   const { tipo, id } = await params
-  if (!TIPOS.includes(tipo as Tipo) || !/^[0-9a-f-]{36}$/i.test(id)) notFound()
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
+  if (tipo === 'factura') return <HojaFactura id={id} />
+  if (tipo === 'recibo') return <HojaRecibo id={id} />
+  if (!TIPOS.includes(tipo as Tipo)) notFound()
   const sesion = await requerirEmpresa()
   const empresa = await datosEmpresa(sesion.empresa.id)
   const datos = await enLaEmpresa('ventas.ver', async (tx) => {

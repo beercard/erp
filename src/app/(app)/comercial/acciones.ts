@@ -51,6 +51,7 @@ export async function buscarClientes(texto: string) {
         listaPreciosId: terceros.listaPreciosId,
         vendedorId: terceros.vendedorId,
         condicionPagoId: terceros.condicionPagoId,
+        condicionIva: terceros.condicionIva,
       })
       .from(terceros)
       .where(
