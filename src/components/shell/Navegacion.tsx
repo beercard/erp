@@ -86,10 +86,16 @@ export function Navegacion({ modulos }: { modulos: string[] }) {
         </div>
       ))}
       <div className="mt-auto flex flex-col gap-0.5 border-t border-borde pt-3">
-        <span className="flex cursor-default items-center gap-2.5 rounded-md px-2.5 py-1.5 text-texto-3" title="Próximamente">
+        <Link
+          href="/configuracion"
+          aria-current={ruta.startsWith('/configuracion') ? 'page' : undefined}
+          className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 font-medium transition-colors ${
+            ruta.startsWith('/configuracion') ? 'bg-acento-suave text-acento' : 'text-texto-2 hover:bg-superficie-2 hover:text-texto'
+          }`}
+        >
           <Settings aria-hidden className="size-4" />
           Configuración
-        </span>
+        </Link>
       </div>
     </nav>
   )
