@@ -42,6 +42,8 @@ const MONEDA: Record<string, string> = { '001': 'PES', '002': 'DOL' }
 const CONDICION_IVA: Record<string, number> = { '0': 1, '1': 7, '2': 5, '3': 4, '4': 10, '5': 6, '6': 9, '7': 15, '8': 7 }
 // Códigos de tasa de PYMEXIS → alícuota de ARCA.
 const ALICUOTA: Record<string, number> = { '900': 5, '901': 4, '902': 6, '903': 9, '904': 8, '910': 3 }
+// Alícuota de ARCA → porcentaje (los fija ARCA; son los del catálogo alicuotas_iva).
+const PORCENTAJE_ALICUOTA: Record<number, number> = { 3: 0, 4: 10.5, 5: 21, 6: 27, 8: 5, 9: 2.5 }
 
 const limpio = (v: string | undefined) => (v ?? '').trim()
 const nulo = (v: string | undefined) => limpio(v) || null
@@ -229,6 +231,18 @@ export async function importarPymexis(
     const nombreSub = new Map(archivos.subrubros.map((s) => [limpio(s.IdSubRubro), limpio(s.Nombre)]))
     const subrubroDe = new Map<string, string>()
 
+    // PYMEXIS puede guardar el precio con IVA; en el ERP todo queda neto, y se
+    // le saca la alícuota del artículo, no un 21 % fijo: un equipo al 10,5 %
+    // quedaba con el neto un 9,5 % más bajo.
+    const factorIva = new Map(
+      archivos.articulos.map((a) => [
+        limpio(a.IdArticulo),
+        1 + (PORCENTAJE_ALICUOTA[ALICUOTA[limpio(a.CodIva)] ?? 5] ?? 21) / 100,
+      ]),
+    )
+    const netoDe = (p: Fila) =>
+      verdadero(p.IvaIncluido) ? numero(p.Precio) / (factorIva.get(limpio(p.IdArticulo)) ?? 1.21) : numero(p.Precio)
+
     // -------------------------------------------------------------- Listas
     const preciosPorLista = new Map<string, Fila[]>()
     for (const p of archivos.precios) {
@@ -244,15 +258,16 @@ export async function importarPymexis(
     }
 
     // Una lista "desde otra + %" es derivada si sus precios coinciden con el
-    // cálculo en la gran mayoría de los artículos.
+    // cálculo en la gran mayoría de los artículos. Se compara en neto: una
+    // lista con IVA incluido y otra sin él tienen que poder coincidir.
     const coincidencia = (l: Fila) => {
-      const base = new Map((preciosPorLista.get(limpio(l.DESDELISTA)) ?? []).map((p) => [limpio(p.IdArticulo), numero(p.Precio)]))
+      const base = new Map((preciosPorLista.get(limpio(l.DESDELISTA)) ?? []).map((p) => [limpio(p.IdArticulo), netoDe(p)]))
       const propios = preciosPorLista.get(limpio(l.IdLista)) ?? []
       if (!base.size || !propios.length) return 0
       const iguales = propios.filter((p) => {
         const b = base.get(limpio(p.IdArticulo))
         if (b === undefined) return false
-        return Math.abs(b * (1 + numero(l.PORCLISTA) / 100) - numero(p.Precio)) <= Math.max(0.011, Math.abs(b) * 0.0005)
+        return Math.abs(b * (1 + numero(l.PORCLISTA) / 100) - netoDe(p)) <= Math.max(0.011, Math.abs(b) * 0.0005)
       }).length
       return iguales / propios.length
     }
@@ -373,11 +388,13 @@ export async function importarPymexis(
         const articuloId = articuloDe.get(limpio(p.IdArticulo))
         if (!articuloId) continue
         const moneda = MONEDA[limpio(p.idmoneda)] ?? lista.moneda
-        // PYMEXIS puede guardar el precio con IVA: acá todo queda neto.
-        const neto = verdadero(p.IvaIncluido) ? numero(p.Precio) / 1.21 : numero(p.Precio)
+        const neto = netoDe(p)
         if (base) {
           const b = base.get(limpio(p.IdArticulo))
-          const calculado = b ? Number(aImporte(aplicarPorcentaje(numero(b.Precio), lista.porcentaje))) : null
+          // Desde el neto de la base, que es lo que guarda el ERP: con el precio
+          // con IVA de la base nunca coincidía y toda la lista quedaba como
+          // precios especiales.
+          const calculado = b ? Number(aImporte(aplicarPorcentaje(netoDe(b), lista.porcentaje))) : null
           const mismaMoneda = b ? (MONEDA[limpio(b.idmoneda)] ?? lista.moneda) === moneda : false
           if (calculado !== null && mismaMoneda && Math.abs(calculado - neto) <= Math.max(0.011, calculado * 0.0005)) continue
           especiales++

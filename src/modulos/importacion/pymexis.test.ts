@@ -44,14 +44,17 @@ const ARCHIVOS: Record<string, string> = {
     '"E1234","","MP 2014 SERIE E1234","0003","","002","","900","False","","",0,"002",0,"2","",""\n' +
     '"RARO","","ARTICULO RARO","0001","","","","031","False","","",0,"001",0,"0","",""\n' +
     '"TN-2","","TONER CIAN","0001","","002","","900","False","","",0,"002",0,"0","",""\n' +
-    '"TN-3","","TONER AMARILLO","0001","","002","","900","False","","",0,"002",0,"0","",""\n',
+    '"TN-3","","TONER AMARILLO","0001","","002","","900","False","","",0,"002",0,"0","",""\n' +
+    '"EQ-105","","IMPRESORA AL 10,5","0003","","002","","901","False","","",0,"001",0,"0","",""\n',
   precios:
     'IdArticulo,IdBarra,IdLista,Precio,IvaIncluido,idmoneda\n' +
     '"TN-1","","002",100.00,"False","002"\n"TN-1","","007",130.00,"False","002"\n"TN-1","","013",500.00,"False","002"\n' +
     '"SRV","","002",50.00,"False","001"\n"SRV","","007",99.00,"False","001"\n"SRV","","013",55.00,"False","001"\n' +
     '"RARO","","002",10.00,"False","002"\n"RARO","","007",13.00,"False","002"\n"RARO","","013",900.00,"False","002"\n' +
     '"TN-2","","002",200.00,"False","002"\n"TN-2","","007",260.00,"False","002"\n"TN-2","","013",1.00,"False","002"\n' +
-    '"TN-3","","002",300.00,"False","002"\n"TN-3","","007",390.00,"False","002"\n"TN-3","","013",2.00,"False","002"\n',
+    '"TN-3","","002",300.00,"False","002"\n"TN-3","","007",390.00,"False","002"\n"TN-3","","013",2.00,"False","002"\n' +
+    // Con IVA incluido y al 10,5 %: 110,50 y 143,65 son 100 y 130 netos.
+    '"EQ-105","","002",110.50,"True","001"\n"EQ-105","","007",143.65,"True","001"\n"EQ-105","","013",3.00,"True","001"\n',
   stock: 'IdArticulo,IdDeposito,cantidad\n"TN-1","001",5\n',
 }
 
@@ -76,7 +79,7 @@ beforeAll(async () => {
 describe('importación de PYMEXIS', () => {
   it('deja afuera los equipos individuales y renombra el código repetido', async () => {
     const arts = await conEmpresa(empresa, (tx) => tx.select().from(articulos))
-    expect(arts.map((a) => a.codigo).sort()).toEqual(['RARO', 'SRV', 'TN-1', 'TN-1-2', 'TN-2', 'TN-3'])
+    expect(arts.map((a) => a.codigo).sort()).toEqual(['EQ-105', 'RARO', 'SRV', 'TN-1', 'TN-1-2', 'TN-2', 'TN-3'])
     expect(informe.cantidades.equiposNoImportados).toBe(1)
     expect(informe.avisos.some((a) => a.includes('"TN-1-2"'))).toBe(true)
     expect(informe.avisos.some((a) => a.includes('tasa de IVA "031"'))).toBe(true)
@@ -97,6 +100,18 @@ describe('importación de PYMEXIS', () => {
     // 100 USD + 30 % = 130 (calculado); el servicio tenía 99 en vez de 65: precio especial.
     expect(de('TN-1')).toEqual({ precio: '130.00', moneda: 'DOL', especial: false })
     expect(de('SRV')).toEqual({ precio: '99.00', moneda: 'PES', especial: true })
+  })
+
+  it('saca el IVA con la alícuota del artículo y compara la derivada en neto', async () => {
+    const listas = await conEmpresa(empresa, (tx) => tx.select().from(listasPrecios))
+    const arts = await conEmpresa(empresa, (tx) => tx.select().from(articulos))
+    const eq105 = arts.find((a) => a.codigo === 'EQ-105')!.id
+    const base = await conEmpresa(empresa, (tx) => preciosVigentes(tx, listas.find((l) => l.codigo === '002')!.id))
+    const tarjeta = await conEmpresa(empresa, (tx) => preciosVigentes(tx, listas.find((l) => l.codigo === '007')!.id))
+    // 110,50 / 1,105 = 100 (con el 21 % fijo daba 91,32).
+    expect(base.get(eq105)?.precio).toBe('100.00')
+    // 100 neto + 30 % = 130: sigue a la lista base, no es precio especial.
+    expect(tarjeta.get(eq105)).toEqual({ precio: '130.00', moneda: 'PES', especial: false })
   })
 
   it('une al proveedor con el cliente del mismo CUIT y no duplica en la segunda corrida', async () => {
