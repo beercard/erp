@@ -24,7 +24,10 @@ export default async function LayoutApp({ children }: LayoutProps<'/'>) {
       <aside className="hidden border-r border-borde bg-superficie lg:flex lg:flex-col">
         <div className="sticky top-0 flex h-screen flex-col gap-5 overflow-y-auto px-3 py-4">
           <Link href="/empresas" className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-superficie-2">
-            <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-md bg-acento text-sm font-bold text-sobre-acento">
+            <span
+              aria-hidden
+              className="grid size-8 shrink-0 place-items-center rounded-md bg-acento text-sm font-bold text-sobre-acento"
+            >
               {sesion.empresa.razonSocial[0]}
             </span>
             <span className="min-w-0">

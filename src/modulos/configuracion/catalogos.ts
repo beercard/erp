@@ -157,7 +157,13 @@ export const CATALOGOS: DefinicionCatalogo[] = [
         ayuda: 'Vacío: lista base con precios propios.',
         opciones: (tx, propio) => opcionesDe(tx, listasPrecios, listasPrecios.id, listasPrecios.nombre, propio),
       },
-      { nombre: 'porcentaje', etiqueta: 'Recargo o descuento (%)', tipo: 'numero', ayuda: 'Negativo para descuento.', enListado: true },
+      {
+        nombre: 'porcentaje',
+        etiqueta: 'Recargo o descuento (%)',
+        tipo: 'numero',
+        ayuda: 'Negativo para descuento.',
+        enListado: true,
+      },
       { nombre: 'vigenteHasta', etiqueta: 'Vigente hasta', tipo: 'fecha' },
     ],
   },
@@ -174,7 +180,14 @@ export const CATALOGOS: DefinicionCatalogo[] = [
     duplicado: { indice: 'condiciones_pago_empresa_id_nombre', mensaje: 'Ya hay una condición con ese nombre.' },
     campos: [
       { nombre: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, enListado: true },
-      { nombre: 'dias', etiqueta: 'Días hasta el vencimiento', tipo: 'numero', requerido: true, enListado: true, validar: numeroPositivo },
+      {
+        nombre: 'dias',
+        etiqueta: 'Días hasta el vencimiento',
+        tipo: 'numero',
+        requerido: true,
+        enListado: true,
+        validar: numeroPositivo,
+      },
       {
         nombre: 'cuotas',
         etiqueta: 'Cuotas',
@@ -201,7 +214,13 @@ export const CATALOGOS: DefinicionCatalogo[] = [
       { nombre: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, enListado: true },
       { nombre: 'email', etiqueta: 'Email', tipo: 'texto', enListado: true },
       { nombre: 'comisionVenta', etiqueta: 'Comisión por venta (%)', tipo: 'numero', enListado: true, validar: numeroPositivo },
-      { nombre: 'comisionCobranza', etiqueta: 'Comisión por cobranza (%)', tipo: 'numero', enListado: true, validar: numeroPositivo },
+      {
+        nombre: 'comisionCobranza',
+        etiqueta: 'Comisión por cobranza (%)',
+        tipo: 'numero',
+        enListado: true,
+        validar: numeroPositivo,
+      },
     ],
   },
   {
@@ -301,7 +320,10 @@ export function leerFormulario(
       if (!texto) valor = null
       else if (campo.tipo === 'numero') {
         const normal = texto.replace(/\./g, '').replace(',', '.')
-        const r = z.string().regex(/^-?\d+(\.\d+)?$/).safeParse(normal)
+        const r = z
+          .string()
+          .regex(/^-?\d+(\.\d+)?$/)
+          .safeParse(normal)
         if (!r.success) {
           errores[campo.nombre] = 'Escribí un número.'
           continue
@@ -360,13 +382,19 @@ export async function guardarCatalogo(
   if (!leido.ok) return leido
   // Un rubro o una lista no pueden colgar de sí mismos.
   if (id && (leido.datos.padreId === id || leido.datos.listaBaseId === id)) {
-    return { ok: false, errores: { padreId: 'No puede depender de sí mismo.', listaBaseId: 'No puede calcularse sobre sí misma.' } }
+    return {
+      ok: false,
+      errores: { padreId: 'No puede depender de sí mismo.', listaBaseId: 'No puede calcularse sobre sí misma.' },
+    }
   }
   try {
     if (id) {
       const [antes] = await tx.select().from(def.tabla).where(eq(def.id, id))
       if (!antes) return { ok: false, errores: {}, mensaje: 'Ese registro ya no existe.' }
-      const [despues] = (await tx.update(def.tabla).set(leido.datos).where(eq(def.id, id)).returning()) as Record<string, unknown>[]
+      const [despues] = (await tx.update(def.tabla).set(leido.datos).where(eq(def.id, id)).returning()) as Record<
+        string,
+        unknown
+      >[]
       await auditar(tx, { usuarioId, accion: 'modificacion', entidad: def.clave, entidadId: id, antes, despues })
       return { ok: true, id }
     }
@@ -376,18 +404,26 @@ export async function guardarCatalogo(
   } catch (e) {
     const mensaje = (e as { cause?: { message?: string } }).cause?.message ?? ''
     if (def.duplicado && mensaje.includes(def.duplicado.indice)) return { ok: false, errores: {}, mensaje: def.duplicado.mensaje }
-    if (mensaje.includes('violates foreign key')) return { ok: false, errores: {}, mensaje: 'Una de las opciones elegidas ya no existe.' }
+    if (mensaje.includes('violates foreign key'))
+      return { ok: false, errores: {}, mensaje: 'Una de las opciones elegidas ya no existe.' }
     throw e
   }
 }
 
 /** Baja lógica (o reactivación): los registros con historia no se borran. */
-export async function cambiarEstadoCatalogo(tx: Transaccion, usuarioId: string, def: DefinicionCatalogo, id: string, activo: boolean) {
+export async function cambiarEstadoCatalogo(
+  tx: Transaccion,
+  usuarioId: string,
+  def: DefinicionCatalogo,
+  id: string,
+  activo: boolean,
+) {
   const [despues] = (await tx
     .update(def.tabla)
     .set({ [def.nombreActivo]: activo })
     .where(eq(def.id, id))
     .returning()) as Record<string, unknown>[]
-  if (despues) await auditar(tx, { usuarioId, accion: activo ? 'modificacion' : 'baja', entidad: def.clave, entidadId: id, despues })
+  if (despues)
+    await auditar(tx, { usuarioId, accion: activo ? 'modificacion' : 'baja', entidad: def.clave, entidadId: id, despues })
   return Boolean(despues)
 }

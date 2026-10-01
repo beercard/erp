@@ -58,9 +58,7 @@ describe('sesiones', () => {
     const s = await leerSesion(r.token)
     expect(s?.empresa?.id).toBe(empresaA)
     expect(s?.permisos).toEqual(['*'])
-    const ingresos = await conEmpresa(empresaA, (tx) =>
-      tx.select().from(auditoria).where(eq(auditoria.accion, 'ingreso')),
-    )
+    const ingresos = await conEmpresa(empresaA, (tx) => tx.select().from(auditoria).where(eq(auditoria.accion, 'ingreso')))
     expect(ingresos.length).toBeGreaterThan(0)
   })
 

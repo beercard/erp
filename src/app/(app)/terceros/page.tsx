@@ -77,7 +77,9 @@ export default async function PaginaTerceros({ searchParams }: PageProps<'/terce
             {filas.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-texto-2">
-                  {q ? 'No hay coincidencias. Probá con otra parte del nombre o el CUIT sin guiones.' : 'Todavía no hay clientes ni proveedores cargados.'}
+                  {q
+                    ? 'No hay coincidencias. Probá con otra parte del nombre o el CUIT sin guiones.'
+                    : 'Todavía no hay clientes ni proveedores cargados.'}
                 </td>
               </tr>
             )}
@@ -91,7 +93,9 @@ export default async function PaginaTerceros({ searchParams }: PageProps<'/terce
                   {t.nombreFantasia && <span className="block text-xs text-texto-3">{t.nombreFantasia}</span>}
                 </td>
                 <td className="cifras px-4 py-2.5 whitespace-nowrap text-texto-2">
-                  {t.numeroDocumento ? `${t.tipoDocumento} ${t.tipoDocumento === 'CUIT' || t.tipoDocumento === 'CUIL' ? formatearCuit(t.numeroDocumento) : t.numeroDocumento}` : '—'}
+                  {t.numeroDocumento
+                    ? `${t.tipoDocumento} ${t.tipoDocumento === 'CUIT' || t.tipoDocumento === 'CUIL' ? formatearCuit(t.numeroDocumento) : t.numeroDocumento}`
+                    : '—'}
                 </td>
                 <td className="px-4 py-2.5 text-texto-2">{t.condicionIva}</td>
                 <td className="px-4 py-2.5 text-texto-2">{[t.localidad, t.provincia].filter(Boolean).join(', ') || '—'}</td>

@@ -12,7 +12,13 @@ import type { Resultado } from '@/modulos/busqueda'
 import { Tecla } from '../ui'
 
 const ACCIONES = [
-  { id: 'nuevo-tercero', texto: 'Nuevo cliente o proveedor', href: '/terceros/nuevo', icono: UserPlus, claves: 'alta crear agregar' },
+  {
+    id: 'nuevo-tercero',
+    texto: 'Nuevo cliente o proveedor',
+    href: '/terceros/nuevo',
+    icono: UserPlus,
+    claves: 'alta crear agregar',
+  },
   { id: 'terceros', texto: 'Ir a clientes y proveedores', href: '/terceros', icono: Users, claves: 'listado' },
   { id: 'articulos', texto: 'Ir a artículos y precios', href: '/articulos', icono: Package, claves: 'productos lista' },
   { id: 'empresa', texto: 'Cambiar de empresa', href: '/empresas', icono: ArrowLeftRight, claves: 'empresa cuenta' },
@@ -100,11 +106,12 @@ export function PaletaComandos() {
           {buscando && <span className="text-xs text-texto-3">Buscando…</span>}
         </div>
         <Command.List className="max-h-[50vh] overflow-y-auto p-2">
-          <Command.Empty className="px-3 py-6 text-center text-sm text-texto-3">
-            No hay resultados para “{texto}”.
-          </Command.Empty>
+          <Command.Empty className="px-3 py-6 text-center text-sm text-texto-3">No hay resultados para “{texto}”.</Command.Empty>
           {resultados.length > 0 && (
-            <Command.Group heading="Resultados" className="text-xs text-texto-3 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5">
+            <Command.Group
+              heading="Resultados"
+              className="text-xs text-texto-3 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+            >
               {resultados.map((r) => (
                 <Command.Item
                   key={`${r.tipo}-${r.id}`}
@@ -124,29 +131,32 @@ export function PaletaComandos() {
             </Command.Group>
           )}
           {(acciones.length > 0 || mostrarSalir) && (
-          <Command.Group heading="Acciones" className="text-xs text-texto-3 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5">
-            {acciones.map((a) => (
-              <Command.Item
-                key={a.id}
-                value={a.id}
-                onSelect={() => ir(a.href)}
-                className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-texto data-[selected=true]:bg-acento-suave"
-              >
-                <a.icono aria-hidden className="size-4 text-texto-3" />
-                {a.texto}
-              </Command.Item>
-            ))}
-            {mostrarSalir && (
-              <Command.Item
-                value="salir"
-                onSelect={() => salir()}
-                className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-texto data-[selected=true]:bg-acento-suave"
-              >
-                <LogOut aria-hidden className="size-4 text-texto-3" />
-                Cerrar sesión
-              </Command.Item>
-            )}
-          </Command.Group>
+            <Command.Group
+              heading="Acciones"
+              className="text-xs text-texto-3 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+            >
+              {acciones.map((a) => (
+                <Command.Item
+                  key={a.id}
+                  value={a.id}
+                  onSelect={() => ir(a.href)}
+                  className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-texto data-[selected=true]:bg-acento-suave"
+                >
+                  <a.icono aria-hidden className="size-4 text-texto-3" />
+                  {a.texto}
+                </Command.Item>
+              ))}
+              {mostrarSalir && (
+                <Command.Item
+                  value="salir"
+                  onSelect={() => salir()}
+                  className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-texto data-[selected=true]:bg-acento-suave"
+                >
+                  <LogOut aria-hidden className="size-4 text-texto-3" />
+                  Cerrar sesión
+                </Command.Item>
+              )}
+            </Command.Group>
           )}
         </Command.List>
       </Command.Dialog>

@@ -50,9 +50,7 @@ export async function listarArticulos(tx: Transaccion, filtro: FiltroArticulos =
   const q = filtro.q?.trim()
   if (q) {
     const patron = `%${q}%`
-    condiciones.push(
-      or(ilike(articulos.nombre, patron), ilike(articulos.codigo, patron), ilike(articulos.codigoBarras, patron))!,
-    )
+    condiciones.push(or(ilike(articulos.nombre, patron), ilike(articulos.codigo, patron), ilike(articulos.codigoBarras, patron))!)
   }
   const filas = await tx
     .select({

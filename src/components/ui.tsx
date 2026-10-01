@@ -22,11 +22,7 @@ const BASE_BOTON =
 
 type Variante = keyof typeof VARIANTES
 
-export function Boton({
-  variante = 'secundario',
-  className,
-  ...props
-}: ComponentProps<'button'> & { variante?: Variante }) {
+export function Boton({ variante = 'secundario', className, ...props }: ComponentProps<'button'> & { variante?: Variante }) {
   return <button className={unir(BASE_BOTON, VARIANTES[variante], className)} {...props} />
 }
 
@@ -146,15 +142,7 @@ export function Panel({ className, ...props }: ComponentProps<'section'>) {
   return <section className={unir('rounded-lg border border-borde bg-superficie', className)} {...props} />
 }
 
-export function EncabezadoPagina({
-  titulo,
-  bajada,
-  acciones,
-}: {
-  titulo: string
-  bajada?: ReactNode
-  acciones?: ReactNode
-}) {
+export function EncabezadoPagina({ titulo, bajada, acciones }: { titulo: string; bajada?: ReactNode; acciones?: ReactNode }) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-3 pb-5">
       <div className="min-w-0">

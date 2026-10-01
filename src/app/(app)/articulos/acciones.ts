@@ -25,7 +25,12 @@ export async function guardarArticuloAccion(id: string | null, _: EstadoArticulo
 
 export type EstadoPrecio = { error?: string; ok?: boolean } | undefined
 
-export async function fijarPrecioAccion(articuloId: string, listaId: string, _: EstadoPrecio, formData: FormData): Promise<EstadoPrecio> {
+export async function fijarPrecioAccion(
+  articuloId: string,
+  listaId: string,
+  _: EstadoPrecio,
+  formData: FormData,
+): Promise<EstadoPrecio> {
   try {
     const r = await enLaEmpresa('maestros.articulos', (tx, s) =>
       fijarPrecio(tx, s.usuario.id, articuloId, listaId, { precio: formData.get('precio'), desde: formData.get('desde') }),

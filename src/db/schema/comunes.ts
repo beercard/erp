@@ -9,8 +9,7 @@ import { numeric, timestamp, uuid } from 'drizzle-orm/pg-core'
  */
 export const empresaActual = sql`nullif(current_setting('app.empresa_id', true), '')::uuid`
 
-export const empresaId = () =>
-  uuid('empresa_id').notNull().default(empresaActual)
+export const empresaId = () => uuid('empresa_id').notNull().default(empresaActual)
 
 export const id = () => uuid('id').primaryKey().defaultRandom()
 

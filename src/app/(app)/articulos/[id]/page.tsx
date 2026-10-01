@@ -6,7 +6,8 @@ import { notFound } from 'next/navigation'
 
 import { Aviso, Chip, EncabezadoPagina } from '@/components/ui'
 import { articulos } from '@/db/schema'
-import { enLaEmpresa } from '@/lib/auth/servidor'
+import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
+import { tienePermiso } from '@/lib/permisos'
 import { hoyArgentina } from '@/lib/fechas'
 import { opcionesArticulo, preciosDeArticulo } from '@/modulos/maestros/articulo'
 
@@ -21,6 +22,8 @@ export default async function FichaArticulo({ params, searchParams }: PageProps<
   const { id } = await params
   const { guardado } = await searchParams
   if (!UUID.test(id)) notFound()
+  const sesion = await requerirEmpresa()
+  const puedeEditar = tienePermiso(sesion.permisos, 'maestros.articulos')
   const datos = await enLaEmpresa('maestros.ver', async (tx) => {
     const [a] = await tx.select().from(articulos).where(eq(articulos.id, id))
     if (!a) return null
@@ -31,7 +34,13 @@ export default async function FichaArticulo({ params, searchParams }: PageProps<
   const inicial = Object.fromEntries(
     Object.entries(a).map(([k, v]) => [
       k,
-      v === null || typeof v === 'boolean' ? v : v instanceof Date ? v.toISOString() : ['costo', 'stockMinimo'].includes(k) ? String(Number(v)) : String(v),
+      v === null || typeof v === 'boolean'
+        ? v
+        : v instanceof Date
+          ? v.toISOString()
+          : ['costo', 'stockMinimo'].includes(k)
+            ? String(Number(v))
+            : String(v),
     ]),
   ) as Record<string, string | boolean | null>
 
@@ -57,8 +66,8 @@ export default async function FichaArticulo({ params, searchParams }: PageProps<
         </div>
       )}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <FormularioArticulo id={a.id} inicial={inicial} opciones={datos.opciones} />
-        <PreciosArticulo articuloId={a.id} precios={datos.precios} hoy={hoyArgentina()} />
+        <FormularioArticulo id={a.id} inicial={inicial} opciones={datos.opciones} soloLectura={!puedeEditar} />
+        <PreciosArticulo articuloId={a.id} precios={datos.precios} hoy={hoyArgentina()} soloLectura={!puedeEditar} />
       </div>
     </>
   )

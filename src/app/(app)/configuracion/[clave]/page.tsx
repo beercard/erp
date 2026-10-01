@@ -89,7 +89,10 @@ export default async function PaginaCatalogo({ params, searchParams }: PageProps
                 return (
                   <tr key={String(f.id)} className={`hover:bg-superficie-2 ${f.id === editarId ? 'bg-acento-suave' : ''}`}>
                     {columnas.map((c) => (
-                      <td key={c.nombre} className={`px-4 py-2.5 ${c.tipo === 'numero' ? 'cifras text-right' : ''} ${c.nombre === columnas[0].nombre ? 'font-medium' : 'text-texto-2'}`}>
+                      <td
+                        key={c.nombre}
+                        className={`px-4 py-2.5 ${c.tipo === 'numero' ? 'cifras text-right' : ''} ${c.nombre === columnas[0].nombre ? 'font-medium' : 'text-texto-2'}`}
+                      >
                         {c.tipo === 'seleccion'
                           ? textoOpcion(c.nombre, f[c.nombre]) || '—'
                           : c.tipo === 'numero' && f[c.nombre] !== null
@@ -100,7 +103,10 @@ export default async function PaginaCatalogo({ params, searchParams }: PageProps
                     <td className="px-4 py-2.5">{activo ? <Chip tono="ok">Activo</Chip> : <Chip>De baja</Chip>}</td>
                     {puedeEditar && (
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <Link href={`/configuracion/${clave}?editar=${f.id}`} className="text-xs font-medium text-acento hover:underline">
+                        <Link
+                          href={`/configuracion/${clave}?editar=${f.id}`}
+                          className="text-xs font-medium text-acento hover:underline"
+                        >
                           Modificar
                         </Link>
                         <form action={cambiarEstadoAccion.bind(null, clave, String(f.id), !activo)} className="ml-3 inline">
@@ -123,9 +129,26 @@ export default async function PaginaCatalogo({ params, searchParams }: PageProps
               clave={clave}
               id={enEdicion ? String(enEdicion.id) : null}
               singular={def.singular}
-              campos={def.campos.map(({ nombre, etiqueta, tipo, requerido, ayuda }) => ({ nombre, etiqueta, tipo, requerido, ayuda }))}
+              campos={def.campos.map(({ nombre, etiqueta, tipo, requerido, ayuda }) => ({
+                nombre,
+                etiqueta,
+                tipo,
+                requerido,
+                ayuda,
+              }))}
               opciones={opciones}
-              inicial={enEdicion ? Object.fromEntries(Object.entries(enEdicion).map(([k, v]) => [k, def.campos.some((c) => c.nombre === k && c.tipo === 'numero') && v !== null ? String(Number(v)) : aTexto(v)])) : { moneda: 'PES', cuotas: '1', dias: '0' }}
+              inicial={
+                enEdicion
+                  ? Object.fromEntries(
+                      Object.entries(enEdicion).map(([k, v]) => [
+                        k,
+                        def.campos.some((c) => c.nombre === k && c.tipo === 'numero') && v !== null
+                          ? String(Number(v))
+                          : aTexto(v),
+                      ]),
+                    )
+                  : { moneda: 'PES', cuotas: '1', dias: '0' }
+              }
             />
           </Panel>
         )}

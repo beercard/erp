@@ -17,7 +17,13 @@ export async function buscarTodo(tx: Transaccion, texto: string): Promise<Result
   const digitos = soloDigitos(q)
   const [ters, arts] = await Promise.all([
     tx
-      .select({ id: terceros.id, codigo: terceros.codigo, razonSocial: terceros.razonSocial, esCliente: terceros.esCliente, numeroDocumento: terceros.numeroDocumento })
+      .select({
+        id: terceros.id,
+        codigo: terceros.codigo,
+        razonSocial: terceros.razonSocial,
+        esCliente: terceros.esCliente,
+        numeroDocumento: terceros.numeroDocumento,
+      })
       .from(terceros)
       .where(
         and(

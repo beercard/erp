@@ -31,7 +31,10 @@ export const empresas = pgTable('empresas', {
     .default('PES')
     .references(() => monedas.codigo),
   /** Módulos opcionales activos, por ejemplo "contratos". */
-  modulos: text('modulos').array().notNull().default(sql`'{}'::text[]`),
+  modulos: text('modulos')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
   activa: boolean('activa').notNull().default(true),
   ...marcasDeTiempo(),
 })
@@ -83,6 +86,32 @@ export const membresias = pgTable(
     ...marcasDeTiempo(),
   },
   (t) => [uniqueIndex().on(t.usuarioId, t.empresaId)],
+)
+
+/**
+ * Invitaciones para sumar a alguien a una empresa. El enlace lleva un token
+ * aleatorio que se muestra una sola vez; acá queda solo su hash.
+ */
+export const invitaciones = pgTable(
+  'invitaciones',
+  {
+    id: id(),
+    empresaId: uuid('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    email: text('email').notNull(),
+    rolId: uuid('rol_id')
+      .notNull()
+      .references(() => roles.id),
+    hashToken: text('hash_token').notNull().unique(),
+    invitadoPor: uuid('invitado_por')
+      .notNull()
+      .references(() => usuarios.id),
+    vence: timestamp('vence', { withTimezone: true }).notNull(),
+    aceptada: timestamp('aceptada', { withTimezone: true }),
+    creada: timestamp('creada', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.empresaId)],
 )
 
 export const sesiones = pgTable(

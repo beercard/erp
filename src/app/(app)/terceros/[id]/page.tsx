@@ -5,7 +5,8 @@ import { notFound } from 'next/navigation'
 import { Aviso, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { comoPlataforma } from '@/db/empresa'
 import { auditoria, condicionesIva, usuarios } from '@/db/schema'
-import { enLaEmpresa } from '@/lib/auth/servidor'
+import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
+import { tienePermiso } from '@/lib/permisos'
 import { formatearCuit } from '@/lib/cuit'
 import { obtenerTercero } from '@/modulos/maestros/terceros'
 
@@ -21,6 +22,8 @@ export default async function FichaTercero({ params, searchParams }: PageProps<'
   const { id } = await params
   const { guardado } = await searchParams
   if (!UUID.test(id)) notFound()
+  const sesion = await requerirEmpresa()
+  const puedeEditar = tienePermiso(sesion.permisos, 'maestros.terceros')
 
   const datos = await enLaEmpresa('maestros.ver', async (tx) => {
     const tercero = await obtenerTercero(tx, id)
@@ -72,14 +75,19 @@ export default async function FichaTercero({ params, searchParams }: PageProps<'
       )}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <FormularioTercero
+          soloLectura={!puedeEditar}
           id={t.id}
           opciones={datos.opciones}
-          inicial={Object.fromEntries(Object.entries(t).map(([k, val]) => [k, val instanceof Date ? val.toISOString() : (val as string | boolean | null)]))}
+          inicial={Object.fromEntries(
+            Object.entries(t).map(([k, val]) => [k, val instanceof Date ? val.toISOString() : (val as string | boolean | null)]),
+          )}
         />
         <aside className="flex flex-col gap-4">
           <Panel className="p-4">
             <h2 className="text-sm font-semibold">Cuenta corriente</h2>
-            <p className="mt-1 text-xs text-texto-2">El saldo, la deuda vencida y los últimos comprobantes aparecen acá desde la etapa de facturación.</p>
+            <p className="mt-1 text-xs text-texto-2">
+              El saldo, la deuda vencida y los últimos comprobantes aparecen acá desde la etapa de facturación.
+            </p>
           </Panel>
           <Panel>
             <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">Historial</h2>

@@ -91,8 +91,14 @@ await conEmpresa(empresa.id, async (tx) => {
       { nombre: 'Tres cuotas', dias: 30, cuotas: 3 },
     ])
     .returning()
-  const [zonaCentro] = await tx.insert(t.zonas).values([{ nombre: 'Centro' }, { nombre: 'Interior' }]).returning()
-  const [transporte] = await tx.insert(t.transportes).values([{ nombre: 'Retira en el local' }, { nombre: 'Correo Argentino' }]).returning()
+  const [zonaCentro] = await tx
+    .insert(t.zonas)
+    .values([{ nombre: 'Centro' }, { nombre: 'Interior' }])
+    .returning()
+  const [transporte] = await tx
+    .insert(t.transportes)
+    .values([{ nombre: 'Retira en el local' }, { nombre: 'Correo Argentino' }])
+    .returning()
   const [vendedor1] = await tx
     .insert(t.vendedores)
     .values([
@@ -119,40 +125,153 @@ await conEmpresa(empresa.id, async (tx) => {
     .values([{ nombre: 'Insumos' }, { nombre: 'Equipos' }, { nombre: 'Servicios' }])
     .returning()
   const [toner] = await tx.insert(t.rubros).values({ nombre: 'Tóner', padreId: insumos.id }).returning()
-  const [marcaA, marcaB] = await tx.insert(t.marcas).values([{ nombre: 'Ricoh' }, { nombre: 'Epson' }, { nombre: 'HP' }]).returning()
+  const [marcaA, marcaB] = await tx
+    .insert(t.marcas)
+    .values([{ nombre: 'Ricoh' }, { nombre: 'Epson' }, { nombre: 'HP' }])
+    .returning()
 
   const articulos = await tx
     .insert(t.articulos)
     .values([
-      { codigo: 'TN-1001', nombre: 'Tóner negro alto rendimiento', rubroId: toner.id, marcaId: marcaA.id, costo: '42000', stockMinimo: '5' },
+      {
+        codigo: 'TN-1001',
+        nombre: 'Tóner negro alto rendimiento',
+        rubroId: toner.id,
+        marcaId: marcaA.id,
+        costo: '42000',
+        stockMinimo: '5',
+      },
       { codigo: 'TN-1002', nombre: 'Tóner cian', rubroId: toner.id, marcaId: marcaA.id, costo: '51000', stockMinimo: '3' },
-      { codigo: 'TI-2001', nombre: 'Botella de tinta negra 70 ml', rubroId: insumos.id, marcaId: marcaB.id, costo: '9800', stockMinimo: '10' },
-      { codigo: 'EQ-3001', nombre: 'Multifunción láser A4 color', tipo: 'producto', rubroId: equipos.id, marcaId: marcaA.id, costo: '1450', monedaCosto: 'DOL', llevaSerie: true },
-      { codigo: 'EQ-3002', nombre: 'Impresora de tinta continua A3', rubroId: equipos.id, marcaId: marcaB.id, costo: '980', monedaCosto: 'DOL', llevaSerie: true },
+      {
+        codigo: 'TI-2001',
+        nombre: 'Botella de tinta negra 70 ml',
+        rubroId: insumos.id,
+        marcaId: marcaB.id,
+        costo: '9800',
+        stockMinimo: '10',
+      },
+      {
+        codigo: 'EQ-3001',
+        nombre: 'Multifunción láser A4 color',
+        tipo: 'producto',
+        rubroId: equipos.id,
+        marcaId: marcaA.id,
+        costo: '1450',
+        monedaCosto: 'DOL',
+        llevaSerie: true,
+      },
+      {
+        codigo: 'EQ-3002',
+        nombre: 'Impresora de tinta continua A3',
+        rubroId: equipos.id,
+        marcaId: marcaB.id,
+        costo: '980',
+        monedaCosto: 'DOL',
+        llevaSerie: true,
+      },
       { codigo: 'SV-9001', nombre: 'Visita técnica', tipo: 'servicio', rubroId: servicios.id, llevaStock: false, alicuotaIva: 5 },
       { codigo: 'SV-9002', nombre: 'Abono mensual de mantenimiento', tipo: 'servicio', rubroId: servicios.id, llevaStock: false },
     ])
     .returning()
-  const precioDe: Record<string, string> = { 'TN-1001': '68500', 'TN-1002': '82000', 'TI-2001': '15900', 'SV-9001': '45000', 'SV-9002': '120000' }
-  await tx.insert(t.precios).values(
-    articulos.filter((a) => precioDe[a.codigo]).map((a) => ({ listaId: base_.id, articuloId: a.id, precio: precioDe[a.codigo] })),
-  )
-  await tx.insert(t.precios).values(
-    articulos
-      .filter((a) => a.monedaCosto === 'DOL')
-      .map((a) => ({ listaId: dolares.id, articuloId: a.id, precio: String(Math.round(Number(a.costo) * 1.35)) })),
-  )
+  const precioDe: Record<string, string> = {
+    'TN-1001': '68500',
+    'TN-1002': '82000',
+    'TI-2001': '15900',
+    'SV-9001': '45000',
+    'SV-9002': '120000',
+  }
+  await tx
+    .insert(t.precios)
+    .values(
+      articulos
+        .filter((a) => precioDe[a.codigo])
+        .map((a) => ({ listaId: base_.id, articuloId: a.id, precio: precioDe[a.codigo] })),
+    )
+  await tx
+    .insert(t.precios)
+    .values(
+      articulos
+        .filter((a) => a.monedaCosto === 'DOL')
+        .map((a) => ({ listaId: dolares.id, articuloId: a.id, precio: String(Math.round(Number(a.costo) * 1.35)) })),
+    )
 
   const terceros = await tx
     .insert(t.terceros)
     .values([
-      { codigo: '00001', razonSocial: 'Estudio Contable Norte S.R.L.', tipoDocumento: 80, numeroDocumento: cuit('30', '71999101'), condicionIva: 1, email: 'admin@estudionorte.example', provincia: 'H', localidad: 'Resistencia', condicionPagoId: cc30.id, vendedorId: vendedor1.id, zonaId: zonaCentro.id, listaPreciosId: base_.id },
-      { codigo: '00002', razonSocial: 'Colegio San Martín', tipoDocumento: 80, numeroDocumento: cuit('30', '71999102'), condicionIva: 4, provincia: 'H', localidad: 'Resistencia', condicionPagoId: cc30.id },
-      { codigo: '00003', razonSocial: 'Gómez, Carla', tipoDocumento: 80, numeroDocumento: cuit('27', '30111222'), condicionIva: 6, provincia: 'W', localidad: 'Corrientes', condicionPagoId: contado.id },
-      { codigo: '00004', razonSocial: 'Consumidor final', tipoDocumento: 99, condicionIva: 5, condicionPagoId: contado.id, transporteId: transporte.id },
-      { codigo: '00005', razonSocial: 'Clínica del Litoral S.A.', tipoDocumento: 80, numeroDocumento: cuit('30', '71999105'), condicionIva: 1, provincia: 'H', localidad: 'Resistencia', condicionPagoId: cc30.id, limiteCredito: '2500000' },
-      { codigo: 'P0001', razonSocial: 'Distribuidora Mayorista Insumos S.A.', esCliente: false, esProveedor: true, tipoDocumento: 80, numeroDocumento: cuit('30', '71999201'), condicionIva: 1, provincia: 'C', localidad: 'CABA' },
-      { codigo: 'P0002', razonSocial: 'Logística Rápida S.R.L.', esCliente: false, esProveedor: true, tipoDocumento: 80, numeroDocumento: cuit('30', '71999202'), condicionIva: 1, provincia: 'H' },
+      {
+        codigo: '00001',
+        razonSocial: 'Estudio Contable Norte S.R.L.',
+        tipoDocumento: 80,
+        numeroDocumento: cuit('30', '71999101'),
+        condicionIva: 1,
+        email: 'admin@estudionorte.example',
+        provincia: 'H',
+        localidad: 'Resistencia',
+        condicionPagoId: cc30.id,
+        vendedorId: vendedor1.id,
+        zonaId: zonaCentro.id,
+        listaPreciosId: base_.id,
+      },
+      {
+        codigo: '00002',
+        razonSocial: 'Colegio San Martín',
+        tipoDocumento: 80,
+        numeroDocumento: cuit('30', '71999102'),
+        condicionIva: 4,
+        provincia: 'H',
+        localidad: 'Resistencia',
+        condicionPagoId: cc30.id,
+      },
+      {
+        codigo: '00003',
+        razonSocial: 'Gómez, Carla',
+        tipoDocumento: 80,
+        numeroDocumento: cuit('27', '30111222'),
+        condicionIva: 6,
+        provincia: 'W',
+        localidad: 'Corrientes',
+        condicionPagoId: contado.id,
+      },
+      {
+        codigo: '00004',
+        razonSocial: 'Consumidor final',
+        tipoDocumento: 99,
+        condicionIva: 5,
+        condicionPagoId: contado.id,
+        transporteId: transporte.id,
+      },
+      {
+        codigo: '00005',
+        razonSocial: 'Clínica del Litoral S.A.',
+        tipoDocumento: 80,
+        numeroDocumento: cuit('30', '71999105'),
+        condicionIva: 1,
+        provincia: 'H',
+        localidad: 'Resistencia',
+        condicionPagoId: cc30.id,
+        limiteCredito: '2500000',
+      },
+      {
+        codigo: 'P0001',
+        razonSocial: 'Distribuidora Mayorista Insumos S.A.',
+        esCliente: false,
+        esProveedor: true,
+        tipoDocumento: 80,
+        numeroDocumento: cuit('30', '71999201'),
+        condicionIva: 1,
+        provincia: 'C',
+        localidad: 'CABA',
+      },
+      {
+        codigo: 'P0002',
+        razonSocial: 'Logística Rápida S.R.L.',
+        esCliente: false,
+        esProveedor: true,
+        tipoDocumento: 80,
+        numeroDocumento: cuit('30', '71999202'),
+        condicionIva: 1,
+        provincia: 'H',
+      },
     ])
     .returning()
   await tx.insert(t.tercerosContactos).values([

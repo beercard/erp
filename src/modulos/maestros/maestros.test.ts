@@ -59,7 +59,13 @@ describe('terceros', () => {
 
   it('consumidor final sin documento y búsqueda por CUIT', async () => {
     const r = await conEmpresa(empresa, (tx) =>
-      guardarTercero(tx, USUARIO, { ...base, razonSocial: 'Consumidor final', tipoDocumento: '99', numeroDocumento: '123', condicionIva: '5' }),
+      guardarTercero(tx, USUARIO, {
+        ...base,
+        razonSocial: 'Consumidor final',
+        tipoDocumento: '99',
+        numeroDocumento: '123',
+        condicionIva: '5',
+      }),
     )
     expect(r.ok).toBe(true)
     const encontrados = await conEmpresa(empresa, (tx) => buscarTodo(tx, '12345678'))

@@ -63,7 +63,10 @@ export default async function PaginaArticulos({ searchParams }: PageProps<'/arti
             ))}
           </select>
         </div>
-        <button type="submit" className="h-9 rounded-md border border-borde bg-superficie px-3 text-sm font-medium hover:bg-superficie-2">
+        <button
+          type="submit"
+          className="h-9 rounded-md border border-borde bg-superficie px-3 text-sm font-medium hover:bg-superficie-2"
+        >
           Ver
         </button>
       </form>
@@ -112,7 +115,11 @@ export default async function PaginaArticulos({ searchParams }: PageProps<'/arti
                   {a.costo ? formatearMonto(a.costo, SIMBOLO[a.monedaCosto] ?? a.monedaCosto) : '—'}
                 </td>
                 <td className="cifras px-4 py-2.5 text-right font-medium whitespace-nowrap">
-                  {a.precio ? formatearMonto(a.precio, SIMBOLO[moneda] ?? moneda) : <span className="text-texto-3">Sin precio</span>}
+                  {a.precio ? (
+                    formatearMonto(a.precio, SIMBOLO[moneda] ?? moneda)
+                  ) : (
+                    <span className="text-texto-3">Sin precio</span>
+                  )}
                 </td>
               </tr>
             ))}

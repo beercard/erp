@@ -56,7 +56,12 @@ export function FormularioCatalogo({
         {campos.map((c, i) =>
           c.tipo === 'booleano' ? (
             <label key={c.nombre} className="flex items-center gap-2 self-end pb-2 text-sm sm:col-span-2">
-              <input type="checkbox" name={c.nombre} defaultChecked={marcado(c.nombre)} className="size-4 accent-[var(--acento)]" />
+              <input
+                type="checkbox"
+                name={c.nombre}
+                defaultChecked={marcado(c.nombre)}
+                className="size-4 accent-[var(--acento)]"
+              />
               {c.etiqueta}
             </label>
           ) : c.tipo === 'seleccion' ? (

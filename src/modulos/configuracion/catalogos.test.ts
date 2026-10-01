@@ -24,9 +24,13 @@ describe('maestros simples', () => {
     const sinNombre = await conEmpresa(empresa, (tx) => guardarCatalogo(tx, USUARIO, def('depositos'), { codigo: '001' }))
     expect(sinNombre).toMatchObject({ ok: false, errores: { nombre: 'Completá nombre.' } })
 
-    const ok = await conEmpresa(empresa, (tx) => guardarCatalogo(tx, USUARIO, def('depositos'), { codigo: '001', nombre: 'Central' }))
+    const ok = await conEmpresa(empresa, (tx) =>
+      guardarCatalogo(tx, USUARIO, def('depositos'), { codigo: '001', nombre: 'Central' }),
+    )
     expect(ok.ok).toBe(true)
-    const repetido = await conEmpresa(empresa, (tx) => guardarCatalogo(tx, USUARIO, def('depositos'), { codigo: '001', nombre: 'Otro' }))
+    const repetido = await conEmpresa(empresa, (tx) =>
+      guardarCatalogo(tx, USUARIO, def('depositos'), { codigo: '001', nombre: 'Otro' }),
+    )
     expect(repetido).toMatchObject({ ok: false, mensaje: 'Ya hay un depósito con ese código.' })
 
     const malNumero = await conEmpresa(empresa, (tx) =>
@@ -41,23 +45,44 @@ describe('maestros simples', () => {
     )
     if (!base.ok) throw new Error('no grabó la base')
     const sinPorcentaje = await conEmpresa(empresa, (tx) =>
-      guardarCatalogo(tx, USUARIO, def('listas-precios'), { codigo: '002', nombre: 'Tarjeta', moneda: 'PES', listaBaseId: base.id }),
+      guardarCatalogo(tx, USUARIO, def('listas-precios'), {
+        codigo: '002',
+        nombre: 'Tarjeta',
+        moneda: 'PES',
+        listaBaseId: base.id,
+      }),
     )
     expect(sinPorcentaje).toMatchObject({ ok: false, errores: { porcentaje: expect.any(String) } })
     const consigo = await conEmpresa(empresa, (tx) =>
-      guardarCatalogo(tx, USUARIO, def('listas-precios'), { codigo: '001', nombre: 'General', moneda: 'PES', listaBaseId: base.id, porcentaje: '5' }, base.id),
+      guardarCatalogo(
+        tx,
+        USUARIO,
+        def('listas-precios'),
+        { codigo: '001', nombre: 'General', moneda: 'PES', listaBaseId: base.id, porcentaje: '5' },
+        base.id,
+      ),
     )
     expect(consigo.ok).toBe(false)
     const derivada = await conEmpresa(empresa, (tx) =>
-      guardarCatalogo(tx, USUARIO, def('listas-precios'), { codigo: '002', nombre: 'Tarjeta', moneda: 'PES', listaBaseId: base.id, porcentaje: '30,5' }),
+      guardarCatalogo(tx, USUARIO, def('listas-precios'), {
+        codigo: '002',
+        nombre: 'Tarjeta',
+        moneda: 'PES',
+        listaBaseId: base.id,
+        porcentaje: '30,5',
+      }),
     )
     expect(derivada.ok).toBe(true)
   })
 
   it('valida el CUIT del transporte y da de baja sin borrar', async () => {
-    const malo = await conEmpresa(empresa, (tx) => guardarCatalogo(tx, USUARIO, def('transportes'), { nombre: 'Flete', cuit: '20-12345678-9' }))
+    const malo = await conEmpresa(empresa, (tx) =>
+      guardarCatalogo(tx, USUARIO, def('transportes'), { nombre: 'Flete', cuit: '20-12345678-9' }),
+    )
     expect(malo.ok).toBe(false)
-    const bueno = await conEmpresa(empresa, (tx) => guardarCatalogo(tx, USUARIO, def('transportes'), { nombre: 'Flete', cuit: '20-12345678-6' }))
+    const bueno = await conEmpresa(empresa, (tx) =>
+      guardarCatalogo(tx, USUARIO, def('transportes'), { nombre: 'Flete', cuit: '20-12345678-6' }),
+    )
     if (!bueno.ok) throw new Error('no grabó')
     await conEmpresa(empresa, (tx) => cambiarEstadoCatalogo(tx, USUARIO, def('transportes'), bueno.id, false))
     const filas = await conEmpresa(empresa, (tx) => listarCatalogo(tx, def('transportes')))

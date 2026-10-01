@@ -22,8 +22,14 @@ const ETAPAS = [
 export default async function Inicio() {
   const sesion = await requerirEmpresa()
   const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
-    const [clientes] = await tx.select({ n: count() }).from(terceros).where(and(eq(terceros.esCliente, true), eq(terceros.activo, true)))
-    const [proveedores] = await tx.select({ n: count() }).from(terceros).where(and(eq(terceros.esProveedor, true), eq(terceros.activo, true)))
+    const [clientes] = await tx
+      .select({ n: count() })
+      .from(terceros)
+      .where(and(eq(terceros.esCliente, true), eq(terceros.activo, true)))
+    const [proveedores] = await tx
+      .select({ n: count() })
+      .from(terceros)
+      .where(and(eq(terceros.esProveedor, true), eq(terceros.activo, true)))
     const [arts] = await tx.select({ n: count() }).from(articulos).where(eq(articulos.activo, true))
     const [semana] = await tx
       .select({ n: count() })

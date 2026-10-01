@@ -77,11 +77,27 @@ export async function opcionesTercero(tx: Transaccion) {
     tx.select().from(condicionesIva).orderBy(asc(condicionesIva.codigo)),
     tx.select().from(tiposDocumento).orderBy(asc(tiposDocumento.codigo)),
     tx.select().from(provincias).orderBy(asc(provincias.nombre)),
-    tx.select({ id: listasPrecios.id, nombre: listasPrecios.nombre }).from(listasPrecios).where(eq(listasPrecios.activa, true)).orderBy(asc(listasPrecios.codigo)),
-    tx.select({ id: vendedores.id, nombre: vendedores.nombre }).from(vendedores).where(eq(vendedores.activo, true)).orderBy(asc(vendedores.nombre)),
-    tx.select({ id: condicionesPago.id, nombre: condicionesPago.nombre }).from(condicionesPago).where(eq(condicionesPago.activa, true)).orderBy(asc(condicionesPago.dias)),
+    tx
+      .select({ id: listasPrecios.id, nombre: listasPrecios.nombre })
+      .from(listasPrecios)
+      .where(eq(listasPrecios.activa, true))
+      .orderBy(asc(listasPrecios.codigo)),
+    tx
+      .select({ id: vendedores.id, nombre: vendedores.nombre })
+      .from(vendedores)
+      .where(eq(vendedores.activo, true))
+      .orderBy(asc(vendedores.nombre)),
+    tx
+      .select({ id: condicionesPago.id, nombre: condicionesPago.nombre })
+      .from(condicionesPago)
+      .where(eq(condicionesPago.activa, true))
+      .orderBy(asc(condicionesPago.dias)),
     tx.select({ id: zonas.id, nombre: zonas.nombre }).from(zonas).where(eq(zonas.activa, true)).orderBy(asc(zonas.nombre)),
-    tx.select({ id: transportes.id, nombre: transportes.nombre }).from(transportes).where(eq(transportes.activo, true)).orderBy(asc(transportes.nombre)),
+    tx
+      .select({ id: transportes.id, nombre: transportes.nombre })
+      .from(transportes)
+      .where(eq(transportes.activo, true))
+      .orderBy(asc(transportes.nombre)),
   ])
   return { ivas, documentos, provincias: provs, listas, vendedores: vends, condiciones, zonas: zns, transportes: transps }
 }
@@ -101,7 +117,12 @@ const numeroOpcional = z
   .string()
   .trim()
   .transform((v) => v.replace(/\./g, '').replace(',', '.') || null)
-  .pipe(z.string().regex(/^-?\d+(\.\d+)?$/, { error: 'Escribí un número.' }).nullable())
+  .pipe(
+    z
+      .string()
+      .regex(/^-?\d+(\.\d+)?$/, { error: 'Escribí un número.' })
+      .nullable(),
+  )
   .optional()
 
 export const EsquemaTercero = z
@@ -179,8 +200,7 @@ async function proximoCodigo(tx: Transaccion): Promise<string> {
 }
 
 export type ResultadoGuardar =
-  | { ok: true; id: string }
-  | { ok: false; errores: Partial<Record<keyof DatosTercero, string>>; mensaje?: string }
+  { ok: true; id: string } | { ok: false; errores: Partial<Record<keyof DatosTercero, string>>; mensaje?: string }
 
 export async function guardarTercero(
   tx: Transaccion,
@@ -218,7 +238,14 @@ export async function guardarTercero(
       const anterior = await obtenerTercero(tx, id)
       if (!anterior) return { ok: false, errores: {}, mensaje: 'Ese cliente o proveedor ya no existe.' }
       const [actualizado] = await tx.update(terceros).set(datos).where(eq(terceros.id, id)).returning()
-      await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'tercero', entidadId: id, antes: anterior, despues: actualizado })
+      await auditar(tx, {
+        usuarioId,
+        accion: 'modificacion',
+        entidad: 'tercero',
+        entidadId: id,
+        antes: anterior,
+        despues: actualizado,
+      })
       return { ok: true, id }
     }
     const [nuevo] = await tx

@@ -7,13 +7,10 @@ import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
 import { guardarTercero, type DatosTercero } from '@/modulos/maestros/terceros'
 
 export type EstadoFormulario =
-  | { errores?: Partial<Record<keyof DatosTercero, string>>; mensaje?: string; valores?: Record<string, string> }
-  | undefined
+  { errores?: Partial<Record<keyof DatosTercero, string>>; mensaje?: string; valores?: Record<string, string> } | undefined
 
 export async function guardar(id: string | null, _: EstadoFormulario, formData: FormData): Promise<EstadoFormulario> {
-  const valores = Object.fromEntries(
-    [...formData.entries()].filter(([, v]) => typeof v === 'string') as [string, string][],
-  )
+  const valores = Object.fromEntries([...formData.entries()].filter(([, v]) => typeof v === 'string') as [string, string][])
   const entrada = { ...valores, esCliente: formData.has('esCliente'), esProveedor: formData.has('esProveedor') }
   let resultado
   try {

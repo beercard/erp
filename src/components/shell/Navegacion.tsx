@@ -43,16 +43,12 @@ const CONTRATOS: Item = { href: '#contratos', texto: 'Contratos y equipos', icon
 
 export function Navegacion({ modulos }: { modulos: string[] }) {
   const ruta = usePathname()
-  const secciones = modulos.includes('contratos')
-    ? [...SECCIONES, { titulo: 'Módulos', items: [CONTRATOS] }]
-    : SECCIONES
+  const secciones = modulos.includes('contratos') ? [...SECCIONES, { titulo: 'Módulos', items: [CONTRATOS] }] : SECCIONES
   return (
     <nav aria-label="Secciones" className="flex flex-col gap-5">
       {secciones.map((s, i) => (
         <div key={s.titulo ?? i} className="flex flex-col gap-0.5">
-          {s.titulo && (
-            <p className="px-2.5 pb-1 text-[11px] font-semibold tracking-wider text-texto-3 uppercase">{s.titulo}</p>
-          )}
+          {s.titulo && <p className="px-2.5 pb-1 text-[11px] font-semibold tracking-wider text-texto-3 uppercase">{s.titulo}</p>}
           {s.items.map((item) => {
             const activo = item.href === '/' ? ruta === '/' : ruta.startsWith(item.href)
             const Icono = item.icono
@@ -90,7 +86,9 @@ export function Navegacion({ modulos }: { modulos: string[] }) {
           href="/configuracion"
           aria-current={ruta.startsWith('/configuracion') ? 'page' : undefined}
           className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 font-medium transition-colors ${
-            ruta.startsWith('/configuracion') ? 'bg-acento-suave text-acento' : 'text-texto-2 hover:bg-superficie-2 hover:text-texto'
+            ruta.startsWith('/configuracion')
+              ? 'bg-acento-suave text-acento'
+              : 'text-texto-2 hover:bg-superficie-2 hover:text-texto'
           }`}
         >
           <Settings aria-hidden className="size-4" />

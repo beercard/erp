@@ -9,7 +9,16 @@ let empresa: string
 let general: string
 let tarjeta: string
 const USUARIO = '00000000-0000-4000-8000-000000000001'
-const base = { codigo: 'TN-1', nombre: 'Tóner negro', tipo: 'producto', alicuotaIva: '5', llevaStock: true, llevaSerie: false, monedaCosto: 'PES', unidad: 'unidad' }
+const base = {
+  codigo: 'TN-1',
+  nombre: 'Tóner negro',
+  tipo: 'producto',
+  alicuotaIva: '5',
+  llevaStock: true,
+  llevaSerie: false,
+  monedaCosto: 'PES',
+  unidad: 'unidad',
+}
 
 beforeAll(async () => {
   const db = await baseDePrueba()
@@ -17,7 +26,10 @@ beforeAll(async () => {
   empresa = e.id
   ;[general, tarjeta] = await conEmpresa(empresa, async (tx) => {
     const [g] = await tx.insert(listasPrecios).values({ codigo: '001', nombre: 'General' }).returning()
-    const [t] = await tx.insert(listasPrecios).values({ codigo: '002', nombre: 'Tarjeta', listaBaseId: g.id, porcentaje: '10' }).returning()
+    const [t] = await tx
+      .insert(listasPrecios)
+      .values({ codigo: '002', nombre: 'Tarjeta', listaBaseId: g.id, porcentaje: '10' })
+      .returning()
     return [g.id, t.id]
   })
 })
@@ -51,7 +63,9 @@ describe('artículos', () => {
     expect(g.programado).toEqual({ precio: '5000.00', desde: '2999-01-01' })
     // Tarjeta = General + 10 %: 1200,50 × 1,10 = 1320,55
     expect(t.vigente).toBe('1320.55')
-    const enDerivada = await conEmpresa(empresa, (tx) => fijarPrecio(tx, USUARIO, art.id, tarjeta, { precio: '1', desde: '2026-01-01' }))
+    const enDerivada = await conEmpresa(empresa, (tx) =>
+      fijarPrecio(tx, USUARIO, art.id, tarjeta, { precio: '1', desde: '2026-01-01' }),
+    )
     expect(enDerivada.ok).toBe(false)
   })
 })

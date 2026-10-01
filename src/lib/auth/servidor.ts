@@ -60,6 +60,16 @@ export async function requerirEmpresa(): Promise<SesionConEmpresa> {
   return sesion as SesionConEmpresa
 }
 
+/**
+ * Para páginas: sin el permiso, lleva a una pantalla que explica cuál falta
+ * (en vez de un error genérico). Las acciones usan SinPermiso.
+ */
+export async function exigirPermiso(permiso: string): Promise<SesionConEmpresa> {
+  const sesion = await requerirEmpresa()
+  if (!tienePermiso(sesion.permisos, permiso)) redirect(`/sin-permiso?permiso=${encodeURIComponent(permiso)}`)
+  return sesion
+}
+
 export class SinPermiso extends Error {
   constructor(permiso: string) {
     super(`No tenés permiso para esta acción (${permiso}). Pedíselo a quien administra la empresa.`)

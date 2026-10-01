@@ -26,7 +26,10 @@ export function MenuMovil({ modulos }: { modulos: string[] }) {
         {abierto ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
       </button>
       {abierto && (
-        <div id="menu-movil" className="fixed inset-x-0 top-14 bottom-0 z-40 overflow-y-auto border-t border-borde bg-superficie p-4">
+        <div
+          id="menu-movil"
+          className="fixed inset-x-0 top-14 bottom-0 z-40 overflow-y-auto border-t border-borde bg-superficie p-4"
+        >
           <Navegacion modulos={modulos} />
         </div>
       )}

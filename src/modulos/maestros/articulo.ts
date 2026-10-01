@@ -25,7 +25,12 @@ const decimal = (mensaje = 'Escribí un número.') =>
     .string()
     .trim()
     .transform((v) => v.replace(/\./g, '').replace(',', '.') || null)
-    .pipe(z.string().regex(/^\d+(\.\d{1,4})?$/, { error: mensaje }).nullable())
+    .pipe(
+      z
+        .string()
+        .regex(/^\d+(\.\d{1,4})?$/, { error: mensaje })
+        .nullable(),
+    )
     .optional()
 
 export const EsquemaArticulo = z.object({
@@ -46,9 +51,15 @@ export const EsquemaArticulo = z.object({
 })
 
 export type DatosArticulo = z.infer<typeof EsquemaArticulo>
-export type ResultadoArticulo = { ok: true; id: string } | { ok: false; errores: Partial<Record<keyof DatosArticulo, string>>; mensaje?: string }
+export type ResultadoArticulo =
+  { ok: true; id: string } | { ok: false; errores: Partial<Record<keyof DatosArticulo, string>>; mensaje?: string }
 
-export async function guardarArticulo(tx: Transaccion, usuarioId: string, entrada: unknown, id?: string): Promise<ResultadoArticulo> {
+export async function guardarArticulo(
+  tx: Transaccion,
+  usuarioId: string,
+  entrada: unknown,
+  id?: string,
+): Promise<ResultadoArticulo> {
   const p = EsquemaArticulo.safeParse(entrada)
   if (!p.success) {
     const errores: Partial<Record<keyof DatosArticulo, string>> = {}
@@ -70,7 +81,8 @@ export async function guardarArticulo(tx: Transaccion, usuarioId: string, entrad
     return { ok: true, id: nuevo.id }
   } catch (e) {
     const m = (e as { cause?: { message?: string } }).cause?.message ?? ''
-    if (m.includes('articulos_empresa_id_codigo')) return { ok: false, errores: { codigo: 'Ese código ya lo tiene otro artículo.' } }
+    if (m.includes('articulos_empresa_id_codigo'))
+      return { ok: false, errores: { codigo: 'Ese código ya lo tiene otro artículo.' } }
     throw e
   }
 }
@@ -79,7 +91,10 @@ export async function opcionesArticulo(tx: Transaccion) {
   const [rbs, mcs, ivas, mons] = await Promise.all([
     tx.select({ valor: rubros.id, texto: rubros.nombre }).from(rubros).where(eq(rubros.activo, true)).orderBy(asc(rubros.nombre)),
     tx.select({ valor: marcas.id, texto: marcas.nombre }).from(marcas).where(eq(marcas.activa, true)).orderBy(asc(marcas.nombre)),
-    tx.select({ valor: alicuotasIva.codigo, texto: alicuotasIva.nombre }).from(alicuotasIva).orderBy(asc(alicuotasIva.porcentaje)),
+    tx
+      .select({ valor: alicuotasIva.codigo, texto: alicuotasIva.nombre })
+      .from(alicuotasIva)
+      .orderBy(asc(alicuotasIva.porcentaje)),
     tx.select({ valor: monedas.codigo, texto: monedas.nombre }).from(monedas),
   ])
   return { rubros: rbs, marcas: mcs, alicuotas: ivas, monedas: mons }
@@ -115,8 +130,12 @@ export async function preciosDeArticulo(tx: Transaccion, articuloId: string): Pr
   return listas.map((l) => {
     const origen = l.listaBaseId ?? l.id
     const v = vigenteDe(origen)
-    const futuro = deLista(origen).filter((f) => f.desde > hoy).at(-1) ?? null
-    const ajustar = (precio: string) => (l.listaBaseId && l.porcentaje ? aImporte(aplicarPorcentaje(precio, l.porcentaje)) : aImporte(precio))
+    const futuro =
+      deLista(origen)
+        .filter((f) => f.desde > hoy)
+        .at(-1) ?? null
+    const ajustar = (precio: string) =>
+      l.listaBaseId && l.porcentaje ? aImporte(aplicarPorcentaje(precio, l.porcentaje)) : aImporte(precio)
     return {
       listaId: l.id,
       lista: l.nombre,
@@ -126,7 +145,12 @@ export async function preciosDeArticulo(tx: Transaccion, articuloId: string): Pr
       base: l.listaBaseId ? (listas.find((x) => x.id === l.listaBaseId)?.nombre ?? null) : null,
       vigente: v ? ajustar(v.precio) : null,
       desde: v?.desde ?? null,
-      historial: l.listaBaseId ? [] : deLista(l.id).filter((f) => f.desde <= hoy).slice(0, 5).map((f) => ({ precio: aImporte(f.precio), desde: f.desde })),
+      historial: l.listaBaseId
+        ? []
+        : deLista(l.id)
+            .filter((f) => f.desde <= hoy)
+            .slice(0, 5)
+            .map((f) => ({ precio: aImporte(f.precio), desde: f.desde })),
       programado: futuro ? { precio: ajustar(futuro.precio), desde: futuro.desde } : null,
     }
   })

@@ -7,7 +7,7 @@ import { baseDePrueba } from './pruebas'
 import { auditoria, empresas, terceros, vendedores } from './schema'
 
 /** Tablas con empresa_id que son de plataforma y NO llevan RLS (ver plataforma.ts). */
-const PLATAFORMA = new Set(['roles', 'membresias', 'sesiones'])
+const PLATAFORMA = new Set(['roles', 'membresias', 'sesiones', 'invitaciones'])
 
 /** Mensaje de Postgres detrás del error de Drizzle: la prueba verifica el MOTIVO del rechazo. */
 async function motivo(operacion: Promise<unknown>): Promise<string> {
@@ -50,13 +50,15 @@ beforeAll(async () => {
 
 describe('aislamiento entre empresas', () => {
   it('toda tabla con empresa_id tiene RLS forzado y la política de aislamiento', async () => {
-    const rows = filas<{ tabla: string; rls: boolean; forzado: boolean; politica: boolean }>(await base.execute(sql`
+    const rows = filas<{ tabla: string; rls: boolean; forzado: boolean; politica: boolean }>(
+      await base.execute(sql`
       select c.relname as tabla, c.relrowsecurity as rls, c.relforcerowsecurity as forzado,
         exists (select 1 from pg_policies p where p.tablename = c.relname and p.policyname = 'aislamiento_empresa') as politica
       from pg_class c
       join information_schema.columns col on col.table_name = c.relname and col.column_name = 'empresa_id'
       where c.relkind = 'r' and col.table_schema = 'public'
-    `))
+    `),
+    )
     const sinAislar = rows.filter((r) => !PLATAFORMA.has(r.tabla) && !(r.rls && r.forzado && r.politica))
     expect(rows.length).toBeGreaterThan(10)
     expect(sinAislar.map((r) => r.tabla)).toEqual([])
@@ -124,7 +126,11 @@ describe('catálogos fiscales', () => {
     const rows = filas<{ n: number }>(await base.execute(sql`select count(*)::int as n from condiciones_iva`))
     expect(rows[0].n).toBe(11)
     expect(
-      await motivo(comoPlataforma((tx) => tx.execute(sql`insert into monedas (codigo, iso, nombre, simbolo) values ('XXX', 'XXX', 'x', 'x')`))),
+      await motivo(
+        comoPlataforma((tx) =>
+          tx.execute(sql`insert into monedas (codigo, iso, nombre, simbolo) values ('XXX', 'XXX', 'x', 'x')`),
+        ),
+      ),
     ).toMatch(/permission denied/)
   })
 })
