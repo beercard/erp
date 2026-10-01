@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Base local de desarrollo (PGlite) y credenciales generadas
+/.data/
