@@ -1,6 +1,8 @@
+import { Plus } from 'lucide-react'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
-import { Chip, EncabezadoPagina, Panel } from '@/components/ui'
+import { BotonEnlace, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { enLaEmpresa } from '@/lib/auth/servidor'
 import { formatearMonto } from '@/lib/dinero'
 import { listarArticulos, listasDisponibles } from '@/modulos/maestros/articulos'
@@ -25,6 +27,11 @@ export default async function PaginaArticulos({ searchParams }: PageProps<'/arti
       <EncabezadoPagina
         titulo="Artículos y precios"
         bajada={`${filas.length.toLocaleString('es-AR')} artículos${q ? ` para “${q}”` : ''}`}
+        acciones={
+          <BotonEnlace href="/articulos/nuevo" variante="primario">
+            <Plus aria-hidden className="size-4" /> Nuevo
+          </BotonEnlace>
+        }
       />
       <form className="mb-3 flex flex-wrap items-end gap-3" role="search">
         <div className="flex min-w-60 flex-1 flex-col gap-1">
@@ -90,7 +97,9 @@ export default async function PaginaArticulos({ searchParams }: PageProps<'/arti
               <tr key={a.id} className="hover:bg-superficie-2">
                 <td className="cifras px-4 py-2.5 text-texto-2">{a.codigo}</td>
                 <td className="px-4 py-2.5">
-                  <span className="font-medium">{a.nombre}</span>
+                  <Link href={`/articulos/${a.id}`} className="font-medium hover:text-acento">
+                    {a.nombre}
+                  </Link>
                   <span className="mt-0.5 flex flex-wrap gap-1">
                     {a.marca && <span className="text-xs text-texto-3">{a.marca}</span>}
                     {a.tipo === 'servicio' && <Chip>Servicio</Chip>}

@@ -1,8 +1,9 @@
-import { and, asc, desc, eq, ilike, lte, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, lte, or } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
 import { alicuotasIva, articulos, listasPrecios, marcas, precios, rubros } from '../../db/schema'
 import { aImporte, aplicarPorcentaje } from '../../lib/dinero'
+import { hoyArgentina } from '../../lib/fechas'
 
 export type FiltroArticulos = { q?: string; listaId?: string }
 
@@ -34,7 +35,7 @@ async function preciosVigentes(tx: Transaccion, listaId: string): Promise<Map<st
   const filas = await tx
     .selectDistinctOn([precios.articuloId], { articuloId: precios.articuloId, precio: precios.precio })
     .from(precios)
-    .where(and(eq(precios.listaId, origen), lte(precios.vigenteDesde, sql`current_date`)))
+    .where(and(eq(precios.listaId, origen), lte(precios.vigenteDesde, hoyArgentina())))
     .orderBy(precios.articuloId, desc(precios.vigenteDesde))
   return new Map(
     filas.map((f) => [
