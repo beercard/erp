@@ -7,7 +7,8 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
-import { articulos, empresas, listasPrecios, terceros, tercerosContactos } from '../../db/schema'
+import { articulos, depositos, empresas, listasPrecios, movimientosStock, terceros, tercerosContactos } from '../../db/schema'
+import { saldos } from '../comercial/stock'
 import { preciosVigentes } from '../maestros/articulos'
 import { importarPymexis, type Informe } from './pymexis'
 
@@ -55,15 +56,17 @@ const ARCHIVOS: Record<string, string> = {
     '"TN-3","","002",300.00,"False","002"\n"TN-3","","007",390.00,"False","002"\n"TN-3","","013",2.00,"False","002"\n' +
     // Con IVA incluido y al 10,5 %: 110,50 y 143,65 son 100 y 130 netos.
     '"EQ-105","","002",110.50,"True","001"\n"EQ-105","","007",143.65,"True","001"\n"EQ-105","","013",3.00,"True","001"\n',
-  stock: 'IdArticulo,IdDeposito,cantidad\n"TN-1","001",5\n',
+  // El 999 no está en la tabla de depósitos (pasa en KOMSA).
+  stock: 'IdArticulo,IdDeposito,cantidad\n"TN-1","001",5\n"TN-2","999",-2\n',
 }
 
 let empresa: string
+let carpeta: string
 let informe: Informe
 const USUARIO = '00000000-0000-4000-8000-000000000001'
 
 beforeAll(async () => {
-  const carpeta = mkdtempSync(join(tmpdir(), 'pymexis-'))
+  carpeta = mkdtempSync(join(tmpdir(), 'pymexis-'))
   for (const [nombre, contenido] of Object.entries(ARCHIVOS)) writeFileSync(join(carpeta, `${nombre}.csv`), '﻿' + contenido)
   const db = await baseDePrueba()
   const [e] = await db
@@ -128,5 +131,33 @@ describe('importación de PYMEXIS', () => {
       tx.select().from(tercerosContactos).where(eq(tercerosContactos.terceroId, estudio.id)),
     )
     expect(contactos).toHaveLength(1)
+  })
+
+  it('carga el stock inicial una sola vez y después sincroniza con ajustes', async () => {
+    const deps = await conEmpresa(empresa, (tx) => tx.select().from(depositos))
+    expect(deps.find((d) => d.codigo === '999')?.nombre).toContain('sin nombre en PYMEXIS')
+    expect(informe.avisos.some((a) => a.includes('999'))).toBe(true)
+    // La segunda corrida del beforeAll no agregó nada.
+    expect(informe.cantidades.movimientosDeStock).toBe(0)
+    const arts = await conEmpresa(empresa, (tx) => tx.select().from(articulos))
+    const id = (c: string) => arts.find((a) => a.codigo === c)!.id
+    const saldo = async () =>
+      new Map((await conEmpresa(empresa, (tx) => saldos(tx))).map((x) => [x.articuloId, Number(x.cantidad)]))
+    expect((await saldo()).get(id('TN-1'))).toBe(5)
+    expect((await saldo()).get(id('TN-2'))).toBe(-2)
+
+    // En PYMEXIS se vendieron 2 TN-1 y se corrigió el TN-2.
+    writeFileSync(join(carpeta, 'stock.csv'), 'IdArticulo,IdDeposito,cantidad\n"TN-1","001",3\n')
+    const otra = await importarPymexis(carpeta, empresa, USUARIO, '2026-10-02')
+    expect(otra.cantidades.movimientosDeStock).toBe(2)
+    expect((await saldo()).get(id('TN-1'))).toBe(3)
+    expect((await saldo()).get(id('TN-2'))).toBe(0)
+    const movs = await conEmpresa(empresa, (tx) =>
+      tx
+        .select()
+        .from(movimientosStock)
+        .where(eq(movimientosStock.articuloId, id('TN-1'))),
+    )
+    expect(movs.map((m) => m.tipo).sort()).toEqual(['ajuste', 'inicial'])
   })
 })

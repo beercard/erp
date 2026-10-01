@@ -1,7 +1,19 @@
 'use client'
 
 import { Command } from 'cmdk'
-import { ArrowLeftRight, LogOut, Package, Search, UserPlus, Users } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  Boxes,
+  ClipboardList,
+  FilePlus,
+  FileText,
+  LogOut,
+  Package,
+  Search,
+  Truck,
+  UserPlus,
+  Users,
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 
@@ -19,6 +31,12 @@ const ACCIONES = [
     icono: UserPlus,
     claves: 'alta crear agregar',
   },
+  { id: 'nuevo-presupuesto', texto: 'Nuevo presupuesto', href: '/presupuestos/nuevo', icono: FilePlus, claves: 'cotizar crear' },
+  { id: 'nuevo-pedido', texto: 'Nuevo pedido', href: '/pedidos/nuevo', icono: FilePlus, claves: 'nota venta crear' },
+  { id: 'presupuestos', texto: 'Ir a presupuestos', href: '/presupuestos', icono: FileText, claves: 'cotizaciones' },
+  { id: 'pedidos', texto: 'Ir a pedidos', href: '/pedidos', icono: ClipboardList, claves: 'notas de venta pendientes' },
+  { id: 'remitos', texto: 'Ir a remitos', href: '/remitos', icono: Truck, claves: 'entregas despacho' },
+  { id: 'stock', texto: 'Ir a stock', href: '/stock', icono: Boxes, claves: 'existencias inventario depositos' },
   { id: 'terceros', texto: 'Ir a clientes y proveedores', href: '/terceros', icono: Users, claves: 'listado' },
   { id: 'articulos', texto: 'Ir a artículos y precios', href: '/articulos', icono: Package, claves: 'productos lista' },
   { id: 'empresa', texto: 'Cambiar de empresa', href: '/empresas', icono: ArrowLeftRight, claves: 'empresa cuenta' },

@@ -25,3 +25,13 @@ npm run dev
 | `npm run db:migrar` | Aplica las migraciones pendientes |
 
 Toda tabla nueva con `empresa_id` necesita `SELECT erp_aislar_por_empresa('tabla');` en su migración. La prueba `src/db/seguridad.test.ts` falla si falta.
+
+## Importar desde PYMEXIS
+
+Con el servidor detenido (PGlite no se comparte entre procesos), a partir de la exportación de maestros que genera el agente de KOMSA:
+
+```bash
+npx tsx scripts/importar-pymexis.ts <carpeta-con-los-csv> --cuit 30715974823 --razon "KOMSA S.A."
+```
+
+Se puede correr las veces que haga falta: actualiza por código y no duplica. Mientras PYMEXIS sea el sistema en uso, el stock del ERP lo sigue: la primera vez carga el saldo inicial y después agrega ajustes "Sincronización con PYMEXIS" por la diferencia. Los movimientos hechos en el ERP sobre artículos de PYMEXIS quedan compensados por ese ajuste.

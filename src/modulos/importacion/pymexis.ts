@@ -10,8 +10,9 @@ import * as t from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { validarCuit } from '../../lib/cuit'
 import { leerCsv } from '../../lib/csv'
-import { aImporte, aplicarPorcentaje } from '../../lib/dinero'
+import { aImporte, aplicarPorcentaje, D } from '../../lib/dinero'
 import { hoyArgentina } from '../../lib/fechas'
+import { registrarMovimientos, saldos, type Movimiento } from '../comercial/stock'
 
 /**
  * Importa los maestros exportados de PYMEXIS (modo exportar-maestros.txt del
@@ -182,16 +183,29 @@ export async function importarPymexis(
       'nombre',
     )
     const condicionDe = new Map(archivos.condiciones.map((c) => [limpio(c.IdForma), condiciones.get(limpio(c.Nombre))]))
-    const depositos = await volcar(
-      tx,
-      t.depositos,
-      archivos.depositos.map((d) => ({
+    // PYMEXIS tiene stock en depósitos que no están en su tabla (999, 004, 005):
+    // se crean con un nombre provisorio para no perder ese stock.
+    const conocidos = new Set(archivos.depositos.map((d) => limpio(d.IdDeposito)))
+    const huerfanos = [...new Set(archivos.stock.map((s) => limpio(s.IdDeposito)))].filter((c) => c && !conocidos.has(c)).sort()
+    if (huerfanos.length) {
+      avisos.push(
+        `Depósitos con stock que no figuran en la tabla de PYMEXIS: ${huerfanos.join(', ')}. Se crearon con nombre provisorio; renombralos en Configuración.`,
+      )
+    }
+    const depositos = await volcar(tx, t.depositos, [
+      ...archivos.depositos.map((d) => ({
         codigo: limpio(d.IdDeposito),
         nombre: limpio(d.Nombre),
         domicilio: nulo(d.Domicilio),
         activo: !verdadero(d.INHABILITADO),
       })),
-    )
+      ...huerfanos.map((codigo) => ({
+        codigo,
+        nombre: `Depósito ${codigo} (sin nombre en PYMEXIS)`,
+        domicilio: null,
+        activo: true,
+      })),
+    ])
     // Puntos de venta: solo los que no dicen "NO USAR".
     const puntos = archivos.puntos.filter((p) => !/no usar/i.test(p.Nombre))
     await volcar(
@@ -504,8 +518,50 @@ export async function importarPymexis(
     }
     cantidades.contactos = contactos.length
 
-    // El stock inicial se carga en la etapa 1 (movimientos de stock).
-    cantidades.filasDeStockPendientes = archivos.stock.length
+    // ----------------------------------------------------- Stock (espejo)
+    // Mientras PYMEXIS sea el sistema en uso, el stock del ERP lo refleja: por
+    // artículo y depósito se agrega la diferencia contra el saldo actual
+    // ("inicial" la primera vez, después un ajuste de sincronización). Los
+    // movimientos nunca se corrigen ni se borran, solo se suman.
+    const objetivo = new Map<string, InstanceType<typeof D>>()
+    let stockSinArticulo = 0
+    for (const s of archivos.stock) {
+      const articuloId = articuloDe.get(limpio(s.IdArticulo))
+      const depositoId = depositos.get(limpio(s.IdDeposito))
+      if (!articuloId || !depositoId) {
+        stockSinArticulo++
+        continue
+      }
+      const clave = `${articuloId}|${depositoId}`
+      objetivo.set(clave, (objetivo.get(clave) ?? D(0)).plus(numero(s.cantidad)))
+    }
+    // Solo se tocan artículos que vienen de PYMEXIS: los creados en el ERP no.
+    const dePymexis = new Set(catalogo.map((a) => articuloDe.get(limpio(a.IdArticulo))))
+    const actual = new Map(
+      (await saldos(tx))
+        .filter((x) => dePymexis.has(x.articuloId))
+        .map((x) => [`${x.articuloId}|${x.depositoId}`, D(x.cantidad)]),
+    )
+    const movimientos: Movimiento[] = []
+    for (const clave of new Set([...objetivo.keys(), ...actual.keys()])) {
+      const diferencia = (objetivo.get(clave) ?? D(0)).minus(actual.get(clave) ?? 0)
+      if (diferencia.isZero()) continue
+      const [articuloId, depositoId] = clave.split('|')
+      const primera = !actual.has(clave)
+      movimientos.push({
+        articuloId,
+        depositoId,
+        cantidad: diferencia.toString(),
+        tipo: primera ? 'inicial' : 'ajuste',
+        observacion: primera ? 'Saldo inicial importado de PYMEXIS' : 'Sincronización con PYMEXIS',
+      })
+    }
+    for (let i = 0; i < movimientos.length; i += 500) await registrarMovimientos(tx, usuarioId, movimientos.slice(i, i + 500))
+    cantidades.movimientosDeStock = movimientos.length
+    const negativos = [...objetivo.values()].filter((v) => v.isNegative()).length
+    if (negativos) avisos.push(`${negativos} saldos de stock negativos en PYMEXIS: se importaron igual; conviene un recuento.`)
+    if (stockSinArticulo)
+      avisos.push(`${stockSinArticulo} filas de stock de artículos que no se importaron (equipos o códigos inexistentes).`)
 
     await auditar(tx, { usuarioId, accion: 'importacion', entidad: 'pymexis', despues: { cantidades, avisos: avisos.length } })
     return { empresaId, cantidades, avisos }

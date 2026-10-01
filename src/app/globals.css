@@ -135,3 +135,36 @@ body {
     animation: none !important;
   }
 }
+
+/*
+ * Hoja de impresión: siempre clara (aunque la pantalla esté en oscuro) y en
+ * A4 con márgenes de imprenta. Los tokens se redefinen acá para que los
+ * componentes compartidos (VistaDocumento) se vean bien sobre papel.
+ */
+.hoja {
+  --fondo: #ffffff;
+  --superficie: #ffffff;
+  --superficie-2: #f2f4f6;
+  --texto: #000000;
+  --texto-2: #3a4250;
+  --texto-3: #6b7584;
+  --borde: #c9cfd6;
+  --aviso: #8f5d00;
+  color-scheme: light;
+  background: var(--fondo);
+  color: var(--texto);
+}
+
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+  .no-imprimir {
+    display: none !important;
+  }
+}

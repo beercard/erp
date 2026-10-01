@@ -2,6 +2,7 @@
 
 import {
   Boxes,
+  ClipboardList,
   FileText,
   Landmark,
   LayoutDashboard,
@@ -9,6 +10,7 @@ import {
   Printer,
   Receipt,
   Settings,
+  Truck,
   ShoppingCart,
   Users,
   type LucideIcon,
@@ -30,8 +32,10 @@ const SECCIONES: { titulo?: string; items: Item[] }[] = [
   {
     titulo: 'Operación',
     items: [
-      { href: '#ventas', texto: 'Presupuestos y pedidos', icono: FileText, etapa: 'Etapa 1' },
-      { href: '#stock', texto: 'Stock y remitos', icono: Boxes, etapa: 'Etapa 1' },
+      { href: '/presupuestos', texto: 'Presupuestos', icono: FileText },
+      { href: '/pedidos', texto: 'Pedidos', icono: ClipboardList },
+      { href: '/remitos', texto: 'Remitos', icono: Truck },
+      { href: '/stock', texto: 'Stock', icono: Boxes },
       { href: '#facturacion', texto: 'Facturación', icono: Receipt, etapa: 'Etapa 2' },
       { href: '#compras', texto: 'Compras y pagos', icono: ShoppingCart, etapa: 'Etapa 3' },
       { href: '#tesoreria', texto: 'Caja y bancos', icono: Landmark, etapa: 'Etapa 4' },
