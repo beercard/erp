@@ -469,6 +469,8 @@ export async function importarPymexis(
         transporteId: transporteDe.get(limpio(c.IdTransporte)) ?? null,
         descuento: numero(c.Descu1) ? String(numero(c.Descu1)) : null,
         limiteCredito: numero(c.LimiteCredito) ? numero(c.LimiteCredito).toFixed(2) : null,
+        // LiqIbrutos marca a quién se le percibe IIBB: al resto, alícuota 0.
+        percepcionIibb: verdadero(c.LiqIbrutos) ? null : '0',
         activo: !verdadero(c.inactivo),
       })
     }

@@ -17,14 +17,14 @@ import { saldos } from './stock'
  * entrega con uno o más remitos (src/modulos/comercial/remitos.ts).
  */
 
-const decimal = (mensaje: string, minimo = 0) =>
+export const decimal = (mensaje: string, minimo = 0) =>
   z
     .union([z.string(), z.number()])
     .transform((v) => normalizarNumero(String(v)))
     .pipe(z.string().regex(/^\d+(\.\d+)?$/, { error: mensaje }))
     .refine((v) => Number(v) >= minimo, { error: mensaje })
 
-const EsquemaItem = z.object({
+export const EsquemaItem = z.object({
   articuloId: z.uuid().nullable().optional(),
   descripcion: z.string().trim().min(1, { error: 'Cada renglón necesita una descripción.' }),
   cantidad: decimal('La cantidad tiene que ser mayor que cero.').refine((v) => Number(v) > 0, {
@@ -37,7 +37,7 @@ const EsquemaItem = z.object({
   alicuotaIva: z.coerce.number().refine((v) => v in TASAS_IVA, { error: 'Alícuota de IVA inválida.' }),
 })
 
-const opcionalUuid = z
+export const opcionalUuid = z
   .string()
   .nullable()
   .optional()
@@ -76,7 +76,7 @@ const EsquemaPedido = EsquemaDocumento.extend({
 
 export type ResultadoDocumento = { ok: true; id: string; numero: number } | { ok: false; error: string }
 
-function primerError(e: z.ZodError): string {
+export function primerError(e: z.ZodError): string {
   const i = e.issues[0]
   const renglon = i.path[0] === 'items' && typeof i.path[1] === 'number' ? `Renglón ${i.path[1] + 1}: ` : ''
   return renglon + i.message
@@ -121,7 +121,7 @@ function preparar<T extends z.infer<typeof EsquemaDocumento>>(datos: T) {
   }
 }
 
-function errorDeBase(e: unknown): string | null {
+export function errorDeBase(e: unknown): string | null {
   const m = (e as { cause?: { message?: string } }).cause?.message ?? ''
   if (m.includes('violates foreign key')) return 'Un dato elegido (cliente, artículo, lista o vendedor) ya no existe.'
   return null

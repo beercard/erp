@@ -50,6 +50,20 @@
       "when": 1790864435549,
       "tag": "0006_comercial_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790867081077,
+      "tag": "0007_facturacion",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790867096607,
+      "tag": "0008_facturacion_seguridad",
+      "breakpoints": true
     }
   ]
 }

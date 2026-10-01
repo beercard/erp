@@ -291,6 +291,8 @@ export const terceros = pgTable(
     transporteId: uuid('transporte_id'),
     descuento: precio('descuento'),
     limiteCredito: importe('limite_credito'),
+    /** Percepción de IIBB: nulo = alícuota general de la empresa; 0 = no se le percibe. */
+    percepcionIibb: precio('percepcion_iibb'),
     notas: text('notas'),
     activo: boolean('activo').notNull().default(true),
     ...marcasDeTiempo(),
