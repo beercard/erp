@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, lte, or } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, lte, or } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
 import { alicuotasIva, articulos, listasPrecios, marcas, precios, rubros } from '../../db/schema'
@@ -25,11 +25,17 @@ export async function listasDisponibles(tx: Transaccion) {
 
 export type PrecioVigente = { precio: string; moneda: string; especial: boolean }
 
-async function vigentesDeLista(tx: Transaccion, listaId: string) {
+async function vigentesDeLista(tx: Transaccion, listaId: string, articuloIds?: string[]) {
   return tx
     .selectDistinctOn([precios.articuloId], { articuloId: precios.articuloId, precio: precios.precio, moneda: precios.moneda })
     .from(precios)
-    .where(and(eq(precios.listaId, listaId), lte(precios.vigenteDesde, hoyArgentina())))
+    .where(
+      and(
+        eq(precios.listaId, listaId),
+        lte(precios.vigenteDesde, hoyArgentina()),
+        articuloIds ? inArray(precios.articuloId, articuloIds) : undefined,
+      ),
+    )
     .orderBy(precios.articuloId, desc(precios.vigenteDesde))
 }
 
@@ -40,13 +46,17 @@ async function vigentesDeLista(tx: Transaccion, listaId: string) {
  * el artículo tenga un precio especial cargado en la propia lista derivada:
  * ese manda.
  */
-export async function preciosVigentes(tx: Transaccion, listaId: string): Promise<Map<string, PrecioVigente>> {
+export async function preciosVigentes(
+  tx: Transaccion,
+  listaId: string,
+  articuloIds?: string[],
+): Promise<Map<string, PrecioVigente>> {
   const [elegida] = await tx.select().from(listasPrecios).where(eq(listasPrecios.id, listaId))
   if (!elegida) return new Map()
   const resultado = new Map<string, PrecioVigente>()
   if (elegida.listaBaseId) {
     const [base] = await tx.select().from(listasPrecios).where(eq(listasPrecios.id, elegida.listaBaseId))
-    for (const f of await vigentesDeLista(tx, elegida.listaBaseId)) {
+    for (const f of await vigentesDeLista(tx, elegida.listaBaseId, articuloIds)) {
       resultado.set(f.articuloId, {
         precio: elegida.porcentaje ? aImporte(aplicarPorcentaje(f.precio, elegida.porcentaje)) : aImporte(f.precio),
         moneda: f.moneda ?? base?.moneda ?? elegida.moneda,
@@ -54,7 +64,7 @@ export async function preciosVigentes(tx: Transaccion, listaId: string): Promise
       })
     }
   }
-  for (const f of await vigentesDeLista(tx, elegida.id)) {
+  for (const f of await vigentesDeLista(tx, elegida.id, articuloIds)) {
     resultado.set(f.articuloId, {
       precio: aImporte(f.precio),
       moneda: f.moneda ?? elegida.moneda,

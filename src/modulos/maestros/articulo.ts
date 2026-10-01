@@ -4,7 +4,7 @@ import * as z from 'zod'
 import type { Transaccion } from '../../db/conexion'
 import { alicuotasIva, articulos, listasPrecios, marcas, monedas, precios, rubros } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
-import { aImporte, aplicarPorcentaje } from '../../lib/dinero'
+import { aImporte, aplicarPorcentaje, normalizarNumero } from '../../lib/dinero'
 import { hoyArgentina } from '../../lib/fechas'
 
 /** Alta y modificación de artículos y sus precios (con historial). */
@@ -24,7 +24,7 @@ const decimal = (mensaje = 'Escribí un número.') =>
   z
     .string()
     .trim()
-    .transform((v) => v.replace(/\./g, '').replace(',', '.') || null)
+    .transform((v) => normalizarNumero(v) || null)
     .pipe(
       z
         .string()
@@ -166,7 +166,7 @@ const EsquemaPrecio = z.object({
   precio: z
     .string()
     .trim()
-    .transform((v) => v.replace(/\./g, '').replace(',', '.'))
+    .transform((v) => normalizarNumero(v))
     .pipe(z.string().regex(/^\d+(\.\d{1,4})?$/, { error: 'Escribí un precio válido.' })),
   desde: z.iso.date({ error: 'Elegí la fecha desde la que rige.' }),
   moneda: z.enum(['PES', 'DOL', '060']).optional(),

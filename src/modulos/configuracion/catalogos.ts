@@ -16,6 +16,7 @@ import {
   zonas,
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { normalizarNumero } from '../../lib/dinero'
 import { validarCuit } from '../../lib/cuit'
 
 /**
@@ -319,7 +320,7 @@ export function leerFormulario(
       const texto = typeof crudo === 'string' ? crudo.trim() : ''
       if (!texto) valor = null
       else if (campo.tipo === 'numero') {
-        const normal = texto.replace(/\./g, '').replace(',', '.')
+        const normal = normalizarNumero(texto)
         const r = z
           .string()
           .regex(/^-?\d+(\.\d+)?$/)

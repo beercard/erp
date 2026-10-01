@@ -14,6 +14,7 @@ import {
   zonas,
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { normalizarNumero } from '../../lib/dinero'
 import { soloDigitos, validarCuit } from '../../lib/cuit'
 
 /**
@@ -116,7 +117,7 @@ const uuidOpcional = z
 const numeroOpcional = z
   .string()
   .trim()
-  .transform((v) => v.replace(/\./g, '').replace(',', '.') || null)
+  .transform((v) => normalizarNumero(v) || null)
   .pipe(
     z
       .string()

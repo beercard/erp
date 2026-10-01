@@ -36,6 +36,20 @@
       "when": 1790863659513,
       "tag": "0004_moneda_por_precio",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790864427475,
+      "tag": "0005_comercial",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790864435549,
+      "tag": "0006_comercial_seguridad",
+      "breakpoints": true
     }
   ]
 }

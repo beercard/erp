@@ -39,3 +39,14 @@ export function formatearMonto(valor: Decimal.Value, simbolo = '$'): string {
   const texto = formato.format(Math.abs(n.toNumber()))
   return `${n.isNegative() ? '−' : ''}${simbolo} ${texto}`
 }
+
+/**
+ * Número que escribió una persona → número para guardar ("1234.56").
+ * Con coma es formato argentino: los puntos son de miles ("1.234,56").
+ * Sin coma, el punto es el decimal ("30.5", y así llegan los valores que
+ * vuelven de la base): nunca se borra.
+ */
+export function normalizarNumero(texto: string): string {
+  const t = texto.trim().replace(/\s/g, '')
+  return t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t
+}
