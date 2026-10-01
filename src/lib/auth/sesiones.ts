@@ -1,0 +1,154 @@
+import { createHash, randomBytes } from 'node:crypto'
+
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm'
+
+import { conEmpresa, comoPlataforma } from '../../db/empresa'
+import { auditoria, empresas, membresias, roles, sesiones, usuarios } from '../../db/schema'
+import { hashearClave, verificarClave } from './clave'
+
+/**
+ * Sesiones guardadas en la base. La cookie lleva un token aleatorio de 32
+ * bytes; la base guarda solo su SHA-256, así que una copia de la base no
+ * sirve para entrar. Cerrar sesión es borrar la fila.
+ *
+ * No depende de Next: la capa de cookies está en src/lib/auth/servidor.ts.
+ */
+
+export const DIAS_DE_SESION = 14
+
+export type EmpresaDeUsuario = { id: string; razonSocial: string; cuit: string; rol: string }
+
+export type SesionActiva = {
+  sesionId: string
+  usuario: { id: string; nombre: string; email: string }
+  /** Empresa en la que se está trabajando; null hasta que elige una. */
+  empresa: { id: string; razonSocial: string; cuit: string; modulos: string[] } | null
+  rol: string | null
+  permisos: string[]
+  empresas: EmpresaDeUsuario[]
+}
+
+type Meta = { ip?: string | null; navegador?: string | null }
+
+function hashDe(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
+
+// Hash de una clave cualquiera para comparar cuando el email no existe: así
+// la respuesta tarda lo mismo y no revela qué emails tienen cuenta.
+let hashFicticio: Promise<string> | null = null
+
+async function empresasDe(usuarioId: string): Promise<EmpresaDeUsuario[]> {
+  return comoPlataforma((tx) =>
+    tx
+      .select({ id: empresas.id, razonSocial: empresas.razonSocial, cuit: empresas.cuit, rol: roles.nombre })
+      .from(membresias)
+      .innerJoin(empresas, eq(empresas.id, membresias.empresaId))
+      .innerJoin(roles, eq(roles.id, membresias.rolId))
+      .where(and(eq(membresias.usuarioId, usuarioId), eq(membresias.activa, true), eq(empresas.activa, true)))
+      .orderBy(empresas.razonSocial),
+  )
+}
+
+export type ResultadoIngreso = { ok: true; token: string; vence: Date } | { ok: false; error: string }
+
+export async function iniciarSesion(email: string, clave: string, meta: Meta = {}): Promise<ResultadoIngreso> {
+  const usuario = await comoPlataforma(async (tx) => {
+    const [u] = await tx
+      .select()
+      .from(usuarios)
+      .where(sql`lower(${usuarios.email}) = lower(${email.trim()})`)
+    return u
+  })
+
+  hashFicticio ??= hashearClave(randomBytes(16).toString('hex'))
+  const correcta = await verificarClave(clave, usuario?.hashClave ?? (await hashFicticio))
+  if (!usuario || !correcta || !usuario.activo) {
+    return { ok: false, error: 'El email o la contraseña no son correctos.' }
+  }
+
+  const disponibles = await empresasDe(usuario.id)
+  const token = randomBytes(32).toString('base64url')
+  const vence = new Date(Date.now() + DIAS_DE_SESION * 86_400_000)
+
+  await comoPlataforma(async (tx) => {
+    await tx.insert(sesiones).values({
+      hashToken: hashDe(token),
+      usuarioId: usuario.id,
+      // Con una sola empresa no hay nada que elegir.
+      empresaId: disponibles.length === 1 ? disponibles[0].id : null,
+      vence,
+      ip: meta.ip ?? null,
+      navegador: meta.navegador?.slice(0, 300) ?? null,
+    })
+    await tx.update(usuarios).set({ ultimoIngreso: new Date() }).where(eq(usuarios.id, usuario.id))
+  })
+  if (disponibles.length === 1) {
+    await registrarIngreso(disponibles[0].id, usuario.id, meta)
+  }
+  return { ok: true, token, vence }
+}
+
+export async function leerSesion(token: string): Promise<SesionActiva | null> {
+  const fila = await comoPlataforma(async (tx) => {
+    const [s] = await tx
+      .select({
+        sesionId: sesiones.id,
+        empresaId: sesiones.empresaId,
+        usuario: { id: usuarios.id, nombre: usuarios.nombre, email: usuarios.email },
+      })
+      .from(sesiones)
+      .innerJoin(usuarios, eq(usuarios.id, sesiones.usuarioId))
+      .where(and(eq(sesiones.hashToken, hashDe(token)), gt(sesiones.vence, new Date()), eq(usuarios.activo, true)))
+    return s
+  })
+  if (!fila) return null
+
+  const disponibles = await empresasDe(fila.usuario.id)
+  const base = { sesionId: fila.sesionId, usuario: fila.usuario, empresas: disponibles }
+  if (!fila.empresaId) return { ...base, empresa: null, rol: null, permisos: [] }
+
+  const actual = await comoPlataforma(async (tx) => {
+    const [m] = await tx
+      .select({
+        empresa: { id: empresas.id, razonSocial: empresas.razonSocial, cuit: empresas.cuit, modulos: empresas.modulos },
+        rol: roles.nombre,
+        permisos: roles.permisos,
+      })
+      .from(membresias)
+      .innerJoin(empresas, eq(empresas.id, membresias.empresaId))
+      .innerJoin(roles, eq(roles.id, membresias.rolId))
+      .where(
+        and(
+          eq(membresias.usuarioId, fila.usuario.id),
+          eq(membresias.empresaId, fila.empresaId!),
+          eq(membresias.activa, true),
+          eq(empresas.activa, true),
+          // El rol tiene que ser de sistema o de esta misma empresa.
+          or(isNull(roles.empresaId), eq(roles.empresaId, fila.empresaId!)),
+        ),
+      )
+    return m
+  })
+  // Si le quitaron el acceso a la empresa, la sesión sigue pero sin empresa.
+  if (!actual) return { ...base, empresa: null, rol: null, permisos: [] }
+  return { ...base, empresa: actual.empresa, rol: actual.rol, permisos: actual.permisos }
+}
+
+export async function elegirEmpresa(token: string, empresaId: string, meta: Meta = {}): Promise<boolean> {
+  const sesion = await leerSesion(token)
+  if (!sesion || !sesion.empresas.some((e) => e.id === empresaId)) return false
+  await comoPlataforma((tx) => tx.update(sesiones).set({ empresaId }).where(eq(sesiones.id, sesion.sesionId)))
+  await registrarIngreso(empresaId, sesion.usuario.id, meta)
+  return true
+}
+
+export async function cerrarSesion(token: string): Promise<void> {
+  await comoPlataforma((tx) => tx.delete(sesiones).where(eq(sesiones.hashToken, hashDe(token))))
+}
+
+async function registrarIngreso(empresaId: string, usuarioId: string, meta: Meta) {
+  await conEmpresa(empresaId, (tx) =>
+    tx.insert(auditoria).values({ usuarioId, accion: 'ingreso', entidad: 'sesion', ip: meta.ip ?? null }),
+  )
+}

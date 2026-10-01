@@ -1,36 +1,27 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ERP
 
-## Getting Started
+ERP en la nube para pymes argentinas: gestión comercial, facturación electrónica (ARCA), stock, cuentas corrientes y tesorería. Multiempresa desde el diseño: cada empresa ve solo sus datos, garantizado por la base (RLS forzado).
 
-First, run the development server:
+- [Arquitectura](docs/01-arquitectura.md)
+- [Modelo de datos y etapas](docs/02-modelo-de-datos.md)
+- [Diseño de la interfaz](docs/03-diseno.md)
+
+## Desarrollo
+
+Requiere Node 24. Sin `DATABASE_URL` usa PGlite (un Postgres embebido), así que no hay que instalar nada más.
 
 ```bash
+npm install
+npm run db:migrar     # crea la base local en .data/pglite
+npm run db:semilla    # empresa demo; el usuario y la clave quedan en .data/credenciales-dev.txt
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Comando | Qué hace |
+|---|---|
+| `npm test` | Pruebas (aislamiento entre empresas, sesiones, CUIT, dinero, maestros) |
+| `npm run typecheck` | Verificación de tipos |
+| `npm run db:generar` | Genera una migración a partir de los cambios del esquema (revisarla antes de aplicar) |
+| `npm run db:migrar` | Aplica las migraciones pendientes |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Toda tabla nueva con `empresa_id` necesita `SELECT erp_aislar_por_empresa('tabla');` en su migración. La prueba `src/db/seguridad.test.ts` falla si falta.

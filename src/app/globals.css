@@ -1,26 +1,137 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
+/*
+ * Tokens del ERP (docs/03-diseno.md). Los componentes usan SIEMPRE estos
+ * tokens, nunca colores sueltos, así los dos temas quedan coherentes.
+ * Neutros fríos con un leve tinte hacia el acento (petróleo).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --fondo: #f3f5f7;
+  --superficie: #ffffff;
+  --superficie-2: #eef1f4;
+  --texto: #141a23;
+  --texto-2: #4c5768;
+  --texto-3: #8792a2;
+  --borde: #dce1e7;
+  --acento: #0b6b77;
+  --acento-hover: #08575f;
+  --acento-suave: #e1f0f1;
+  --sobre-acento: #ffffff;
+  --ok: #17703f;
+  --ok-suave: #e3f3e9;
+  --aviso: #8f5d00;
+  --aviso-suave: #fbf1db;
+  --error: #b02a1f;
+  --error-suave: #fbe8e5;
+  --info: #2454ad;
+  --info-suave: #e6edfa;
+  --sombra: 0 1px 2px rgb(20 26 35 / 0.06), 0 4px 16px rgb(20 26 35 / 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-tema='claro']) {
+    --fondo: #0e1217;
+    --superficie: #151a21;
+    --superficie-2: #1b2129;
+    --texto: #e6eaf0;
+    --texto-2: #a3adbb;
+    --texto-3: #6b7584;
+    --borde: #29303a;
+    --acento: #4cb3bf;
+    --acento-hover: #6cc6d0;
+    --acento-suave: #12313a;
+    --sobre-acento: #06181b;
+    --ok: #63c98d;
+    --ok-suave: #143222;
+    --aviso: #e2b257;
+    --aviso-suave: #33270f;
+    --error: #f08a7e;
+    --error-suave: #3a1c18;
+    --info: #86a9ee;
+    --info-suave: #17243d;
+    --sombra: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+    color-scheme: dark;
   }
 }
 
+:root[data-tema='oscuro'] {
+  --fondo: #0e1217;
+  --superficie: #151a21;
+  --superficie-2: #1b2129;
+  --texto: #e6eaf0;
+  --texto-2: #a3adbb;
+  --texto-3: #6b7584;
+  --borde: #29303a;
+  --acento: #4cb3bf;
+  --acento-hover: #6cc6d0;
+  --acento-suave: #12313a;
+  --sobre-acento: #06181b;
+  --ok: #63c98d;
+  --ok-suave: #143222;
+  --aviso: #e2b257;
+  --aviso-suave: #33270f;
+  --error: #f08a7e;
+  --error-suave: #3a1c18;
+  --info: #86a9ee;
+  --info-suave: #17243d;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-texto: var(--texto);
+  --color-texto-2: var(--texto-2);
+  --color-texto-3: var(--texto-3);
+  --color-borde: var(--borde);
+  --color-acento: var(--acento);
+  --color-acento-hover: var(--acento-hover);
+  --color-acento-suave: var(--acento-suave);
+  --color-sobre-acento: var(--sobre-acento);
+  --color-ok: var(--ok);
+  --color-ok-suave: var(--ok-suave);
+  --color-aviso: var(--aviso);
+  --color-aviso-suave: var(--aviso-suave);
+  --color-error: var(--error);
+  --color-error-suave: var(--error-suave);
+  --color-info: var(--info);
+  --color-info-suave: var(--info-suave);
+  --shadow-panel: var(--sombra);
+  --font-sans: var(--fuente-plex), ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --font-mono: var(--fuente-plex-mono), ui-monospace, Consolas, monospace;
+}
+
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  height: 100%;
+}
+
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Importes, CUIT y números de comprobante: cifras tabulares alineadas. */
+.cifras {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
