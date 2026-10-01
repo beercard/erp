@@ -1,4 +1,4 @@
-import { aImporte, D, monto, type Monto } from '../../lib/dinero'
+import { aImporte, aImporteArca, D, monto, type Monto } from '../../lib/dinero'
 
 /**
  * Cálculo de documentos comerciales, sin base de datos: lo usan presupuestos,
@@ -8,7 +8,7 @@ import { aImporte, D, monto, type Monto } from '../../lib/dinero'
  * Reglas:
  * - Neto del renglón = cantidad × precio × (1 − descuento %), a centavos.
  * - El IVA se calcula POR ALÍCUOTA sobre la suma de netos de esa alícuota y
- *   se redondea una sola vez, como lo pide ARCA. El IVA de cada renglón es
+ *   se redondea una sola vez, al par (Round Half Even), como lo pide ARCA. El IVA de cada renglón es
  *   informativo.
  */
 
@@ -53,7 +53,7 @@ export function calcularTotales(lineas: LineaEntrada[]): { lineas: LineaCalculad
     .map(([alicuotaIva, base]) => ({
       alicuotaIva,
       base: aImporte(base),
-      iva: aImporte(base.times(TASAS_IVA[alicuotaIva]).dividedBy(100)),
+      iva: aImporteArca(base.times(TASAS_IVA[alicuotaIva]).dividedBy(100)),
     }))
   const neto = porAlicuota.reduce<Monto>((acc, a) => acc.plus(a.base), new D(0))
   const iva = porAlicuota.reduce<Monto>((acc, a) => acc.plus(a.iva), new D(0))

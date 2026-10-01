@@ -49,3 +49,12 @@ describe('cálculo de documentos', () => {
     expect(() => convertir('10', 'DOL', '060', '1545')).toThrow()
   })
 })
+
+describe('redondeo de ARCA', () => {
+  it('el IVA de cada alícuota se redondea al par (Round Half Even)', () => {
+    // 0,50 × 21 % = 0,105 → 0,10 (con redondeo común daría 0,11).
+    expect(calcularTotales([{ cantidad: '1', precioUnitario: '0.50', alicuotaIva: 5 }]).totales.iva).toBe('0.10')
+    // 1,50 × 21 % = 0,315 → 0,32.
+    expect(calcularTotales([{ cantidad: '1', precioUnitario: '1.50', alicuotaIva: 5 }]).totales.iva).toBe('0.32')
+  })
+})

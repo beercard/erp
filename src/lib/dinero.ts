@@ -17,6 +17,14 @@ export function aImporte(valor: Decimal.Value): string {
   return new D(valor).toDecimalPlaces(2).toFixed(2)
 }
 
+/**
+ * Redondeo de ARCA para el IVA de cada alícuota: "Round Half Even" (al par),
+ * según el manual de factura electrónica. 0,125 → 0,12 y 0,135 → 0,14.
+ */
+export function aImporteArca(valor: Decimal.Value): string {
+  return new D(valor).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN).toFixed(2)
+}
+
 export function sumar(valores: Decimal.Value[]): Monto {
   return valores.reduce<Monto>((acc, v) => acc.plus(v), new D(0))
 }

@@ -1,3 +1,5 @@
+import https from 'node:https'
+
 import { XMLParser } from 'fast-xml-parser'
 
 /**
@@ -73,26 +75,57 @@ export function cuerpoSoap(xml: string): Record<string, unknown> {
   return body
 }
 
-/** Transporte real: POST con tiempo límite. */
+const agenteComun = new https.Agent({ keepAlive: true })
+/**
+ * El WSFE de producción negocia TLS con una clave DH que OpenSSL 3 rechaza
+ * (ERR_SSL_DH_KEY_TOO_SMALL, comprobado el 01/10/2026; homologación no):
+ * hay que bajar el nivel de seguridad solo para WSFE. Lo mismo hace la
+ * librería abierta LaPyme/facturas.
+ */
+const agenteWsfe = new https.Agent({ keepAlive: true, ciphers: 'DEFAULT@SECLEVEL=0' })
+
+/**
+ * Transporte real: POST con tiempo límite. Distingue si el pedido llegó a
+ * salir: un error antes de mandar el cuerpo se puede reintentar; después, no
+ * se sabe qué hizo ARCA.
+ */
 export function transporteHttp(tiempoMs = 30_000): Transporte {
-  return async (url, accion, cuerpo) => {
-    let respuesta: Response
-    try {
-      respuesta = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: `"${accion}"` },
-        body: cuerpo,
-        signal: AbortSignal.timeout(tiempoMs),
+  return (url, accion, cuerpo) =>
+    new Promise((resolver, rechazar) => {
+      let enviado = false
+      const pedido = https.request(
+        url,
+        {
+          method: 'POST',
+          agent: url.includes('wsfev1') ? agenteWsfe : agenteComun,
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            SOAPAction: `"${accion}"`,
+            'Content-Length': Buffer.byteLength(cuerpo),
+          },
+        },
+        (respuesta) => {
+          const partes: Buffer[] = []
+          respuesta.on('data', (p: Buffer) => partes.push(p))
+          respuesta.on('error', () => rechazar(new ErrorIncierto('Se cortó la respuesta de ARCA.')))
+          respuesta.on('end', () => {
+            const texto = Buffer.concat(partes).toString('utf8')
+            // Un Fault viene con 500: lo interpreta quien lee el cuerpo.
+            if ((respuesta.statusCode ?? 500) >= 400 && !texto.includes('Fault')) {
+              rechazar(new ErrorIncierto(`ARCA respondió ${respuesta.statusCode}.`))
+            } else resolver(texto)
+          })
+        },
+      )
+      pedido.setTimeout(tiempoMs, () => pedido.destroy(new Error('tiempo agotado')))
+      pedido.on('finish', () => (enviado = true))
+      pedido.on('error', (e: Error & { code?: string }) => {
+        rechazar(
+          enviado
+            ? new ErrorIncierto('ARCA no respondió a tiempo.')
+            : new ErrorSinEnviar(`No se pudo conectar con ARCA (${e.code ?? e.message}).`),
+        )
       })
-    } catch (e) {
-      // Sin respuesta: puede que el pedido haya llegado o no.
-      const causa = (e as { cause?: { code?: string } }).cause?.code
-      if (causa === 'ENOTFOUND' || causa === 'ECONNREFUSED') throw new ErrorSinEnviar(`No se pudo conectar con ARCA (${causa}).`)
-      throw new ErrorIncierto('ARCA no respondió a tiempo.')
-    }
-    const texto = await respuesta.text()
-    // Un Fault viene con 500: lo interpreta quien lee el cuerpo.
-    if (!respuesta.ok && !texto.includes('Fault')) throw new ErrorIncierto(`ARCA respondió ${respuesta.status}.`)
-    return texto
-  }
+      pedido.end(cuerpo)
+    })
 }

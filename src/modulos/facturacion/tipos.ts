@@ -109,5 +109,5 @@ export function urlQr(c: {
     datos.tipoDocRec = c.docTipo
     datos.nroDocRec = Number(c.docNumero)
   }
-  return `https://www.afip.gob.ar/fe/qr/?p=${btoa(JSON.stringify(datos))}`
+  return `https://www.arca.gob.ar/fe/qr/?p=${btoa(JSON.stringify(datos))}`
 }
