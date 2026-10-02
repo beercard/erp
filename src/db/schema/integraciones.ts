@@ -93,3 +93,27 @@ export const webhookEntregas = pgTable(
     }).onDelete('cascade'),
   ],
 )
+
+/**
+ * Qué registro de otro sistema (Persat) corresponde a cuál del ERP: hace
+ * idempotentes las importaciones (correrlas de nuevo actualiza, no duplica)
+ * y guarda los emparejamientos que se resolvieron a mano.
+ */
+export const vinculosExternos = pgTable(
+  'vinculos_externos',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    /** persat */
+    sistema: text('sistema').notNull(),
+    /** cliente | equipo | tecnico | etiqueta | tipo_orden | orden */
+    entidad: text('entidad').notNull(),
+    externoId: text('externo_id').notNull(),
+    erpId: uuid('erp_id').notNull(),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('vinculos_externos_clave').on(t.empresaId, t.sistema, t.entidad, t.externoId),
+    index().on(t.empresaId, t.sistema, t.entidad, t.erpId),
+  ],
+)

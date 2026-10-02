@@ -141,7 +141,7 @@ Relevado de la documentación completa de la API (`docs.api.persat.com.ar`, 186 
 
 Por prioridad:
 
-1. **Importar desde Persat** clientes (con campos propios, grupos y tipos), objetos en cliente (equipos), catálogos, técnicos y el historial de OT con sus formularios y PDF, para dejar Persat sin perder historia. Necesita la clave para validar contra datos reales.
+1. ~~Importar desde Persat~~ (hecho: ver la sección 7).
 2. ~~Enlace público de seguimiento~~ (hecho).
 3. ~~Etiquetas de colores en las órdenes~~ (hecho).
 4. ~~Varios técnicos por orden~~ (hecho).
@@ -177,3 +177,22 @@ Consecuencias para el ERP:
 3. **Toma de contador = 20 % de las visitas:** con los contratos por copia del ERP, el contador cargado en la visita ya factura; y el portal deja que el cliente lo cargue solo, sin visita.
 4. **Las 112 órdenes sin revisar** piden un **cierre en lote** desde el listado (revisar varias y cerrarlas OK de una vez).
 5. Lo que no usan (entregas, preventivo por regla, rastreo, grupos) baja de prioridad.
+
+## 7. Migrar desde Persat
+
+`npm run persat:importar -- --empresa <CUIT>` (lee `PERSAT_API_KEY`; Persat solo con GET). Módulos: `src/modulos/importacion/persatApi.ts` (descarga) y `persat.ts` (reglas).
+
+1. **Simular primero** (sin `--aplicar`): hace todo en una transacción que se deshace y muestra el informe: clientes emparejados por código, por nombre, creados y sin pareja (con el motivo), equipos, técnicos, etiquetas y órdenes. La descarga queda en `.data/persat/descarga.json` (fuera de git) y se reusa; borrarla para traer lo nuevo.
+2. **Resolver los clientes sin pareja**: `--vincular UID_PERSAT=CODIGO_ERP` (se puede repetir) o `--crear-clientes` (quedan con documento 99 y una nota para completar CUIT y condición de IVA).
+3. **Aplicar**: `--aplicar --fotos` (las fotos se bajan al crear cada orden; sus URL duran poco). Se puede correr de nuevo cuantas veces haga falta: actualiza el estado y las respuestas de lo migrado y agrega lo nuevo (sirve para la semana de convivencia de los dos sistemas).
+
+Reglas (de la cuenta real):
+
+- **Clientes**: el `uid_client` de Persat es el código del cliente en PYMEXIS (`terceros.codigo`); se empareja por código si el nombre se parece, "1234 SUCURSAL X" va al cliente 1234, y si no por nombre exacto (sin acentos, puntuación ni forma societaria).
+- **Equipos**: "Serie - Modelo" se separa (la serie es la primera palabra, o la última con números si empieza con la marca) y se empareja por serie con el parque instalado; los que faltan se crean como "servicio técnico" con el modelo en las observaciones. Si un equipo pasó por varios clientes, queda el último.
+- **Tipo de orden**: se crea "Servicio para Tecnicos" (código `PERSAT`) con los mismos campos; cada campo guarda el identificador de Persat (`p_<id>`), así las respuestas pasan tal cual. El primer número que dice "medidor" o "contador" es un campo de contador: en las órdenes nuevas carga la lectura del equipo.
+- **Órdenes**: estado, técnico responsable y acompañantes, etiquetas ("Servicio contrato" → cubierta por el contrato; "Urgente" → urgente), día y hora, duración, llegada, informe, resultado del técnico, contador, trabajos realizados como solución y pendientes y causa de cierre en la nota. Lo que no tiene campo en el ERP (versiones viejas del formulario) queda en las observaciones con su título. El "tipo de tarea" define la clase (mantenimiento y toma de contador → preventivo; insumos; entrega de equipos → instalación; el resto, correctivo).
+- **No se migra**: la firma (el campo viejo de Persat no la devuelve por la API: queda "El cliente firmó en Persat"), las lecturas de contador de órdenes viejas (quedan en la orden; no se cargan como lectura porque facturan contratos).
+- **Facturación**: una orden cerrada en Persat ya se facturó en el sistema anterior: no aparece "a facturar" ni se puede facturar. Si una orden migrada abierta se cierra en el ERP, se factura normalmente.
+
+Prueba con la cuenta real (2 de octubre de 2026, simulación): 2.131 clientes, 2.501 equipos, 3 técnicos, 4 etiquetas y 15.262 órdenes desde 2018, en unos 2 minutos.

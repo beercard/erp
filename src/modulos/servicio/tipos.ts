@@ -46,6 +46,12 @@ export const COBERTURAS = {
   cargo: 'Con cargo al cliente',
 } as const
 
+/**
+ * Una orden cerrada en Persat (migrada y cerrada sin que nadie la cierre en el
+ * ERP) ya se facturó en el sistema anterior: no se vuelve a facturar.
+ */
+export const cerradaEnPersat = (o: { origen: string; cerradaPor: string | null }) => o.origen === 'persat' && !o.cerradaPor
+
 export type TipoOrden = keyof typeof TIPOS_ORDEN
 export type EstadoOrden = keyof typeof ESTADOS_ORDEN
 export type Cierre = keyof typeof CIERRES

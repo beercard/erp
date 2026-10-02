@@ -15,7 +15,7 @@ import { tienePermiso } from '@/lib/permisos'
 import { listarEtiquetas } from '@/modulos/servicio/etiquetas'
 import { geocercaDeOrden } from '@/modulos/servicio/jornada'
 import { equiposDelCliente, listarTecnicos, marcarVencidas, obtenerOrden } from '@/modulos/servicio/servicio'
-import { CIERRES, COBERTURAS, estaAbierta, estaHecha, seTrabaja, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
+import { cerradaEnPersat, CIERRES, COBERTURAS, estaAbierta, estaHecha, seTrabaja, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
 import { tiposParaOrden } from '@/modulos/servicio/tiposOrden'
 import { correoConfigurado } from '@/modulos/comunicaciones/correo'
 
@@ -80,7 +80,7 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
   const abierta = estaAbierta(o.estado)
   const puede = (p: string) => tienePermiso(sesion.permisos, p)
   const cargar = puede('servicio.cargar')
-  const conCargo = o.cobertura === 'cargo'
+  const conCargo = o.cobertura === 'cargo' && !cerradaEnPersat(o)
   const totalNeto = sumar(o.items.map((i) => monto(i.cantidad).times(i.precioUnitario)))
   const horas = sumar(o.visitas.map((v) => v.horas))
 
@@ -106,7 +106,7 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
               {o.plantilla && <span className="text-texto-3"> (formulario v{o.plantilla.version})</span>}
             </span>
             {o.prioridad === 'urgente' && abierta && <Chip tono="error">Urgente</Chip>}
-            <ChipEstado estado={o.estado} cobertura={o.cobertura} facturada={!!o.comprobanteId} />
+            <ChipEstado estado={o.estado} cobertura={o.cobertura} facturada={!!o.comprobanteId} migrada={cerradaEnPersat(o)} />
             <ChipSla o={o} />
           </span>
         }
@@ -447,7 +447,12 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
               <tfoot className="border-t border-borde">
                 <tr>
                   <td colSpan={4} className="px-4 py-2 text-right text-xs text-texto-2">
-                    Total sin IVA{conCargo ? '' : ' (no se factura: la orden no es con cargo)'}
+                    Total sin IVA
+                    {conCargo
+                      ? ''
+                      : cerradaEnPersat(o)
+                        ? ' (no se factura: se cerró en Persat)'
+                        : ' (no se factura: la orden no es con cargo)'}
                   </td>
                   <td className="cifras px-4 py-2 text-right font-medium">{formatearMonto(totalNeto)}</td>
                   {seTrabaja(o.estado) && cargar && <td />}

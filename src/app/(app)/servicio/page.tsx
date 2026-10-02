@@ -228,7 +228,12 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
                     <td className="px-4 py-2">
                       <div className="flex flex-wrap gap-1">
                         {o.prioridad === 'urgente' && abierta && <Chip tono="error">Urgente</Chip>}
-                        <ChipEstado estado={o.estado} cobertura={o.cobertura} facturada={!!o.comprobanteId} />
+                        <ChipEstado
+                          estado={o.estado}
+                          cobertura={o.cobertura}
+                          facturada={!!o.comprobanteId}
+                          migrada={o.origen === 'persat' && !o.cerradaPor}
+                        />
                         <ChipSla o={o} compacto />
                       </div>
                       {demora !== null && demora > 0 && (

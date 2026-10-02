@@ -35,7 +35,19 @@ const EsquemaTipo = z.object({
   devolucion: z.array(z.any()),
 })
 
-const iguales = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+/** Igualdad sin importar el orden de las claves (la base guarda el JSON con las claves reordenadas). */
+const canonico = (v: unknown): unknown =>
+  Array.isArray(v)
+    ? v.map(canonico)
+    : v && typeof v === 'object'
+      ? Object.fromEntries(
+          Object.entries(v as Record<string, unknown>)
+            .filter(([, x]) => x !== undefined)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([k, x]) => [k, canonico(x)]),
+        )
+      : v
+const iguales = (a: unknown, b: unknown) => JSON.stringify(canonico(a)) === JSON.stringify(canonico(b))
 
 export async function guardarTipo(tx: Transaccion, usuarioId: string, entrada: unknown, id?: string) {
   const p = EsquemaTipo.safeParse(entrada)

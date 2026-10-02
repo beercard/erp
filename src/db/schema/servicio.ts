@@ -293,7 +293,7 @@ export const ordenesServicio = pgTable(
     ),
     check('ordenes_servicio_hora', sql`${t.hora} ~ '^[0-2][0-9]:[0-5][0-9]$'`),
     check('ordenes_servicio_duracion', sql`${t.duracion} between 5 and 1440`),
-    check('ordenes_servicio_origen', sql`${t.origen} in ('oficina', 'portal', 'api', 'preventivo')`),
+    check('ordenes_servicio_origen', sql`${t.origen} in ('oficina', 'portal', 'api', 'preventivo', 'persat')`),
     uniqueIndex('ordenes_servicio_preventivo').on(t.empresaId, t.preventivoId, t.origenPreventivo),
     deLaEmpresa('ordenes_servicio_tipo_orden_fk', t.empresaId, t.tipoOrdenId, tiposOrden),
     deLaEmpresa('ordenes_servicio_plantilla_fk', t.empresaId, t.plantillaId, plantillasOrden),

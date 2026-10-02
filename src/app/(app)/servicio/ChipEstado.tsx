@@ -15,10 +15,21 @@ export const TONO_ESTADO: Record<EstadoOrden, 'aviso' | 'info' | 'ok' | 'error' 
 }
 
 /** Estado de la orden; una hecha con cargo dice si falta facturarla. */
-export function ChipEstado({ estado, cobertura, facturada }: { estado: string; cobertura: string; facturada: boolean }) {
+export function ChipEstado({
+  estado,
+  cobertura,
+  facturada,
+  migrada = false,
+}: {
+  estado: string
+  cobertura: string
+  facturada: boolean
+  /** Cerrada en Persat: se facturó en el sistema anterior. */
+  migrada?: boolean
+}) {
   const e = estado as EstadoOrden
   const texto = ESTADOS_ORDEN[e] ?? estado
-  const porFacturar = (e === 'cerrada_ok' || e === 'cerrada_desvio') && cobertura === 'cargo'
+  const porFacturar = !migrada && (e === 'cerrada_ok' || e === 'cerrada_desvio') && cobertura === 'cargo'
   return (
     <span title={AYUDA_ESTADOS[e]} className="inline-flex flex-wrap gap-1">
       <Chip tono={TONO_ESTADO[e] ?? 'neutro'}>{texto}</Chip>

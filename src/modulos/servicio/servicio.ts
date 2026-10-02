@@ -35,6 +35,7 @@ import { acompanantesDe, etiquetasDeOrdenes, ordenesComoAcompanante, ponerAcompa
 import { archivosDe, campoDe, validarValores, type Campo, type Lectura, type Material, type Valores } from './formularios'
 import {
   ABIERTAS,
+  cerradaEnPersat,
   CIERRES,
   COBERTURAS,
   coberturaSugerida,
@@ -806,6 +807,7 @@ export async function facturarOrden(tx: Transaccion, usuarioId: string, id: stri
   if (!o) return error('Esa orden de servicio ya no existe.')
   if (!estaHecha(o.estado)) return error('Se factura una orden cerrada OK o con desvío.')
   if (o.comprobanteId) return error('La orden ya está facturada.')
+  if (cerradaEnPersat(o)) return error('La orden se cerró en Persat: se facturó en el sistema anterior.')
   if (o.cobertura !== 'cargo') {
     return error(`La orden está ${o.cobertura === 'contrato' ? 'cubierta por el contrato' : 'en garantía'}: no se factura.`)
   }
@@ -905,6 +907,8 @@ export async function listarOrdenes(tx: Transaccion, filtro: FiltroOrdenes = {})
         informada: ordenesServicio.informada,
         cerrada: ordenesServicio.cerrada,
         comprobanteId: ordenesServicio.comprobanteId,
+        origen: ordenesServicio.origen,
+        cerradaPor: ordenesServicio.cerradaPor,
         cliente: terceros.razonSocial,
         terceroId: ordenesServicio.terceroId,
         equipoId: ordenesServicio.equipoId,
@@ -963,7 +967,7 @@ export async function resumenOrdenes(tx: Transaccion) {
       urgentes: sql<number>`count(*) filter (where ${activa} and ${ordenesServicio.prioridad} = 'urgente')::int`,
       vencidas: sql<number>`count(*) filter (where ${ordenesServicio.estado} = 'vencida')::int`,
       paraRevisar: sql<number>`count(*) filter (where ${ordenesServicio.estado} = 'informe')::int`,
-      porFacturar: sql<number>`count(*) filter (where ${ordenesServicio.estado} in ('cerrada_ok', 'cerrada_desvio') and ${ordenesServicio.cobertura} = 'cargo' and ${ordenesServicio.comprobanteId} is null)::int`,
+      porFacturar: sql<number>`count(*) filter (where ${ordenesServicio.estado} in ('cerrada_ok', 'cerrada_desvio') and ${ordenesServicio.cobertura} = 'cargo' and ${ordenesServicio.comprobanteId} is null and not (${ordenesServicio.origen} = 'persat' and ${ordenesServicio.cerradaPor} is null))::int`,
     })
     .from(ordenesServicio)
   return r

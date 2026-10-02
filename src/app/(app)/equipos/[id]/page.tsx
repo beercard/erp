@@ -145,7 +145,12 @@ export default async function Equipo({ params, searchParams }: PageProps<'/equip
                     </td>
                     <td className="px-4 py-2">{o.tecnico ?? ''}</td>
                     <td className="px-4 py-2">
-                      <ChipEstado estado={o.estado} cobertura={o.cobertura} facturada={!!o.comprobanteId} />
+                      <ChipEstado
+                        estado={o.estado}
+                        cobertura={o.cobertura}
+                        facturada={!!o.comprobanteId}
+                        migrada={o.origen === 'persat' && !o.cerradaPor}
+                      />
                     </td>
                   </tr>
                 ))}

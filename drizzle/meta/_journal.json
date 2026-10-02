@@ -274,6 +274,20 @@
       "when": 1790973917664,
       "tag": "0038_etiquetas_y_acompanantes_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790975577279,
+      "tag": "0039_importacion_persat",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790975579116,
+      "tag": "0040_importacion_persat_seguridad",
+      "breakpoints": true
     }
   ]
 }
