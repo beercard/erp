@@ -19,6 +19,10 @@ export async function obtenerConfiguracion(tx: Transaccion) {
       avisarCierre: true,
       encuesta: true,
       firma: null as string | null,
+      portal: false,
+      portalOrdenes: true,
+      portalContadores: true,
+      portalColor: '#0f766e',
     }
   )
 }
@@ -45,6 +49,14 @@ const Esquema = z
       .trim()
       .max(500)
       .transform((v) => v || null),
+    portal: z.boolean().default(false),
+    portalOrdenes: z.boolean().default(true),
+    portalContadores: z.boolean().default(true),
+    portalColor: z
+      .string()
+      .trim()
+      .regex(/^#[0-9a-f]{6}$/i, { error: 'El color del portal no es válido.' })
+      .default('#0f766e'),
   })
   .refine((d) => d.respuestaNormal <= d.resolucionNormal && d.respuestaUrgente <= d.resolucionUrgente, {
     error: 'La resolución no puede tener menos horas que la respuesta.',

@@ -1,4 +1,5 @@
 import { desc } from 'drizzle-orm'
+import { headers } from 'next/headers'
 import { Send } from 'lucide-react'
 import type { Metadata } from 'next'
 
@@ -7,11 +8,14 @@ import { conEmpresa } from '@/db/empresa'
 import { correos } from '@/db/schema'
 import { tienePermiso } from '@/lib/permisos'
 import { correoConfigurado } from '@/modulos/comunicaciones/correo'
+import { listarUsuariosPortal } from '@/modulos/portal/portal'
 import { obtenerConfiguracion } from '@/modulos/servicio/configuracion'
 
 import { paginaContratos } from '../../contratos/modulo'
 import { enviarPendientesAccion } from '../acciones'
+import { habilitarPortalAccion } from './acciones'
 import { FormularioConfiguracion } from './FormularioConfiguracion'
+import { InvitarPortal } from './InvitarPortal'
 
 export const metadata: Metadata = { title: 'Configuración del servicio técnico' }
 
@@ -21,20 +25,71 @@ const hora = (d: Date) =>
 export default async function Configuracion({ searchParams }: PageProps<'/servicio/configuracion'>) {
   const sesion = await paginaContratos('servicio.configurar')
   const { enviados, fallidos, error } = (await searchParams) as { enviados?: string; fallidos?: string; error?: string }
-  const { config, bandeja } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { config, bandeja, usuarios } = await conEmpresa(sesion.empresa.id, async (tx) => ({
     config: await obtenerConfiguracion(tx),
     bandeja: await tx.select().from(correos).orderBy(desc(correos.creado)).limit(50),
+    usuarios: await listarUsuariosPortal(tx),
   }))
+  const h = await headers()
+  const base = process.env.APP_URL ?? `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('host')}`
+  const portal = `${base}/portal/ingresar?empresa=${sesion.empresa.cuit}`
   const smtp = correoConfigurado()
   const pendientes = bandeja.filter((c) => c.estado !== 'enviado').length
   return (
     <>
       <EncabezadoPagina
         titulo="Configuración del servicio técnico"
-        bajada="Tiempos comprometidos, avisos al cliente y correos."
+        bajada="Tiempos comprometidos, avisos al cliente, portal de clientes y correos."
       />
       <Panel className="mb-4 p-4">
-        <FormularioConfiguracion inicial={config} />
+        <FormularioConfiguracion inicial={config} portal={portal} />
+      </Panel>
+      <Panel className="mb-4 overflow-x-auto">
+        <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">Usuarios del portal de clientes</h2>
+        <div className="border-b border-borde p-4">
+          {!config.portal && (
+            <div className="mb-3">
+              <Aviso tono="aviso">
+                El portal está deshabilitado: los usuarios no pueden entrar hasta que lo habilites arriba.
+              </Aviso>
+            </div>
+          )}
+          <InvitarPortal />
+        </div>
+        {usuarios.length > 0 && (
+          <table className="w-full min-w-[640px] text-sm">
+            <tbody className="divide-y divide-borde">
+              {usuarios.map((u) => (
+                <tr key={u.id} className={u.activo ? '' : 'text-texto-3'}>
+                  <td className="px-4 py-2 font-medium">{u.cliente}</td>
+                  <td className="px-4 py-2">
+                    {u.email}
+                    {u.nombre && <span className="block text-xs text-texto-2">{u.nombre}</span>}
+                  </td>
+                  <td className="px-4 py-2">
+                    {!u.activo ? (
+                      <Chip>De baja</Chip>
+                    ) : u.aceptada ? (
+                      <Chip tono="ok">Activo</Chip>
+                    ) : (
+                      <Chip tono="aviso">Invitación pendiente</Chip>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-texto-2">
+                    Último ingreso: {u.ultimoIngreso ? hora(u.ultimoIngreso) : '—'}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <form action={habilitarPortalAccion.bind(null, u.id, !u.activo)}>
+                      <Boton type="submit" className="h-7 px-2 text-xs">
+                        {u.activo ? 'Dar de baja' : 'Habilitar'}
+                      </Boton>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Panel>
       <Panel className="overflow-x-auto">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-borde px-4 py-3">

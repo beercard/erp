@@ -452,6 +452,7 @@ export async function guardarTipoAccion(id: string | null, _: Estado, formData: 
           duracion: valor(formData, 'duracion'),
           plazoHoras: valor(formData, 'plazoHoras'),
           activo: formData.get('activo') !== null ? formData.get('activo') === 'on' : true,
+          portal: formData.get('portal') === 'on',
           instrucciones: json(formData, 'instruccionesDef'),
           devolucion: json(formData, 'devolucionDef'),
         },
@@ -528,6 +529,10 @@ export async function guardarConfiguracionAccion(_: Estado, formData: FormData):
         avisarVisita: formData.get('avisarVisita') === 'on',
         avisarCierre: formData.get('avisarCierre') === 'on',
         encuesta: formData.get('encuesta') === 'on',
+        portal: formData.get('portal') === 'on',
+        portalOrdenes: formData.get('portalOrdenes') === 'on',
+        portalContadores: formData.get('portalContadores') === 'on',
+        portalColor: valor(formData, 'portalColor') || undefined,
       }),
     ),
   )

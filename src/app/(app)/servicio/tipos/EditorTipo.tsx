@@ -45,6 +45,7 @@ export type DatosTipo = {
   duracion: number
   plazoHoras: number
   activo: boolean
+  portal?: boolean
   instrucciones: Campo[]
   devolucion: Campo[]
 }
@@ -89,6 +90,10 @@ export function EditorTipo({ id, inicial }: { id: string | null; inicial: DatosT
         <label className="flex items-center gap-2 text-sm">
           <input type="color" name="color" defaultValue={inicial.color} className="h-9 w-12 rounded border border-borde" /> Color
           en el calendario
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="portal" defaultChecked={inicial.portal ?? false} /> Lo puede pedir el cliente desde el
+          portal
         </label>
         {id && (
           <label className="flex items-center gap-2 text-sm">

@@ -82,6 +82,7 @@ export default async function TiposOrden({ searchParams }: PageProps<'/servicio/
                       {t.nombre}
                       <span className="cifras text-xs font-normal text-texto-3">{t.codigo}</span>
                       {!t.activo && <Chip>De baja</Chip>}
+                      {t.portal && <Chip tono="ok">Portal</Chip>}
                     </Link>
                   </td>
                   <td className="px-4 py-2 text-texto-2">{TIPOS_ORDEN[t.clase as keyof typeof TIPOS_ORDEN]}</td>

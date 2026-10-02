@@ -176,10 +176,7 @@ export async function responderEncuesta(token: string, entrada: { puntaje: numbe
       .update(encuestas)
       .set({ puntaje, nps, comentario: entrada.comentario.trim().slice(0, 1000) || null, respondida: new Date() })
       .where(eq(encuestas.id, e.id))
-    const [o] = await tx
-      .select({ numero: ordenesServicio.numero })
-      .from(ordenesServicio)
-      .where(eq(ordenesServicio.id, e.ordenId))
+    const [o] = await tx.select({ numero: ordenesServicio.numero }).from(ordenesServicio).where(eq(ordenesServicio.id, e.ordenId))
     await emitir(tx, 'encuesta.respondida', {
       ordenId: e.ordenId,
       numero: o?.numero,

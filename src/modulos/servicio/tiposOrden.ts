@@ -29,6 +29,8 @@ const EsquemaTipo = z.object({
   duracion: z.coerce.number().int().min(5, { error: 'La duración va de 5 a 1440 minutos.' }).max(1440),
   plazoHoras: z.coerce.number().int().min(1, { error: 'El plazo va de 1 a 720 horas.' }).max(720),
   activo: z.boolean().default(true),
+  /** Se puede pedir desde el portal de clientes. */
+  portal: z.boolean().default(false),
   instrucciones: z.array(z.any()),
   devolucion: z.array(z.any()),
 })

@@ -6,12 +6,15 @@ export function VistaRespuestas({
   valores,
   equipos,
   vacio = 'Sin datos.',
+  archivos = '/servicio/archivo',
 }: {
   campos: Campo[]
   valores: Valores | null
   /** id → texto, para mostrar el equipo elegido. */
   equipos?: Record<string, string>
   vacio?: string
+  /** De dónde salen las fotos y la firma (el portal del cliente tiene su propia ruta). */
+  archivos?: string
 }) {
   const v = valores ?? {}
   const mostrados = campos.filter((c) => visible(c, campos, v) && (c.tipo === 'seccion' || hay(v[c.id])))
@@ -35,7 +38,7 @@ export function VistaRespuestas({
           <div key={c.id} className={ancho}>
             <dt className="text-xs text-texto-3">{c.etiqueta}</dt>
             <dd className="mt-0.5">
-              <Valor campo={c} valor={valor} equipos={equipos} />
+              <Valor campo={c} valor={valor} equipos={equipos} archivos={archivos} />
             </dd>
           </div>
         )
@@ -46,7 +49,17 @@ export function VistaRespuestas({
 
 const hay = (v: unknown) => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length)
 
-function Valor({ campo: c, valor, equipos }: { campo: Campo; valor: unknown; equipos?: Record<string, string> }) {
+function Valor({
+  campo: c,
+  valor,
+  equipos,
+  archivos,
+}: {
+  campo: Campo
+  valor: unknown
+  equipos?: Record<string, string>
+  archivos: string
+}) {
   switch (c.tipo) {
     case 'parrafo':
       return <span className="whitespace-pre-line">{valor as string}</span>
@@ -97,10 +110,10 @@ function Valor({ campo: c, valor, equipos }: { campo: Campo; valor: unknown; equ
       return (
         <span className="flex flex-wrap gap-2">
           {(valor as string[]).map((id) => (
-            <a key={id} href={`/servicio/archivo/${id}`} target="_blank" rel="noreferrer">
+            <a key={id} href={`${archivos}/${id}`} target="_blank" rel="noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element -- imagen privada de la empresa, servida por la ruta propia */}
               <img
-                src={`/servicio/archivo/${id}`}
+                src={`${archivos}/${id}`}
                 alt="Foto de la visita"
                 className="size-28 rounded-md border border-borde object-cover"
               />
@@ -113,7 +126,7 @@ function Valor({ campo: c, valor, equipos }: { campo: Campo; valor: unknown; equ
       return (
         <span className="inline-flex flex-col gap-1">
           {/* eslint-disable-next-line @next/next/no-img-element -- imagen privada de la empresa, servida por la ruta propia */}
-          <img src={`/servicio/archivo/${f.archivoId}`} alt="Firma" className="h-24 rounded-md border border-borde bg-white" />
+          <img src={`${archivos}/${f.archivoId}`} alt="Firma" className="h-24 rounded-md border border-borde bg-white" />
           {f.aclaracion && <span className="text-xs text-texto-2">{f.aclaracion}</span>}
         </span>
       )

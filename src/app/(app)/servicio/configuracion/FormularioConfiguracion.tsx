@@ -10,7 +10,7 @@ import { guardarConfiguracionAccion } from '../acciones'
 const control = 'h-9 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento'
 const etiqueta = 'text-xs font-medium text-texto-2'
 
-export function FormularioConfiguracion({ inicial }: { inicial: ConfiguracionServicio }) {
+export function FormularioConfiguracion({ inicial, portal }: { inicial: ConfiguracionServicio; portal: string }) {
   const [estado, accion, enviando] = useActionState(guardarConfiguracionAccion, undefined)
   const horas = (nombre: keyof ConfiguracionServicio, rotulo: string) => (
     <label className="flex flex-col gap-1">
@@ -61,6 +61,38 @@ export function FormularioConfiguracion({ inicial }: { inicial: ConfiguracionSer
               placeholder="Servicio técnico · 011 4444-0000 · lunes a viernes de 8 a 17"
               className="rounded-md border border-borde bg-superficie px-2 py-1.5 text-sm focus:border-acento"
             />
+          </label>
+        </div>
+      </fieldset>
+      <fieldset className="min-w-0">
+        <legend className="mb-1 text-sm font-semibold">Portal de clientes</legend>
+        <p className="mb-3 text-xs text-texto-2">
+          Tus clientes ven sus equipos y el estado de sus órdenes, piden servicio y cargan contadores. Entran desde{' '}
+          <a href={portal} target="_blank" rel="noreferrer" className="break-all text-acento hover:underline">
+            {portal}
+          </a>{' '}
+          con el usuario que les mandes abajo.
+        </p>
+        <div className="flex flex-col gap-2 text-sm">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="portal" defaultChecked={inicial.portal} /> Habilitar el portal
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="portalOrdenes" defaultChecked={inicial.portalOrdenes} /> Los clientes pueden pedir
+            servicio (los tipos de orden marcados “portal”)
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="portalContadores" defaultChecked={inicial.portalContadores} /> Los clientes pueden cargar
+            los contadores
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="color"
+              name="portalColor"
+              defaultValue={inicial.portalColor}
+              className="h-9 w-12 rounded border border-borde"
+            />{' '}
+            Color del portal (el de tu marca)
           </label>
         </div>
       </fieldset>
