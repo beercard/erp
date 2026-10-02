@@ -63,6 +63,14 @@ if (values.usuario) {
 const inicio = Date.now()
 const informe = await importarPymexis(carpeta, empresa.id, usuarioId, undefined, { saldos: values.saldos })
 writeFileSync(join(carpeta, 'informe.json'), JSON.stringify(informe, null, 2))
+// Con equipos en contrato, la empresa usa el módulo de contratos.
+if (informe.cantidades.contratos && !empresa.modulos.includes('contratos')) {
+  await base
+    .update(empresas)
+    .set({ modulos: [...empresa.modulos, 'contratos'] })
+    .where(eq(empresas.id, empresa.id))
+  console.log('Módulo de contratos activado.')
+}
 console.log(`Importación terminada en ${((Date.now() - inicio) / 1000).toFixed(1)} s.`)
 console.table(informe.cantidades)
 console.log(`${informe.avisos.length} avisos (detalle en ${join(carpeta, 'informe.json')}).`)

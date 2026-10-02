@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { PgTable } from 'drizzle-orm/pg-core'
 
 import type { Transaccion } from '../../db/conexion'
@@ -13,6 +13,7 @@ import { leerCsv } from '../../lib/csv'
 import { aImporte, aplicarPorcentaje, D } from '../../lib/dinero'
 import { hoyArgentina } from '../../lib/fechas'
 import { registrarMovimientos, saldos, type Movimiento } from '../comercial/stock'
+import { importarContratos, validarContratos, type Validacion } from './contratos'
 import { importarSaldosClientes, importarSaldosProveedores } from './saldos'
 
 /**
@@ -40,6 +41,10 @@ export type Informe = {
   empresaId: string
   cantidades: Record<string, number>
   avisos: string[]
+  /** Facturas de contratos de PYMEXIS que el cálculo del ERP no reproduce. */
+  validacionContratos?: Validacion[]
+  /** Contratos cuya última factura de PYMEXIS no coincide con sus condiciones. */
+  contratosARevisar?: string[]
 }
 
 const MONEDA: Record<string, string> = { '001': 'PES', '002': 'DOL' }
@@ -109,6 +114,8 @@ export async function importarPymexis(
 ): Promise<Informe> {
   const avisos: string[] = []
   const cantidades: Record<string, number> = {}
+  let validacion: ReturnType<typeof validarContratos> | undefined
+  let contratosARevisar: string[] = []
   const archivos = {
     provincias: leer(carpeta, 'provincias'),
     rubros: leer(carpeta, 'rubros'),
@@ -128,6 +135,13 @@ export async function importarPymexis(
     saldosProveedores: opciones.saldos ? leer(carpeta, 'saldos_proveedores') : [],
     saldosClientes: opciones.saldos ? leer(carpeta, 'saldos_clientes') : [],
     proveedores: leer(carpeta, 'proveedores'),
+    // Etapa 5: parque instalado y contratos (versiones nuevas del agente).
+    modelos: leerOpcional(carpeta, 'modelos'),
+    contratosTipos: leerOpcional(carpeta, 'contratos_tipos'),
+    tecnicos: leerOpcional(carpeta, 'tecnicos'),
+    ficheros: leerOpcional(carpeta, 'ficheros'),
+    historico: leerOpcional(carpeta, 'historico'),
+    historicoFacturas: leerOpcional(carpeta, 'historico_facturas'),
     contactos: leer(carpeta, 'contactos'),
     articulos: leer(carpeta, 'articulos'),
     precios: leer(carpeta, 'precios'),
@@ -670,6 +684,38 @@ export async function importarPymexis(
       }
     }
 
+    // ------------------------------------- Parque instalado y contratos
+    if (archivos.ficheros.length) {
+      const contratos = {
+        modelos: archivos.modelos,
+        tipos: archivos.contratosTipos,
+        tecnicos: archivos.tecnicos,
+        ficheros: archivos.ficheros,
+        historico: archivos.historico,
+        historicoFacturas: archivos.historicoFacturas,
+      }
+      await importarContratos(tx, usuarioId, contratos, terceroDe, avisos, cantidades)
+      validacion = validarContratos(contratos)
+      cantidades.facturasDeContratosComparadas = validacion.comparadas
+      cantidades.facturasDeContratosQueCoinciden = validacion.exactas
+      if (validacion.aRevisar.length) {
+        const revisar = await tx
+          .select({ numero: t.contratos.numero, cliente: t.terceros.razonSocial })
+          .from(t.contratos)
+          .innerJoin(t.terceros, eq(t.terceros.id, t.contratos.terceroId))
+          .where(and(inArray(t.contratos.codigoOrigen, validacion.aRevisar), eq(t.contratos.estado, 'activo')))
+        contratosARevisar = revisar.map((r) => `${r.numero} · ${r.cliente}`).sort()
+        avisos.push(
+          `${revisar.length} contratos activos tienen su última factura de PYMEXIS distinta de lo que calcula el ERP (precio corregido a mano en la factura): revisar sus condiciones antes de facturarlos desde el ERP (lista en "contratosARevisar").`,
+        )
+      }
+      if (validacion.diferencias.length) {
+        avisos.push(
+          `${validacion.diferencias.length} de ${validacion.comparadas} facturas de contratos de PYMEXIS no coinciden con el cálculo del ERP (detalle en "validacionContratos").`,
+        )
+      }
+    }
+
     // ----------------------------------------------------- Stock (espejo)
     // Mientras PYMEXIS sea el sistema en uso, el stock del ERP lo refleja: por
     // artículo y depósito se agrega la diferencia contra el saldo actual
@@ -716,7 +762,12 @@ export async function importarPymexis(
       avisos.push(`${stockSinArticulo} filas de stock de artículos que no se importaron (equipos o códigos inexistentes).`)
 
     await auditar(tx, { usuarioId, accion: 'importacion', entidad: 'pymexis', despues: { cantidades, avisos: avisos.length } })
-    return { empresaId, cantidades, avisos }
+    return {
+      empresaId,
+      cantidades,
+      avisos,
+      ...(validacion ? { validacionContratos: validacion.diferencias, contratosARevisar } : {}),
+    }
   })
 }
 

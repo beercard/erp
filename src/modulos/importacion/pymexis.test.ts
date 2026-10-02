@@ -9,9 +9,12 @@ import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
 import {
   articulos,
+  contratos,
   cuentasTesoreria,
   depositos,
   empresas,
+  equipos,
+  facturacionesContrato,
   listasPrecios,
   movimientosStock,
   percepcionesIibb,
@@ -20,9 +23,178 @@ import {
 } from '../../db/schema'
 import { saldos } from '../comercial/stock'
 import { cuentaProveedor } from '../compras/cuentas'
+import { prepararMes } from '../contratos/facturacion'
 import { cuentaCorriente } from '../facturacion/cuentas'
 import { preciosVigentes } from '../maestros/articulos'
 import { importarPymexis, type Informe } from './pymexis'
+
+/** CSV con todas las columnas, en blanco las que no se dan. */
+const csv = (columnas: string[], filas: Record<string, string | number>[]) =>
+  columnas.join(',') + '\n' + filas.map((f) => columnas.map((c) => `"${f[c] ?? ''}"`).join(',')).join('\n') + '\n'
+
+const COLUMNAS_FICHEROS = [
+  'Idinternofic',
+  'idcliente',
+  'idarticulobarra',
+  'idmodelo',
+  'fechainstalacion',
+  'fechagarantia',
+  'fechacontrato',
+  'fecharetiro',
+  'retirado',
+  'motivoretiro',
+  'grupo',
+  'domicilio',
+  'LOCALIDAD',
+  'sector',
+  'idcontrato',
+  'idtecnico',
+  'copiasinicio',
+  'tipoalquiler',
+  'idcomercializacion',
+  'copiaslibres',
+  'cargofijo',
+  'excedente',
+  'contadoranterior',
+  'contadoractual',
+  'fechaactual',
+  'creditos',
+  'idmoneda',
+  'principal',
+  'CalculoContaxequipo',
+  'IP',
+  'FACTURAR',
+  'Observaciones',
+]
+const COLUMNAS_HISTORICO = [
+  'idcliente',
+  'fecha',
+  'idimagenfccab',
+  'idmoneda',
+  'idarticulobarra',
+  'grupo',
+  'idcomercializacion',
+  'copiaslibres',
+  'cargofijo',
+  'excedente',
+  'contadoranterior',
+  'contadoractual',
+  'fechaactual',
+  'creditos',
+  'principal',
+  'Idinternofic',
+  'facturado',
+  'cotizacion',
+  'calculocontaxequipo',
+  'tipoalquiler',
+  'idcontrato',
+]
+// Un grupo "SEDE" de dos equipos en dólares (abono vencido: 100 + 1000 libres + 0,03 la copia), un equipo
+// suelto por excedente en pesos sin historia, uno vendido y uno retirado.
+const SEDE = {
+  idcliente: '00001',
+  grupo: 'SEDE',
+  idcomercializacion: 2,
+  idmoneda: '002',
+  tipoalquiler: 1,
+  FACTURAR: 1,
+  retirado: 0,
+  idcontrato: '00001',
+}
+const FICHEROS: Record<string, string | number>[] = [
+  {
+    ...SEDE,
+    Idinternofic: 1,
+    idarticulobarra: 'e1',
+    idmodelo: 'MP2014',
+    principal: 1,
+    cargofijo: 100,
+    copiaslibres: 1000,
+    excedente: 0.03,
+    contadoractual: 5600,
+    fechaactual: '2026-09-28',
+    fechainstalacion: '2024-01-10',
+  },
+  {
+    ...SEDE,
+    Idinternofic: 2,
+    idarticulobarra: 'E2',
+    idmodelo: 'MP2014',
+    grupo: 'sede',
+    principal: 0,
+    copiasinicio: 100,
+    contadoractual: 900,
+    fechaactual: '2026-09-28',
+  },
+  {
+    Idinternofic: 3,
+    idcliente: '00214',
+    idarticulobarra: 'E3',
+    idcomercializacion: 1,
+    idmoneda: '001',
+    tipoalquiler: 1,
+    principal: 1,
+    excedente: 5,
+    contadoranterior: 15000,
+    contadoractual: 20000,
+    fechaactual: '2026-09-29',
+    FACTURAR: 1,
+    retirado: 0,
+    idtecnico: '01',
+  },
+  {
+    Idinternofic: 4,
+    idcliente: '00001',
+    idarticulobarra: 'E4',
+    idcomercializacion: 7,
+    principal: 1,
+    retirado: 0,
+    idmoneda: '001',
+  },
+  { ...SEDE, Idinternofic: 5, idarticulobarra: 'E5', retirado: 1, fecharetiro: '2025-03-01', motivoretiro: 'FIN', principal: 1 },
+]
+const fila = (
+  equipo: number,
+  factura: number,
+  fecha: string,
+  anterior: number,
+  actual: number,
+  fechaactual: string,
+  extra = {},
+) => ({
+  ...FICHEROS[equipo - 1],
+  fecha,
+  idimagenfccab: factura,
+  contadoranterior: anterior,
+  contadoractual: actual,
+  fechaactual,
+  facturado: 1,
+  cotizacion: 1400,
+  calculocontaxequipo: 0,
+  ...extra,
+})
+const HISTORICO = [
+  // Agosto: 1700 copias, 700 excedentes → (100 + 700 × 0,03) × 1400 = 169.400. Coincide con la factura.
+  fila(1, 77, '2026-09-01', 4000, 5000, '2026-08-30'),
+  fila(2, 77, '2026-09-01', 100, 800, '2026-08-30'),
+  fila(2, 77, '2026-09-01', 100, 800, '2026-08-30', { facturado: 2 }),
+  // Septiembre: 700 copias (dentro de las libres) → 140.000, pero se facturó 150.000 a mano.
+  fila(1, 79, '2026-10-01', 5000, 5600, '2026-09-28'),
+  fila(2, 79, '2026-10-01', 800, 900, '2026-09-28'),
+]
+
+/** Parque instalado y contratos (Ficheros e Historico). */
+const ARCHIVOS_CONTRATOS: Record<string, string> = {
+  modelos: 'idmodelo,nombre,multifuncion\n"MP2014","RICOH MP 2014","1"\n',
+  contratos_tipos: 'idcontrato,nombre\n"00001","SERVICIO DE FOTOCOPIADO"\n',
+  tecnicos: 'idtecnico,nombre\n"01","PEREZ"\n',
+  ficheros: csv(COLUMNAS_FICHEROS, FICHEROS),
+  historico: csv(COLUMNAS_HISTORICO, HISTORICO),
+  historico_facturas:
+    'Idimagen,Fecha,Letra,Sucursal,Numero,Idcliente,Neto,idmoneda,cotizacion,anulada\n' +
+    '"77","2026-09-01","A","5","100","00001",169400.00,"001",1,"0"\n' +
+    '"79","2026-10-01","A","5","101","00001",150000.00,"001",1,"0"\n',
+}
 
 /** Exportación de PYMEXIS inventada, con un caso de cada regla. */
 const ARCHIVOS: Record<string, string> = {
@@ -91,6 +263,7 @@ const ARCHIVOS: Record<string, string> = {
     // Con IVA incluido y al 10,5 %: 110,50 y 143,65 son 100 y 130 netos.
     '"EQ-105","","002",110.50,"True","001"\n"EQ-105","","007",143.65,"True","001"\n"EQ-105","","013",3.00,"True","001"\n',
   // El 999 no está en la tabla de depósitos (pasa en KOMSA).
+  ...ARCHIVOS_CONTRATOS,
   stock: 'IdArticulo,IdDeposito,cantidad\n"TN-1","001",5\n"TN-2","999",-2\n',
 }
 
@@ -209,6 +382,53 @@ describe('importación de PYMEXIS', () => {
         .where(eq(movimientosStock.articuloId, id('TN-1'))),
     )
     expect(movs.map((m) => m.tipo).sort()).toEqual(['ajuste', 'inicial'])
+  })
+})
+
+describe('parque instalado y contratos', () => {
+  it('arma un contrato por grupo y uno por equipo suelto, con números que no cambian al repetir', async () => {
+    const cs = await conEmpresa(empresa, (tx) => tx.select().from(contratos))
+    expect(cs).toHaveLength(2)
+    const sede = cs.find((c) => c.codigoOrigen === 'G:00001|SEDE')!
+    expect([
+      sede.modalidad,
+      sede.moneda,
+      sede.facturacion,
+      sede.cargoFijo,
+      sede.copiasLibres,
+      sede.precioExcedente,
+      sede.tipo,
+    ]).toEqual(['abono', 'DOL', 'vencida', '100.00', 1000, '0.030000', 'Servicio de fotocopiado'])
+    expect(cs.find((c) => c.codigoOrigen === 'F:3')?.modalidad).toBe('excedente')
+    expect(cs.map((c) => c.numero).sort()).toEqual([1, 2])
+  })
+
+  it('importa los equipos con su situación y el contador desde el que se factura', async () => {
+    const eqs = await conEmpresa(empresa, (tx) => tx.select().from(equipos))
+    const de = (c: string) => eqs.find((e) => e.codigoOrigen === c)!
+    expect(eqs).toHaveLength(5)
+    expect(de('1').serie).toBe('E1')
+    expect(de('1').contratoId).toBe(de('2').contratoId)
+    expect([de('4').comercializacion, de('4').contratoId]).toEqual(['venta', null])
+    expect([de('5').estado, de('5').contratoId, de('5').fechaRetiro]).toEqual(['retirado', null, '2025-03-01'])
+    // Sin facturas en la historia, cuenta desde el contador anterior de PYMEXIS.
+    expect([de('3').contadorInicial, de('3').tecnico]).toEqual([15000, 'PEREZ'])
+  })
+
+  it('trae lo facturado, valida contra las facturas y sigue desde el último contador facturado', async () => {
+    const fs = await conEmpresa(empresa, (tx) => tx.select().from(facturacionesContrato))
+    expect(fs.map((f) => [f.periodo, f.copias, f.total, f.origen]).sort()).toEqual([
+      ['2026-08', 1700, '121.00', 'pymexis'],
+      ['2026-09', 700, '100.00', 'pymexis'],
+    ])
+    expect([informe.cantidades.facturasDeContratosComparadas, informe.cantidades.facturasDeContratosQueCoinciden]).toEqual([2, 1])
+    expect(informe.validacionContratos?.[0]).toMatchObject({ factura: 'A 0005-00000101', diferencia: '-10000.00' })
+    expect(informe.contratosARevisar).toHaveLength(1)
+    const mes = await conEmpresa(empresa, (tx) => prepararMes(tx, '2026-10', '1500'))
+    const sede = mes.find((m) => m.calculo.equipos === 2)!
+    expect([sede.calculo.copias, sede.calculo.totalPesos, sede.sinLectura.length]).toEqual([0, '150000.00', 2])
+    const suelto = mes.find((m) => m.calculo.equipos === 1)!
+    expect([suelto.calculo.copias, suelto.calculo.totalPesos]).toEqual([5000, '25000.00'])
   })
 })
 
