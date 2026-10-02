@@ -175,7 +175,7 @@ Consecuencias para el ERP:
 1. **El importador es lo primero:** clientes emparejados por nombre con los del ERP (los que no coinciden se revisan a mano), equipos separando serie y modelo, el contador como lectura, técnicos, etiquetas y el historial de órdenes con su devolución.
 2. **El tipo de orden de la cuenta se arma igual en el ERP** con nuestros campos (tabla de tóner por color, trabajos realizados, equipos recibidos, firma).
 3. **Toma de contador = 20 % de las visitas:** con los contratos por copia del ERP, el contador cargado en la visita ya factura; y el portal deja que el cliente lo cargue solo, sin visita.
-4. **Las 112 órdenes sin revisar** piden un **cierre en lote** desde el listado (revisar varias y cerrarlas OK de una vez).
+4. ~~Cierre en lote~~ (hecho): las órdenes sin revisar se cierran varias a la vez desde el listado.
 5. Lo que no usan (entregas, preventivo por regla, rastreo, grupos) baja de prioridad.
 
 ## 7. Migrar desde Persat
@@ -196,3 +196,15 @@ Reglas (de la cuenta real):
 - **Facturación**: una orden cerrada en Persat ya se facturó en el sistema anterior: no aparece "a facturar" ni se puede facturar. Si una orden migrada abierta se cierra en el ERP, se factura normalmente.
 
 Prueba con la cuenta real (2 de octubre de 2026, simulación): 2.131 clientes, 2.501 equipos, 3 técnicos, 4 etiquetas y 15.262 órdenes desde 2018, en unos 2 minutos.
+
+## 8. Cierre en lote
+
+En Servicio técnico, filtrando por "Informe para revisar" (o desde "N para revisar" del encabezado), el listado pasa a tener una casilla por orden. Se marcan las revisadas y se cierran todas juntas:
+
+- **Como propuso el técnico** (por defecto): OK, con desvío o no cumplida. En el desvío y la no cumplida la nota es la que dejó (o "Según el informe del técnico: …" con su resumen). Sin propuesta, OK.
+- **Todas OK**: ignora la propuesta.
+- La fecha de cierre es la del informe del técnico, no la de hoy.
+- **Mandar el resumen a cada cliente** viene apagado (para no mandar correos por órdenes viejas).
+- Se ven las 500 más antiguas; las que no se pudieron cerrar se listan con el motivo. Para revisar una en detalle, se abre desde su número.
+
+Al migrar el historial de Persat quedan muchas órdenes que nunca se cerraron (en la prueba con la cuenta real: 629 en informe y 1.809 vencidas desde 2018).

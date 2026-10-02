@@ -21,6 +21,7 @@ import {
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { monto } from '../../lib/dinero'
+import { hoyArgentina } from '../../lib/fechas'
 import { convertir, TASAS_IVA } from '../comercial/calculo'
 import { decimal, opcionalUuid, primerError } from '../comercial/documentos'
 import { siguienteNumero } from '../comercial/numeracion'
@@ -735,6 +736,40 @@ export async function cerrarOrden(tx: Transaccion, usuarioId: string, id: string
   await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: { cierre: d } })
   await emitir(tx, 'orden.cerrada', await datosEvento(tx, id))
   return { ok: true as const }
+}
+
+/**
+ * Cierre en lote de órdenes en informe (lo que se acumula esperando al
+ * supervisor). Cada una se cierra como la propuso el técnico, o todas OK, con
+ * la fecha de su informe. Si el técnico propuso desvío o no cumplida, la nota
+ * es la que dejó o su resumen. Las que no se pueden cerrar se informan.
+ */
+/** Órdenes que se cierran de una vez (y que muestra la revisión en lote). */
+export const LOTE_MAXIMO = 500
+
+export async function cerrarEnLote(tx: Transaccion, usuarioId: string, ids: string[], o: { modo: 'propuesto' | 'ok' }) {
+  const unicos = [...new Set(ids.filter((x) => /^[0-9a-f-]{36}$/i.test(x)))].slice(0, LOTE_MAXIMO)
+  const filas = unicos.length ? await tx.select().from(ordenesServicio).where(inArray(ordenesServicio.id, unicos)) : []
+  const cerradas: string[] = []
+  const omitidas: { id: string; numero: number | null; motivo: string }[] = []
+  for (const id of unicos) {
+    const f = filas.find((x) => x.id === id)
+    if (!f) {
+      omitidas.push({ id, numero: null, motivo: 'ya no existe' })
+      continue
+    }
+    if (f.estado !== 'informe') {
+      omitidas.push({ id, numero: f.numero, motivo: 'no está en informe' })
+      continue
+    }
+    const cierre = o.modo === 'ok' ? 'ok' : ((f.cierreTecnico as keyof typeof CIERRES | null) ?? 'ok')
+    const fecha = f.informada ? hoyArgentina(f.informada) : hoyArgentina()
+    const nota = cierre === 'ok' ? null : (f.notaCierre ?? (f.solucion ? `Según el informe del técnico: ${f.solucion}` : null))
+    const r = await cerrarOrden(tx, usuarioId, id, { fecha: fecha < f.fecha ? f.fecha : fecha, cierre, nota })
+    if (r.ok) cerradas.push(id)
+    else omitidas.push({ id, numero: f.numero, motivo: r.error })
+  }
+  return { ok: true as const, cerradas, omitidas }
 }
 
 /** Compatibilidad: resolver es cerrar OK desde la oficina con la solución. */

@@ -10,11 +10,12 @@ import { tienePermiso } from '@/lib/permisos'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
 import { ponerAlDia } from '@/modulos/servicio/avisos'
 import { etiquetasDeOrdenes, listarEtiquetas } from '@/modulos/servicio/etiquetas'
-import { listarOrdenes, listarTecnicos, marcarVencidas, resumenOrdenes } from '@/modulos/servicio/servicio'
+import { LOTE_MAXIMO, listarOrdenes, listarTecnicos, marcarVencidas, resumenOrdenes } from '@/modulos/servicio/servicio'
 import { ESTADOS_ORDEN, estaAbierta, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
 
 import { paginaContratos } from '../contratos/modulo'
 import { ChipEstado, ChipSla } from './ChipEstado'
+import { CierreEnLote } from './CierreEnLote'
 import { ChipEtiqueta } from './EtiquetasOrden'
 
 export const metadata: Metadata = { title: 'Servicio técnico' }
@@ -37,6 +38,7 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
     const lista = await listarOrdenes(tx, {
       q,
       estado: estado ?? 'activas',
+      limite: estado === 'informe' ? LOTE_MAXIMO : undefined,
       tecnicoId: tecnico || undefined,
       incluirAcompanante: true,
       etiquetaId: etiqueta && /^[0-9a-f-]{36}$/i.test(etiqueta) ? etiqueta : undefined,
@@ -155,7 +157,21 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
         )}
         <button className="h-9 rounded-md border border-borde px-3 text-sm hover:bg-superficie-2">Buscar</button>
       </form>
-      {lista.length === 0 ? (
+      {estado === 'informe' && lista.length > 0 && tienePermiso(sesion.permisos, 'servicio.cargar') ? (
+        <CierreEnLote
+          total={resumen.paraRevisar}
+          ordenes={lista.map((o) => ({
+            id: o.id,
+            numero: o.numero,
+            cliente: o.cliente,
+            tecnico: o.tecnico,
+            tipoOrden: o.tipoOrden,
+            falla: o.falla,
+            cierreTecnico: o.cierreTecnico,
+            informada: o.informada,
+          }))}
+        />
+      ) : lista.length === 0 ? (
         <Panel className="p-6 text-sm text-texto-2">
           {q || (estado && estado !== 'activas') ? 'No hay órdenes que coincidan.' : 'No hay órdenes activas.'}
           {tecnicos.length === 0 && tienePermiso(sesion.permisos, 'maestros.configuracion') && (

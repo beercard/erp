@@ -26,6 +26,7 @@ import { guardarRecordatorio, marcarRecordatorio } from '@/modulos/servicio/reco
 import { guardarArchivo, quitarArchivo } from '@/modulos/servicio/archivos'
 import { generarPreventivos, guardarRegla, pausarRegla } from '@/modulos/servicio/preventivo'
 import {
+  cerrarEnLote,
   agregarItem,
   articulosParaOrden,
   cancelarOrden,
@@ -643,4 +644,27 @@ export async function ficharAccion(
   revalidatePath('/tecnico')
   revalidatePath('/servicio/jornadas')
   return r.ok ? { ok: true as const } : { ok: false as const, error: r.error }
+}
+
+/** Cierra varias órdenes en informe de una vez (como las propuso el técnico, o todas OK). */
+export async function cerrarEnLoteAccion(ids: string[], modo: 'propuesto' | 'ok', avisar: boolean) {
+  const base = await origen()
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.cargar', async (tx, s) => {
+      const c = await cerrarEnLote(tx, s.usuario.id, ids, { modo })
+      let avisos = 0
+      if (avisar)
+        for (const id of c.cerradas) {
+          const [o] = await tx.select({ estado: ordenesServicio.estado }).from(ordenesServicio).where(eq(ordenesServicio.id, id))
+          if (o?.estado === 'cerrada_no_cumplida') continue
+          const a = await avisarCierre(tx, s.usuario.id, id, { empresaId: s.empresa.id, base })
+          if ('encolado' in a && a.encolado) avisos++
+        }
+      if (avisos) enviarDespues(s.empresa.id)
+      return { ...c, avisos }
+    }),
+  )
+  revalidatePath('/servicio')
+  revalidatePath('/servicio/calendario')
+  return r
 }
