@@ -174,6 +174,17 @@ export async function contabilizar(
     const res = await revertirAsiento(tx, usuarioId, fila.id, fecha < desde ? desde : fecha, `Anulación: ${descripcion}`)
     if (res.ok) r.revertidos++
     else r.errores.push({ origen, id, descripcion: `Anulación: ${descripcion}`, error: res.error })
+    // Las reclasificaciones de ese asiento (gasto a imputar → cuenta del proveedor) también se anulan.
+    const reclasificaciones = filasDe<{ id: string }>(
+      await tx.execute(
+        sql`select id from asientos a where origen = 'manual' and origen_id = ${fila.id} and revierte_id is null and estado = 'registrado' and not exists (select 1 from asientos b where b.revierte_id = a.id)`,
+      ),
+    )
+    for (const x of reclasificaciones) {
+      const rr = await revertirAsiento(tx, usuarioId, x.id, fecha < desde ? desde : fecha)
+      if (!rr.ok)
+        r.errores.push({ origen, id, descripcion: `Anulación de la reclasificación de ${descripcion}`, error: rr.error })
+    }
   }
   // Lo de un período ya cerrado sin asiento no se toca: se informa.
   const contarCerrados = async (q: Promise<{ n: number }[]>) => {

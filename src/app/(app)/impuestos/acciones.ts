@@ -7,6 +7,7 @@ import { after } from 'next/server'
 import { presentaciones } from '@/db/schema'
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
+import { alPresentarIvaContable } from '@/modulos/contabilidad/cierre'
 import { alPresentarIva, enviarPaquete } from '@/modulos/impuestos/paquete'
 import {
   ajustarFecha,
@@ -38,6 +39,17 @@ export async function presentadaAccion(id: string, _: Estado, fd: FormData): Pro
   )
   revalidatePath('/impuestos', 'layout')
   if (!r.ok) return { error: r.error }
+  // Con la contabilidad en marcha, la liquidación de IVA se asienta sola (si falla, lo avisa el control contable).
+  const liquidacion = await intentar(() =>
+    enLaEmpresa('impuestos.libros', async (tx, s) => {
+      const [p] = await tx.select().from(presentaciones).where(eq(presentaciones.id, id))
+      return p?.impuesto === 'iva_digital' ? alPresentarIvaContable(tx, s.usuario.id, id) : null
+    }),
+  ).catch(() => null)
+  const asentada =
+    liquidacion && liquidacion.ok && 'numero' in liquidacion
+      ? ` Liquidación de IVA asentada (asiento ${liquidacion.numero}).`
+      : ''
   // Libro IVA presentado: si está configurado, el paquete del mes sale para el contador.
   const envio = await intentar(() =>
     enLaEmpresa('impuestos.libros', async (tx, s) => {
@@ -49,9 +61,9 @@ export async function presentadaAccion(id: string, _: Estado, fd: FormData): Pro
   )
   if (envio && 'para' in envio) {
     after(() => enviarPendientes(envio.empresaId).catch(() => undefined))
-    return { ok: `Marcada como presentada: el período quedó cerrado. El paquete del mes salió para ${envio.para}.` }
+    return { ok: `Marcada como presentada: el período quedó cerrado.${asentada} El paquete del mes salió para ${envio.para}.` }
   }
-  return { ok: 'Marcada como presentada: el período quedó cerrado.' }
+  return { ok: `Marcada como presentada: el período quedó cerrado.${asentada}` }
 }
 
 export async function reabrirAccion(id: string, _: Estado, fd: FormData): Promise<Estado> {
