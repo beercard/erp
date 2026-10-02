@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lte } from 'drizzle-orm'
+import { and, eq, gte, inArray, lte, ne } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
 import { compras, terceros } from '../../db/schema'
@@ -91,6 +91,7 @@ export async function cruceCompras(tx: Transaccion, periodo: string, filas: Fila
           .where(
             and(
               eq(compras.estado, 'registrado'),
+              ne(compras.letra, 'X'),
               eq(compras.periodoIva, periodo),
               gte(compras.fecha, desde),
               lte(compras.fecha, hasta),

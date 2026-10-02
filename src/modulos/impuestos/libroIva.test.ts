@@ -142,6 +142,20 @@ describe('Libro IVA Digital', () => {
         })
         .returning()
       await tx.insert(comprobantesIva).values({ comprobanteId: nc.id, alicuotaIva: 5, base: '100', importe: '21' })
+      // Una nota de débito interna (cheque rechazado, letra X) no va al libro.
+      await tx.insert(comprobantes).values({
+        clase: 'nota_debito',
+        letra: 'X',
+        tipo: 99,
+        puntoVenta: 0,
+        numero: 1,
+        fecha: '2026-10-21',
+        estado: 'autorizado',
+        origen: 'interno',
+        terceroId: cliente,
+        noGravado: '5000',
+        total: '5000',
+      })
       // Un borrador y una de noviembre no entran.
       await tx.insert(comprobantes).values({
         clase: 'factura',

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, lte, ne } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
 import {
@@ -227,7 +227,14 @@ export async function libroVentas(tx: Transaccion, periodo: string) {
   const lista = await tx
     .select()
     .from(comprobantes)
-    .where(and(eq(comprobantes.estado, 'autorizado'), gte(comprobantes.fecha, desde), lte(comprobantes.fecha, hasta)))
+    .where(
+      and(
+        eq(comprobantes.estado, 'autorizado'),
+        ne(comprobantes.letra, 'X'),
+        gte(comprobantes.fecha, desde),
+        lte(comprobantes.fecha, hasta),
+      ),
+    )
     .orderBy(asc(comprobantes.fecha), asc(comprobantes.tipo), asc(comprobantes.puntoVenta), asc(comprobantes.numero))
   const ids = lista.map((c) => c.id)
   const [ivas, tributos, clientes] = await Promise.all([
@@ -320,7 +327,7 @@ export async function libroCompras(tx: Transaccion, periodo: string) {
   const lista = await tx
     .select()
     .from(compras)
-    .where(and(eq(compras.estado, 'registrado'), eq(compras.periodoIva, periodo)))
+    .where(and(eq(compras.estado, 'registrado'), ne(compras.letra, 'X'), eq(compras.periodoIva, periodo)))
     .orderBy(asc(compras.fecha), asc(compras.tipo), asc(compras.puntoVenta), asc(compras.numero))
   const ids = lista.map((c) => c.id)
   const [ivas, tributos, proveedores] = await Promise.all([

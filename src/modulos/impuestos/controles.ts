@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, sql } from 'drizzle-orm'
+import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, ne, sql } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
 import { compras, comprasTributos, comprobantes, comprobantesAsociados, terceros } from '../../db/schema'
@@ -56,7 +56,7 @@ export async function controlesIva(tx: Transaccion, periodo: string): Promise<Co
     })
     .from(comprobantes)
     .innerJoin(terceros, eq(terceros.id, comprobantes.terceroId))
-    .where(and(gte(comprobantes.fecha, desde), lte(comprobantes.fecha, hasta)))
+    .where(and(gte(comprobantes.fecha, desde), lte(comprobantes.fecha, hasta), ne(comprobantes.letra, 'X')))
     .orderBy(asc(comprobantes.tipo), asc(comprobantes.puntoVenta), asc(comprobantes.numero))
   const venta = (c: (typeof ventas)[number], gravedad: Control['gravedad'], problema: string) =>
     lista.push({
@@ -153,7 +153,7 @@ export async function controlesIva(tx: Transaccion, periodo: string): Promise<Co
     })
     .from(compras)
     .innerJoin(terceros, eq(terceros.id, compras.terceroId))
-    .where(and(eq(compras.estado, 'registrado'), eq(compras.periodoIva, periodo)))
+    .where(and(eq(compras.estado, 'registrado'), ne(compras.letra, 'X'), eq(compras.periodoIva, periodo)))
   const compra = (c: (typeof cs)[number], gravedad: Control['gravedad'], problema: string) =>
     lista.push({
       gravedad,

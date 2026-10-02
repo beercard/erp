@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
 import {
@@ -227,7 +227,14 @@ export async function baseIibb(tx: Transaccion, periodo: string) {
     .from(comprobantes)
     .innerJoin(terceros, eq(terceros.id, comprobantes.terceroId))
     .leftJoin(provincias, eq(provincias.codigo, terceros.provincia))
-    .where(and(eq(comprobantes.estado, 'autorizado'), gte(comprobantes.fecha, desde), lte(comprobantes.fecha, hasta)))
+    .where(
+      and(
+        eq(comprobantes.estado, 'autorizado'),
+        ne(comprobantes.letra, 'X'),
+        gte(comprobantes.fecha, desde),
+        lte(comprobantes.fecha, hasta),
+      ),
+    )
     .groupBy(terceros.provincia, provincias.nombre)
   const lista = filas.map((f) => ({ ...f, neto: r2(Number(f.neto)) })).sort((a, b) => b.neto - a.neto)
   const total = r2(lista.reduce((s, f) => s + f.neto, 0))

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, lte, ne, sql } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
 import { articulos, compras, comprobantes, comprobantesItems, terceros, vendedores } from '../../db/schema'
@@ -20,7 +20,12 @@ const r2 = (v: string | number | null) => Math.round(Number(v ?? 0) * 100) / 100
 export type Rango = { desde: string; hasta: string }
 
 const ventasDelRango = (r: Rango) =>
-  and(eq(comprobantes.estado, 'autorizado'), gte(comprobantes.fecha, r.desde), lte(comprobantes.fecha, r.hasta))
+  and(
+    eq(comprobantes.estado, 'autorizado'),
+    ne(comprobantes.letra, 'X'),
+    gte(comprobantes.fecha, r.desde),
+    lte(comprobantes.fecha, r.hasta),
+  )
 
 export async function resumenVentas(tx: Transaccion, r: Rango) {
   const [x] = await tx
@@ -48,7 +53,14 @@ export async function ventasPorMes(tx: Transaccion, hasta: string) {
   const filas = await tx
     .select({ mes: sql<string>`to_char(${comprobantes.fecha}, 'YYYY-MM')`, neto: netoVenta })
     .from(comprobantes)
-    .where(and(eq(comprobantes.estado, 'autorizado'), gte(comprobantes.fecha, inicio), lte(comprobantes.fecha, hasta)))
+    .where(
+      and(
+        eq(comprobantes.estado, 'autorizado'),
+        ne(comprobantes.letra, 'X'),
+        gte(comprobantes.fecha, inicio),
+        lte(comprobantes.fecha, hasta),
+      ),
+    )
     .groupBy(sql`1`)
   const meses: { mes: string; neto: number }[] = []
   for (let i = 11; i >= 0; i--) {
@@ -121,7 +133,9 @@ export async function comprasPorProveedor(tx: Transaccion, r: Rango, limite = 50
     .select({ codigo: terceros.codigo, nombre: terceros.razonSocial, neto: netoCompra, comprobantes: sql<number>`count(*)::int` })
     .from(compras)
     .innerJoin(terceros, eq(terceros.id, compras.terceroId))
-    .where(and(eq(compras.estado, 'registrado'), gte(compras.fecha, r.desde), lte(compras.fecha, r.hasta)))
+    .where(
+      and(eq(compras.estado, 'registrado'), ne(compras.letra, 'X'), gte(compras.fecha, r.desde), lte(compras.fecha, r.hasta)),
+    )
     .groupBy(terceros.id, terceros.codigo, terceros.razonSocial)
     .orderBy(desc(netoCompra))
     .limit(limite)
@@ -140,7 +154,9 @@ export async function informeGestion(tx: Transaccion, r: Rango) {
   const [c] = await tx
     .select({ neto: netoCompra })
     .from(compras)
-    .where(and(eq(compras.estado, 'registrado'), gte(compras.fecha, r.desde), lte(compras.fecha, r.hasta)))
+    .where(
+      and(eq(compras.estado, 'registrado'), ne(compras.letra, 'X'), gte(compras.fecha, r.desde), lte(compras.fecha, r.hasta)),
+    )
   const totalCompras = r2(c.neto)
   return { resumen, meses, clientes, articulos: articulosVendidos, vendedores: vendedoresLista, proveedores, totalCompras }
 }
