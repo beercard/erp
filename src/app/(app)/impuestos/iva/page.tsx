@@ -11,6 +11,7 @@ import { posicionIva } from '@/modulos/impuestos/posicionIva'
 import { listarPresentaciones, periodoCerrado } from '@/modulos/impuestos/presentaciones'
 
 import { nombrePeriodo, periodoPedido, pesos } from '../periodo'
+import { CruceArca } from '../CruceArca'
 import { Presentaciones } from '../Presentaciones'
 import { SaldosIniciales } from '../SaldosIniciales'
 import { SelectorPeriodo } from '../SelectorPeriodo'
@@ -61,7 +62,7 @@ export default async function Iva({ searchParams }: PageProps<'/impuestos/iva'>)
           {filaPos('Débito fiscal (ventas)', p.debito)}
           {filaPos('Crédito fiscal (compras)', -p.credito)}
           {p.anterior.tecnico > 0 && filaPos('Saldo técnico a favor del mes anterior', -p.anterior.tecnico)}
-          {filaPos(p.saldoTecnico >= 0 ? 'Impuesto determinado' : 'Saldo técnico a favor', p.saldoTecnico, true)}
+          {filaPos(p.saldoTecnico >= 0 ? 'Impuesto determinado' : 'Saldo técnico a favor', Math.abs(p.saldoTecnico), true)}
           {filaPos('Percepciones de IVA sufridas', -p.percepciones)}
           {filaPos('Retenciones de IVA sufridas', -p.retenciones)}
           {p.anterior.libre > 0 && filaPos('Libre disponibilidad del mes anterior', -p.anterior.libre)}
@@ -164,6 +165,10 @@ export default async function Iva({ searchParams }: PageProps<'/impuestos/iva'>)
         )}
       </Panel>
 
+      <Panel className="mb-4">
+        <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">Cruce de compras con Mis Comprobantes de ARCA</h2>
+        <CruceArca periodo={periodo} puedeRegistrar={tienePermiso(sesion.permisos, 'compras.cargar')} cerrado={!!cerrado} />
+      </Panel>
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-borde px-4 py-3">
           <h2 className="text-sm font-semibold">Libro IVA Digital</h2>

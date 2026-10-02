@@ -13,6 +13,10 @@ Función "Informes e impuestos" del plan (Pyme y Empresa). Permisos: `impuestos.
   - Tributos de ventas por código de ARCA: nacionales (1, 6, 9), IIBB (2, 5, 7), municipales (3, 8), internos (4), no categorizados (13); el resto va en "otros tributos".
   - Advertencias antes de presentar: factura A sin CUIT, proveedor sin CUIT.
 - **Subdiarios** de IVA ventas y compras en Excel (en pesos; notas de crédito en negativo).
+- **Arrastre de saldos** (como el F.2002): el saldo técnico a favor y el de libre disponibilidad salen de la presentación del mes anterior; si ese mes no se presentó desde el sistema, se cargan a mano (`saldos_iva`). La pantalla muestra lo que pasa al mes siguiente.
+- **Controles antes de presentar**, con enlace a cada comprobante. Errores: ventas sin confirmar con ARCA, factura A con CUIT inválido, moneda extranjera sin cotización, proveedor sin CUIT válido, compra con fecha posterior al período. Avisos: borradores del mes, notas sin comprobante asociado, huecos de numeración (también contra el último número del mes anterior), compras de más de un año, letra que no coincide con la condición de IVA del proveedor, A sin IVA, percepción de IIBB sin jurisdicción, compras del mes cargadas para un período posterior.
+- **Cruce con Mis Comprobantes Recibidos** de ARCA (el Excel, CSV o ZIP que baja ARCA): coinciden, faltan cargar (con el crédito fiscal que se pierde y un botón para registrarlos), diferencias de total o IVA, cargados en otro período y cargados que ARCA no informa.
+- Al marcar presentado, el libro se vuelve a generar y se compara con el archivo bajado: si cambió algo, pide bajarlo de nuevo.
 
 ## Presentaciones y cierre del período
 

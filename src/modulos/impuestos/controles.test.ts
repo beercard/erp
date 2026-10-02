@@ -40,7 +40,7 @@ describe('controles antes de presentar el Libro IVA', () => {
           { codigo: 'P2', razonSocial: 'Sin CUIT', tipoDocumento: 99, condicionIva: 1, esProveedor: true },
         ])
         .returning()
-      const v = (x: Record<string, unknown>) => ({
+      const v = (x: Partial<typeof comprobantes.$inferInsert> & { fecha: string }): typeof comprobantes.$inferInsert => ({
         clase: 'factura',
         letra: 'A',
         tipo: 1,
@@ -62,7 +62,7 @@ describe('controles antes de presentar el Libro IVA', () => {
         v({ numero: null, cae: null, estado: 'borrador', fecha: '2026-10-06' }),
         v({ numero: null, cae: null, estado: 'pendiente_verificacion', fecha: '2026-10-07' }),
       ])
-      const c = (x: Record<string, unknown>) => ({
+      const c = (x: Partial<typeof compras.$inferInsert> & { numero: number }): typeof compras.$inferInsert => ({
         clase: 'factura',
         letra: 'A',
         tipo: 1,
