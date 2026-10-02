@@ -802,6 +802,41 @@ export async function reabrirOrden(tx: Transaccion, usuarioId: string, id: strin
   return { ok: true as const }
 }
 
+const EsquemaRecierre = z.object({
+  cierre: z.enum(Object.keys(CIERRES) as [keyof typeof CIERRES, ...(keyof typeof CIERRES)[]]),
+  nota: texto,
+})
+
+/**
+ * Cambia el tipo de cierre de una orden ya cerrada (OK, con desvío o no
+ * cumplida) sin reabrirla: conserva la fecha, el informe y la factura.
+ * Una facturada no puede pasar a no cumplida.
+ */
+export async function recerrarOrden(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
+  const p = EsquemaRecierre.safeParse(entrada)
+  if (!p.success) return error(primerError(p.error))
+  const d = p.data
+  const o = await ordenParaCambiar(tx, id)
+  if (!o) return error('Esa orden de servicio ya no existe.')
+  if (!estaCerrada(o.estado)) return error('Solo se cambia el cierre de una orden cerrada.')
+  const estado = `cerrada_${d.cierre}`
+  if (estado === o.estado && (d.nota ?? o.notaCierre) === o.notaCierre) return error('El cierre es el mismo.')
+  if (o.comprobanteId && d.cierre === 'no_cumplida') return error('La orden está facturada: no puede quedar como no cumplida.')
+  const nota = d.nota ?? o.notaCierre
+  if (d.cierre !== 'ok' && !nota) return error('Contá el desvío o por qué no se cumplió.')
+  await tx.update(ordenesServicio).set({ estado, notaCierre: nota }).where(eq(ordenesServicio.id, id))
+  await auditar(tx, {
+    usuarioId,
+    accion: 'modificacion',
+    entidad: 'orden_servicio',
+    entidadId: id,
+    antes: { estado: o.estado, notaCierre: o.notaCierre },
+    despues: { estado, notaCierre: nota },
+  })
+  await emitir(tx, 'orden.cerrada', await datosEvento(tx, id))
+  return { ok: true as const }
+}
+
 export async function cancelarOrden(tx: Transaccion, usuarioId: string, id: string, motivo: string) {
   const o = await ordenParaCambiar(tx, id)
   if (!o) return error('Esa orden de servicio ya no existe.')

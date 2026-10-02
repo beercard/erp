@@ -24,7 +24,7 @@ import { quitarItemAccion, reabrirAccion } from '../acciones'
 import { AvisosCliente } from '../AvisosCliente'
 import { ChipEstado, ChipSla } from '../ChipEstado'
 import { EtiquetasOrden } from '../EtiquetasOrden'
-import { Cancelar, Cerrar, Facturar, FormularioOrden, Item, Programar, Visita } from '../Formularios'
+import { Cancelar, Cerrar, Facturar, FormularioOrden, Item, Programar, Recerrar, Visita } from '../Formularios'
 
 export const metadata: Metadata = { title: 'Orden de servicio' }
 
@@ -497,6 +497,11 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
             <p className="mt-1 text-sm text-texto-2">
               Contador: <span className="cifras">{o.contador.toLocaleString('es-AR')}</span>
             </p>
+          )}
+          {cargar && (
+            <div className="mt-3">
+              <Recerrar id={o.id} actual={o.estado} nota={o.notaCierre} />
+            </div>
           )}
           {o.factura ? (
             <p className="mt-3 text-sm">

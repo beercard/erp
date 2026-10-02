@@ -27,6 +27,7 @@ import { guardarArchivo, quitarArchivo } from '@/modulos/servicio/archivos'
 import { generarPreventivos, guardarRegla, pausarRegla } from '@/modulos/servicio/preventivo'
 import {
   cerrarEnLote,
+  recerrarOrden,
   agregarItem,
   articulosParaOrden,
   cancelarOrden,
@@ -667,4 +668,15 @@ export async function cerrarEnLoteAccion(ids: string[], modo: 'propuesto' | 'ok'
   revalidatePath('/servicio')
   revalidatePath('/servicio/calendario')
   return r
+}
+
+/** Cambia el tipo de cierre de una orden cerrada, sin reabrirla. */
+export async function recerrarAccion(id: string, _: Estado, formData: FormData): Promise<Estado> {
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.cargar', (tx, s) =>
+      recerrarOrden(tx, s.usuario.id, id, { cierre: valor(formData, 'cierre'), nota: valor(formData, 'nota') }),
+    ),
+  )
+  refrescar(id)
+  return r.ok ? { ok: 'Cierre cambiado.' } : { error: r.error }
 }

@@ -15,6 +15,7 @@ import {
   buscarHuecosAccion,
   cancelarAccion,
   cerrarAccion,
+  recerrarAccion,
   equiposDelClienteAccion,
   facturarAccion,
   guardarOrdenAccion,
@@ -741,5 +742,37 @@ export function Facturar({ id, puntos, hoy }: { id: string; puntos: { valor: num
         <Resultado estado={estado} />
       </div>
     </form>
+  )
+}
+
+/** Cambiar el tipo de cierre de una orden cerrada (sin reabrirla). */
+export function Recerrar({ id, actual, nota }: { id: string; actual: string; nota: string | null }) {
+  const [estado, accion, enviando] = useActionState(recerrarAccion.bind(null, id), undefined)
+  return (
+    <details>
+      <summary className="cursor-pointer text-sm text-acento hover:underline">Cambiar el tipo de cierre</summary>
+      <form action={accion} className="mt-2 flex flex-col gap-2">
+        <div className="flex flex-wrap gap-3 text-sm">
+          {Object.entries(CIERRES).map(([k, t]) => (
+            <label key={k} className="flex items-center gap-1">
+              <input type="radio" name="cierre" value={k} defaultChecked={actual === `cerrada_${k}`} /> {t}
+            </label>
+          ))}
+        </div>
+        <textarea
+          name="nota"
+          rows={2}
+          defaultValue={nota ?? ''}
+          placeholder="Desvío o por qué no se cumplió"
+          className="rounded-md border border-borde bg-superficie px-2 py-1 text-sm focus:border-acento"
+        />
+        <div>
+          <Boton type="submit" disabled={enviando}>
+            Guardar el cierre
+          </Boton>
+        </div>
+        <Resultado estado={estado} />
+      </form>
+    </details>
   )
 }

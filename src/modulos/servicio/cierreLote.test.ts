@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
 import { empresas, ordenesServicio, terceros } from '../../db/schema'
-import { cerrarEnLote, resumenOrdenes } from './servicio'
+import { cerrarEnLote, recerrarOrden, resumenOrdenes } from './servicio'
 
 const U = '00000000-0000-4000-8000-000000000001'
 
@@ -71,5 +71,22 @@ describe('cierre en lote de los informes', () => {
     expect(r.omitidas).toEqual([{ id: ids.ok, numero: 1, motivo: 'no está en informe' }])
     const [o] = await en((tx) => tx.select().from(ordenesServicio).where(eq(ordenesServicio.id, ids.desvio)))
     expect(o.estado).toBe('cerrada_ok')
+  })
+
+  it('cambia el tipo de cierre sin reabrir; una facturada no pasa a no cumplida', async () => {
+    expect(await en((tx) => recerrarOrden(tx, U, ids.ok, { cierre: 'desvio' }))).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('desvío'),
+    })
+    expect(await en((tx) => recerrarOrden(tx, U, ids.ok, { cierre: 'desvio', nota: 'Quedó un pedido de repuesto' }))).toEqual({
+      ok: true,
+    })
+    const [o] = await en((tx) => tx.select().from(ordenesServicio).where(eq(ordenesServicio.id, ids.ok)))
+    expect(o).toMatchObject({
+      estado: 'cerrada_desvio',
+      notaCierre: 'Quedó un pedido de repuesto',
+      fechaResolucion: '2026-09-03',
+    })
+    expect(await en((tx) => recerrarOrden(tx, U, ids.asignada, { cierre: 'ok' }))).toMatchObject({ ok: false })
   })
 })
