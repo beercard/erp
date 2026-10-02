@@ -83,6 +83,15 @@ export default async function Formularios({ searchParams }: PageProps<'/servicio
                   </td>
                   <td className="cifras px-4 py-2 text-right text-xs text-texto-3">v{f.version}</td>
                   <td className="px-4 py-2 text-right">
+                    <a
+                      href={`/servicio/reportes/formulario/${f.id}`}
+                      title="Envíos de los últimos 30 días en Excel"
+                      className="text-xs text-acento hover:underline"
+                    >
+                      Excel
+                    </a>
+                  </td>
+                  <td className="px-4 py-2 text-right">
                     {f.activo && (
                       <form action={empezarAccion.bind(null, f.id, 'oficina', undefined)}>
                         <Boton type="submit" className="h-7 px-2 text-xs">

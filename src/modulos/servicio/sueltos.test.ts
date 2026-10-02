@@ -14,7 +14,9 @@ import {
 } from '../../db/schema'
 import { guardarEquipo } from '../contratos/contratos'
 import { guardarWebhook } from '../integraciones/webhooks'
+import { escribirXlsx, leerXlsx } from '../../lib/xlsx'
 import { guardarArchivoEnvio } from './archivos'
+import { reporteFormulario } from './reportes'
 import {
   bandeja,
   borradorDe,
@@ -176,5 +178,19 @@ describe('formularios sueltos y bandeja', () => {
     expect(n.ok).toBe(true)
     const despues = (await en((tx) => bandeja(tx))).estados
     expect(despues.filter((e) => e.inicial).map((e) => e.nombre)).toEqual(['Recibido'])
+  })
+
+  it('reporte en Excel del formulario, una columna por campo', async () => {
+    const f = await formulario('VEHIC')
+    const hoja = (await en((tx) => reporteFormulario(tx, f.id, '2020-01-01', '2099-12-31')))!
+    const leida = await leerXlsx(escribirXlsx([hoja]))
+    expect(leida[0]).toEqual(expect.arrayContaining(['N°', 'Kilómetros', 'Combustible', '¿Cuál?', 'Fotos']))
+    const fila = leida[1]
+    const col = (t: string) => fila[leida[0].indexOf(t)]
+    expect(col('N°')).toBe('1')
+    expect(col('Kilómetros')).toBe('1000')
+    expect(col('¿Cuál?')).toBe('Luz de freno')
+    expect(col('Fotos')).toBe('1 foto')
+    expect(col('De')).toBe('Técnico')
   })
 })

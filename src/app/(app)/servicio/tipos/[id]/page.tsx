@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { DescargarExcel } from '@/components/servicio/DescargarExcel'
 import { EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { tienePermiso } from '@/lib/permisos'
@@ -24,6 +25,11 @@ export default async function TipoOrden({ params }: PageProps<'/servicio/tipos/[
       <EncabezadoPagina
         titulo={t.nombre}
         bajada={`Formularios en la versión ${t.version} · ${t.versiones.length} ${t.versiones.length === 1 ? 'versión' : 'versiones'} en total`}
+        acciones={
+          tienePermiso(sesion.permisos, 'servicio.cargar') ? (
+            <DescargarExcel ruta={`/servicio/reportes/tipo/${t.id}`} texto="Órdenes en Excel" />
+          ) : undefined
+        }
       />
       {editar ? (
         <Panel className="p-4">

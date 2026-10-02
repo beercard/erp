@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { DescargarExcel } from '@/components/servicio/DescargarExcel'
 import { EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { bandeja, listarFormularios } from '@/modulos/servicio/sueltos'
@@ -77,6 +78,11 @@ export default async function Bandeja({ searchParams }: PageProps<'/servicio/ban
         />
         <button className="h-9 rounded-md border border-borde px-3 text-sm hover:bg-superficie-2">Buscar</button>
       </form>
+      {formulario && valido(formulario) && (
+        <div className="mb-3">
+          <DescargarExcel ruta={`/servicio/reportes/formulario/${formulario}`} texto="Este formulario en Excel" />
+        </div>
+      )}
       <Panel className="overflow-x-auto">
         {datos.envios.length === 0 ? (
           <p className="p-4 text-sm text-texto-2">No hay envíos.</p>
