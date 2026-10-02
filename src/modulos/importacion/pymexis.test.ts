@@ -7,7 +7,16 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
-import { articulos, depositos, empresas, listasPrecios, movimientosStock, terceros, tercerosContactos } from '../../db/schema'
+import {
+  articulos,
+  depositos,
+  empresas,
+  listasPrecios,
+  movimientosStock,
+  percepcionesIibb,
+  terceros,
+  tercerosContactos,
+} from '../../db/schema'
 import { saldos } from '../comercial/stock'
 import { preciosVigentes } from '../maestros/articulos'
 import { importarPymexis, type Informe } from './pymexis'
@@ -32,6 +41,8 @@ const ARCHIVOS: Record<string, string> = {
     '"00001","ESTUDIO\nNORTE","PERON 1","RESISTENCIA","3500","06","","a@b.com; c@d.com","0","20-12345678-6","","","True","02","016","003","002","03",1000.5,0,"False","2020-01-01","2026-09-01"\n' +
     '"00214","CONSUMIDOR FINAL","","","","06","","","2","","","","False","","","","","01",0,0,"False","",""\n' +
     '"00300","CUIT MALO","","","","05","","","0","20-12345678-9","","","False","","","","","",0,0,"True","",""\n',
+  // KOMSA percibe Corrientes: 0,75 % a los de Convenio, 1,5 % a los locales. Hay uno suelto en Chaco.
+  clientes_iibb: 'IDCLIENTE,IDPROVINCIA,PORCENTAJE\n"00001","05",0.75\n"00300","05",1.50\n"00001","06",1.50\n',
   proveedores:
     'IdProveedor,nombre,domicilio,localidad,cpostal,idprovincia,telefonos,email,idcondiva,cuit,ingbrutos,Inactivo,ultima_compra\n' +
     '"00010","ESTUDIO NORTE (PROV)","","","","06","","","0","20123456786","","False",""\n' +
@@ -131,6 +142,22 @@ describe('importación de PYMEXIS', () => {
       tx.select().from(tercerosContactos).where(eq(tercerosContactos.terceroId, estudio.id)),
     )
     expect(contactos).toHaveLength(1)
+  })
+
+  it('trae la alícuota de percepción de cada cliente y crea la percepción inactiva', async () => {
+    const percs = await conEmpresa(empresa, (tx) => tx.select().from(percepcionesIibb))
+    expect(percs).toHaveLength(1)
+    expect([percs[0].nombre, percs[0].provincia, Number(percs[0].alicuota), percs[0].activa]).toEqual([
+      'Percepción IIBB Corrientes',
+      'W',
+      1.5,
+      false,
+    ])
+    const ters = await conEmpresa(empresa, (tx) => tx.select().from(terceros))
+    const alicuota = (c: string) => Number(ters.find((x) => x.codigo === c)!.percepcionIibb)
+    expect([alicuota('00001'), alicuota('00300'), alicuota('00214')]).toEqual([0.75, 1.5, 0])
+    expect(informe.cantidades.clientesConPercepcion).toBe(2)
+    expect(informe.avisos.some((a) => a.includes('Chaco, que el ERP no percibe'))).toBe(true)
   })
 
   it('carga el stock inicial una sola vez y después sincroniza con ajustes', async () => {

@@ -69,8 +69,9 @@ export function FormularioPercepcion({
     <Panel className="p-4">
       <h2 className="text-sm font-semibold">Percepción de Ingresos Brutos</h2>
       <p className="mt-1 mb-3 text-xs text-texto-2">
-        Se suma a las facturas de los clientes marcados para percepción. La alícuota de cada cliente (padrón) se carga en su
-        ficha; si no tiene, se usa la general. <strong>Confirmá alícuota y mínimo con el contador antes de activarla.</strong>
+        Manda la alícuota de la ficha de cada cliente (por ejemplo, la mitad a los de Convenio Multilateral; 0 = no se le
+        percibe). Si la ficha no tiene, se aplica la general solo a los clientes de esta provincia. La importación de PYMEXIS trae
+        la alícuota de cada cliente. <strong>Confirmá alícuota y mínimo con el contador antes de activarla.</strong>
       </p>
       <form action={accion} className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1">

@@ -231,7 +231,7 @@ export function FormularioTercero({
             id="percepcionIibb"
             name="percepcionIibb"
             etiqueta="Percepción IIBB (%)"
-            ayuda="Vacío: la general de la empresa. 0: no se le percibe."
+            ayuda="Vacío: la general, si es de la provincia de la percepción. 0: no se le percibe."
             defaultValue={v('percepcionIibb')}
             error={e.percepcionIibb}
             inputMode="decimal"

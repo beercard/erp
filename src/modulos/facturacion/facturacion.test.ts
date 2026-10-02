@@ -7,7 +7,14 @@ import { comprobantes, empresas, percepcionesIibb, puntosVenta, terceros } from 
 import type { ClienteArca } from '../arca/cliente'
 import { ErrorIncierto } from '../arca/soap'
 import type { SolicitudCae } from '../arca/wsfe'
-import { eliminarBorrador, emitirComprobante, guardarComprobante, obtenerComprobante, verificarComprobante } from './comprobantes'
+import {
+  calcularComprobante,
+  eliminarBorrador,
+  emitirComprobante,
+  guardarComprobante,
+  obtenerComprobante,
+  verificarComprobante,
+} from './comprobantes'
 import { anularRecibo, cuentaCorriente, emitirRecibo, imputar, ReciboInvalido } from './cuentas'
 import { codigoComprobante, datosTipo, documentoReceptor, letraPara, urlQr } from './tipos'
 
@@ -156,6 +163,35 @@ describe('tipos de comprobante', () => {
       tipoCodAut: 'E',
       codAut: 76400000000001,
     })
+  })
+})
+
+describe('percepción de IIBB', () => {
+  const corrientes = {
+    id: 'p',
+    nombre: 'Percepción IIBB Corrientes',
+    provincia: 'W',
+    alicuota: '1.5',
+    minimoBase: '0',
+    soloLetraA: true,
+    tributoArca: 7,
+    activa: true,
+  }
+  const items = [{ cantidad: '1', precioUnitario: '1000', alicuotaIva: 5 }]
+  const percibido = (alicuotaCliente: string | null, provinciaCliente: string | null) =>
+    calcularComprobante('A', items, { alicuotaCliente, provinciaCliente, activas: [corrientes as never] }).tributos.map(
+      (t) => t.importe,
+    )
+
+  it('manda la alícuota de la ficha (Convenio Multilateral al 0,75 %), y 0 es no percibir', () => {
+    expect(percibido('0.75', 'H')).toEqual(['7.50'])
+    expect(percibido('0', 'W')).toEqual([])
+  })
+
+  it('sin alícuota en la ficha, la general solo alcanza a clientes de la provincia', () => {
+    expect(percibido(null, 'W')).toEqual(['15.00'])
+    expect(percibido(null, 'H')).toEqual([])
+    expect(percibido(null, null)).toEqual([])
   })
 })
 

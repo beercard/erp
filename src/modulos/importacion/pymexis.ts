@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { eq, sql } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import type { PgTable } from 'drizzle-orm/pg-core'
 
 import type { Transaccion } from '../../db/conexion'
@@ -29,6 +29,9 @@ import { registrarMovimientos, saldos, type Movimiento } from '../comercial/stoc
  *   cuyo precio guardado no coincide con el calculado quedan como precio
  *   especial. Una lista que casi no coincide se importa como base.
  * - Un proveedor con el mismo CUIT que un cliente es el mismo tercero.
+ * - La alícuota de percepción de IIBB de cada cliente sale de CLIENTESIIBB, de
+ *   la provincia de la percepción del ERP. KOMSA percibe Corrientes: 1,5 % a
+ *   los inscriptos locales y 0,75 % a los de Convenio Multilateral.
  */
 
 type Fila = Record<string, string>
@@ -111,6 +114,7 @@ export async function importarPymexis(
     puntos: leer(carpeta, 'puntos_venta'),
     listas: leer(carpeta, 'listas'),
     clientes: leer(carpeta, 'clientes'),
+    clientesIibb: leer(carpeta, 'clientes_iibb'),
     proveedores: leer(carpeta, 'proveedores'),
     contactos: leer(carpeta, 'contactos'),
     articulos: leer(carpeta, 'articulos'),
@@ -434,6 +438,46 @@ export async function importarPymexis(
     cantidades.precios = filasPrecios.length
     cantidades.preciosEspeciales = especiales
 
+    // ------------------------------------------------- Percepción de IIBB
+    // Alícuotas por provincia del ERP y cliente.
+    const alicuotasIibb = new Map<string, Map<string, string>>()
+    for (const r of archivos.clientesIibb) {
+      const prov = provincia.get(limpio(r.IDPROVINCIA))
+      if (!prov || numero(r.PORCENTAJE) <= 0) continue
+      if (!alicuotasIibb.has(prov)) alicuotasIibb.set(prov, new Map())
+      alicuotasIibb.get(prov)!.set(limpio(r.IDCLIENTE), String(numero(r.PORCENTAJE)))
+    }
+    // La percepción ya configurada manda. Si no hay, se crea inactiva para la
+    // provincia con más clientes, con la alícuota más alta (la de los
+    // inscriptos locales): la activa el usuario cuando la revisa el contador.
+    const percepciones = await tx
+      .select()
+      .from(t.percepcionesIibb)
+      .orderBy(desc(t.percepcionesIibb.activa), t.percepcionesIibb.nombre)
+    let provinciaPercepcion = percepciones[0]?.provincia ?? null
+    if (!percepciones.length && alicuotasIibb.size) {
+      const [prov, porCliente] = [...alicuotasIibb].sort((a, b) => b[1].size - a[1].size)[0]
+      const nombre = provinciasErp.find((p) => p.codigo === prov)?.nombre ?? prov
+      const maxima = Math.max(...[...porCliente.values()].map(Number))
+      await tx.insert(t.percepcionesIibb).values({
+        nombre: `Percepción IIBB ${nombre}`,
+        provincia: prov,
+        alicuota: String(maxima),
+        activa: false,
+      })
+      provinciaPercepcion = prov
+      avisos.push(`Se creó la percepción de IIBB de ${nombre} al ${maxima} %, inactiva: revisala en Configuración → ARCA.`)
+    }
+    if (percepciones.length > 1)
+      avisos.push('Hay más de una percepción de IIBB: las alícuotas de los clientes se importaron para la primera.')
+    const alicuotaDe = provinciaPercepcion ? (alicuotasIibb.get(provinciaPercepcion) ?? new Map()) : new Map<string, string>()
+    for (const [prov, porCliente] of alicuotasIibb) {
+      if (prov === provinciaPercepcion) continue
+      const nombre = provinciasErp.find((p) => p.codigo === prov)?.nombre ?? prov
+      avisos.push(`${porCliente.size} cliente(s) con alícuota de percepción de ${nombre}, que el ERP no percibe: no se importó.`)
+    }
+    cantidades.clientesConPercepcion = alicuotaDe.size
+
     // ------------------------------------------------- Clientes y proveedores
     const filasTerceros: (typeof t.terceros.$inferInsert)[] = []
     const porCuit = new Map<string, number>()
@@ -469,8 +513,8 @@ export async function importarPymexis(
         transporteId: transporteDe.get(limpio(c.IdTransporte)) ?? null,
         descuento: numero(c.Descu1) ? String(numero(c.Descu1)) : null,
         limiteCredito: numero(c.LimiteCredito) ? numero(c.LimiteCredito).toFixed(2) : null,
-        // LiqIbrutos marca a quién se le percibe IIBB: al resto, alícuota 0.
-        percepcionIibb: verdadero(c.LiqIbrutos) ? null : '0',
+        // La alícuota que aplica PYMEXIS; sin alícuota, no se le percibe.
+        percepcionIibb: alicuotaDe.get(limpio(c.idcliente)) ?? '0',
         activo: !verdadero(c.inactivo),
       })
     }

@@ -75,8 +75,8 @@ export default async function ConfiguracionArca() {
           <FormularioPercepcion
             provincias={datos.provs.map((p) => ({ valor: p.codigo, texto: p.nombre }))}
             inicial={{
-              nombre: percepcion?.nombre ?? 'Percepción IIBB Chaco',
-              provincia: percepcion?.provincia ?? 'H',
+              nombre: percepcion?.nombre ?? 'Percepción IIBB',
+              provincia: percepcion?.provincia ?? '',
               alicuota: percepcion ? String(Number(percepcion.alicuota)).replace('.', ',') : '',
               minimoBase: percepcion ? String(Number(percepcion.minimoBase)).replace('.', ',') : '0',
               soloLetraA: percepcion?.soloLetraA ?? true,
