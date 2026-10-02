@@ -1,13 +1,15 @@
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { after } from 'next/server'
 
 import { BotonEnlace, EncabezadoPagina } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
 import { calendario, lunesDe, sumarDias } from '@/modulos/servicio/agenda'
-import { generarPreventivos } from '@/modulos/servicio/preventivo'
+import { enviarPendientes } from '@/modulos/comunicaciones/correo'
+import { ponerAlDia } from '@/modulos/servicio/avisos'
 import { marcarVencidas } from '@/modulos/servicio/servicio'
 import { AYUDA_ESTADOS, ESTADOS_ORDEN, type EstadoOrden } from '@/modulos/servicio/tipos'
 
@@ -36,11 +38,12 @@ export default async function CalendarioServicio({ searchParams }: PageProps<'/s
   const dias = Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i))
   const mover = tienePermiso(sesion.permisos, 'servicio.cargar')
   const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
-    await marcarVencidas(tx)
-    if (mover) await generarPreventivos(tx, sesion.usuario.id)
+    if (mover) await ponerAlDia(tx, sesion.usuario.id)
+    else await marcarVencidas(tx)
     return calendario(tx, dias[0], dias[6])
   })
   const fecha = (d: string) => d.split('-').reverse().join('/')
+  after(() => enviarPendientes(sesion.empresa.id).catch(() => undefined))
 
   return (
     <>

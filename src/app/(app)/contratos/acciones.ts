@@ -53,6 +53,8 @@ export async function guardarContratoAccion(id: string | null, _: Estado, formDa
     desde: valor(formData, 'desde'),
     hasta: valor(formData, 'hasta'),
     estado: valor(formData, 'estado') || 'activo',
+    slaRespuestaHoras: valor(formData, 'slaRespuestaHoras') || null,
+    slaResolucionHoras: valor(formData, 'slaResolucionHoras') || null,
     observaciones: valor(formData, 'observaciones'),
   }
   const r = await intentar(() =>

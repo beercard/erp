@@ -8,6 +8,8 @@ import { Buscador } from '@/components/comercial/Buscador'
 import { Aviso, Boton } from '@/components/ui'
 import { visible, type Campo, type Firma, type Lectura, type Material, type Valores } from '@/modulos/servicio/formularios'
 
+import { borrarArchivoLocal, esLocal, guardarArchivoLocal, leerArchivoLocal, sinConexion } from './sinSenal'
+
 /**
  * Dibuja un formulario de orden (instrucciones o devolución) y deja las
  * respuestas, en JSON, en un campo oculto `nombre` del formulario que lo
@@ -31,14 +33,20 @@ export function FormularioDinamico({
   inicial,
   nombre,
   contexto = {},
+  alCambiar,
 }: {
   campos: Campo[]
   inicial?: Valores | null
   nombre: string
   contexto?: Contexto
+  /** Para guardar el borrador mientras se completa. */
+  alCambiar?: (v: Valores) => void
 }) {
   const [valores, setValores] = useState<Valores>(inicial ?? {})
   const cambiar = (id: string, v: unknown) => setValores((x) => ({ ...x, [id]: v }))
+  useEffect(() => {
+    alCambiar?.(valores)
+  }, [valores, alCambiar])
 
   return (
     <div className="flex flex-col gap-4">
@@ -377,10 +385,44 @@ async function achicar(archivo: File): Promise<Blob> {
   )
 }
 
-async function subir(ordenId: string, clase: 'foto' | 'firma', blob: Blob) {
+/** Sube la imagen; sin señal la guarda en el celular (id "local-…") y se sube con el informe. */
+async function subir(
+  ordenId: string,
+  clase: 'foto' | 'firma',
+  blob: Blob,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const datos = new FormData()
   datos.set('archivo', blob, clase === 'firma' ? 'firma.png' : 'foto.jpg')
-  return subirArchivoAccion(ordenId, clase, datos)
+  if (!navigator.onLine) return { ok: true, id: await guardarArchivoLocal(ordenId, clase, blob) }
+  try {
+    return await subirArchivoAccion(ordenId, clase, datos)
+  } catch (e) {
+    if (sinConexion(e)) return { ok: true, id: await guardarArchivoLocal(ordenId, clase, blob) }
+    throw e
+  }
+}
+
+/** Imagen de la orden: del servidor, o del celular si todavía no se subió. */
+function Imagen({ id, alt, className }: { id: string; alt: string; className: string }) {
+  const [local, setLocal] = useState<string | null>(null)
+  useEffect(() => {
+    if (!esLocal(id)) return
+    let url: string | null = null
+    let vigente = true
+    leerArchivoLocal(id).then((a) => {
+      if (!a || !vigente) return
+      url = URL.createObjectURL(a.blob)
+      setLocal(url)
+    })
+    return () => {
+      vigente = false
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [id])
+  const src = esLocal(id) ? local : `/servicio/archivo/${id}`
+  if (!src) return <span className={`${className} grid place-items-center text-xs text-texto-3`}>…</span>
+  // eslint-disable-next-line @next/next/no-img-element -- imagen privada (o guardada en el celular), servida por la ruta propia
+  return <img src={src} alt={alt} className={className} />
 }
 
 function Fotos({
@@ -425,14 +467,14 @@ function Fotos({
       <div className="flex flex-wrap gap-2">
         {valor.map((id) => (
           <div key={id} className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element -- imagen privada de la empresa, servida por la ruta propia */}
-            <img src={`/servicio/archivo/${id}`} alt="Foto" className="size-24 rounded-md border border-borde object-cover" />
+            <Imagen id={id} alt="Foto" className="size-24 rounded-md border border-borde object-cover" />
             <button
               type="button"
               title="Quitar la foto"
               onClick={() => {
                 cambiar(valor.filter((x) => x !== id))
-                if (ordenId) void quitarArchivoAccion(ordenId, id)
+                if (esLocal(id)) void borrarArchivoLocal(id)
+                else if (ordenId) void quitarArchivoAccion(ordenId, id).catch(() => undefined)
               }}
               className="absolute top-1 right-1 grid size-7 place-items-center rounded-full bg-superficie/90 text-error"
             >
@@ -517,12 +559,7 @@ function CampoFirma({
       </legend>
       {valor?.archivoId ? (
         <div className="flex items-end gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element -- imagen privada de la empresa, servida por la ruta propia */}
-          <img
-            src={`/servicio/archivo/${valor.archivoId}`}
-            alt="Firma"
-            className="h-28 rounded-md border border-borde bg-white"
-          />
+          <Imagen id={valor.archivoId} alt="Firma" className="h-28 rounded-md border border-borde bg-white" />
           <Boton
             type="button"
             onClick={() => {

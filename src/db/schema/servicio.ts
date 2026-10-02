@@ -243,6 +243,18 @@ export const ordenesServicio = pgTable(
     notaCierre: text('nota_cierre'),
     cerrada: timestamp('cerrada', { withTimezone: true }),
     cerradaPor: uuid('cerrada_por'),
+    /**
+     * Tiempos comprometidos (SLA), fijados al abrir según la prioridad y el
+     * contrato: hasta cuándo hay que llegar y hasta cuándo resolverla.
+     */
+    slaRespuesta: timestamp('sla_respuesta', { withTimezone: true }),
+    slaResolucion: timestamp('sla_resolucion', { withTimezone: true }),
+    /** Cuándo se avisó a coordinación que el SLA vencía (para no repetir). */
+    alertaSla: timestamp('alerta_sla', { withTimezone: true }),
+    /** Cuándo se le avisó al cliente el día de la visita (y para qué día). */
+    avisoVisita: timestamp('aviso_visita', { withTimezone: true }),
+    /** Email del cliente para esta orden (si no, el de su ficha). */
+    email: text('email'),
     /** Regla de preventivo que la generó, y para qué fecha (o contador). */
     preventivoId: uuid('preventivo_id'),
     origenPreventivo: text('origen_preventivo'),
@@ -359,5 +371,96 @@ export const archivosServicio = pgTable(
     check('archivos_servicio_tipo', sql`${t.tipoMime} in ('image/jpeg', 'image/png', 'image/webp')`),
     check('archivos_servicio_tamano', sql`${t.tamano} between 1 and 3000000`),
     deLaEmpresa('archivos_servicio_orden_fk', t.empresaId, t.ordenId, ordenesServicio),
+  ],
+)
+
+/**
+ * Configuración del servicio técnico de la empresa (una fila): tiempos de
+ * servicio (SLA) por prioridad y qué se le avisa al cliente.
+ */
+export const configuracionServicio = pgTable(
+  'configuracion_servicio',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    /** Horas corridas desde que se abre la orden. */
+    respuestaNormal: integer('respuesta_normal').notNull().default(24),
+    respuestaUrgente: integer('respuesta_urgente').notNull().default(4),
+    resolucionNormal: integer('resolucion_normal').notNull().default(72),
+    resolucionUrgente: integer('resolucion_urgente').notNull().default(24),
+    /** A quién avisar en la oficina cuando un SLA está por vencer o venció. */
+    emailCoordinacion: text('email_coordinacion'),
+    avisarVisita: boolean('avisar_visita').notNull().default(true),
+    avisarCierre: boolean('avisar_cierre').notNull().default(true),
+    encuesta: boolean('encuesta').notNull().default(true),
+    /** Firma al pie de los correos (nombre, teléfono, horario). */
+    firma: text('firma'),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex().on(t.empresaId),
+    check(
+      'configuracion_servicio_horas',
+      sql`least(${t.respuestaNormal}, ${t.respuestaUrgente}, ${t.resolucionNormal}, ${t.resolucionUrgente}) > 0`,
+    ),
+  ],
+)
+
+/** Recordatorios por cliente (los "seguimientos" de Persat): visitas, presupuestos, llamados. */
+export const recordatorios = pgTable(
+  'recordatorios',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    terceroId: uuid('tercero_id').notNull(),
+    equipoId: uuid('equipo_id'),
+    fecha: date('fecha').notNull(),
+    hora: text('hora'),
+    titulo: text('titulo').notNull(),
+    detalle: text('detalle'),
+    color: text('color').notNull().default('#2563eb'),
+    /** A quién avisar por email y cuántos días antes (0: el mismo día). */
+    avisarA: text('avisar_a'),
+    diasAntes: integer('dias_antes').notNull().default(1),
+    avisado: timestamp('avisado', { withTimezone: true }),
+    hecho: timestamp('hecho', { withTimezone: true }),
+    usuarioId: uuid('usuario_id'),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    index().on(t.empresaId, t.fecha),
+    index().on(t.empresaId, t.terceroId),
+    check('recordatorios_dias_antes', sql`${t.diasAntes} between 0 and 60`),
+    deLaEmpresa('recordatorios_tercero_fk', t.empresaId, t.terceroId, terceros),
+    deLaEmpresa('recordatorios_equipo_fk', t.empresaId, t.equipoId, equipos),
+  ],
+)
+
+/**
+ * Encuesta de satisfacción de una orden cerrada. El cliente la responde sin
+ * usuario, con un enlace que lleva la empresa y un secreto (acá solo se
+ * guarda su hash).
+ */
+export const encuestas = pgTable(
+  'encuestas',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    ordenId: uuid('orden_id').notNull(),
+    secretoHash: text('secreto_hash').notNull(),
+    /** 1 a 5 estrellas. */
+    puntaje: smallint('puntaje'),
+    /** 0 a 10: ¿recomendaría el servicio? */
+    nps: smallint('nps'),
+    comentario: text('comentario'),
+    respondida: timestamp('respondida', { withTimezone: true }),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex().on(t.empresaId, t.ordenId),
+    uniqueIndex('encuestas_secreto').on(t.secretoHash),
+    check('encuestas_valores', sql`(${t.puntaje} between 1 and 5) and (${t.nps} between 0 and 10)`),
+    check('encuestas_respondida', sql`(${t.respondida} is null) = (${t.puntaje} is null)`),
+    deLaEmpresa('encuestas_orden_fk', t.empresaId, t.ordenId, ordenesServicio),
   ],
 )

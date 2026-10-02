@@ -73,6 +73,8 @@ export type DatosContrato = {
   desde: string | null
   hasta: string | null
   estado: string
+  slaRespuestaHoras: number | null
+  slaResolucionHoras: number | null
   observaciones: string | null
 }
 
@@ -193,6 +195,26 @@ export function FormularioContrato({
           </select>
         </label>
       )}
+      <label className="flex flex-col gap-1">
+        <span className={etiqueta}>Servicio técnico: llegar en (horas)</span>
+        <input
+          name="slaRespuestaHoras"
+          inputMode="numeric"
+          defaultValue={inicial?.slaRespuestaHoras ?? ''}
+          placeholder="El general"
+          className={`${control} cifras`}
+        />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className={etiqueta}>Resolver en (horas)</span>
+        <input
+          name="slaResolucionHoras"
+          inputMode="numeric"
+          defaultValue={inicial?.slaResolucionHoras ?? ''}
+          placeholder="El general"
+          className={`${control} cifras`}
+        />
+      </label>
       <label className="flex flex-col gap-1 sm:col-span-2 lg:col-span-4">
         <span className={etiqueta}>Leyenda en la factura</span>
         <input name="leyenda" defaultValue={inicial?.leyenda ?? ''} className={control} />

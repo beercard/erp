@@ -43,6 +43,21 @@ const EsquemaContrato = z.object({
   desde: fecha,
   hasta: fecha,
   estado: z.enum(['activo', 'suspendido', 'finalizado']).default('activo'),
+  /** Tiempos de servicio del contrato, en horas (vacíos: los generales). */
+  slaRespuestaHoras: z.coerce
+    .number()
+    .int()
+    .min(1, { error: 'Horas de respuesta inválidas.' })
+    .max(2160)
+    .nullable()
+    .default(null),
+  slaResolucionHoras: z.coerce
+    .number()
+    .int()
+    .min(1, { error: 'Horas de resolución inválidas.' })
+    .max(2160)
+    .nullable()
+    .default(null),
   observaciones: texto,
 })
 

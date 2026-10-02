@@ -71,6 +71,7 @@ export type DatosOrden = {
   falla: string
   contacto: string | null
   telefono: string | null
+  email: string | null
   domicilio: string | null
   tecnicoId: string | null
   programada: string | null
@@ -257,6 +258,16 @@ export function FormularioOrden({
       <label className="flex flex-col gap-1">
         <span className={etiqueta}>Teléfono</span>
         <input name="telefono" defaultValue={inicial.telefono ?? ''} className={control} />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className={etiqueta}>Email para avisos</span>
+        <input
+          name="email"
+          type="email"
+          defaultValue={inicial.email ?? ''}
+          placeholder="El de la ficha, si se deja vacío"
+          className={control}
+        />
       </label>
       <label className="flex flex-col gap-1 sm:col-span-2">
         <span className={etiqueta}>Domicilio de la visita</span>

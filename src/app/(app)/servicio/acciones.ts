@@ -2,7 +2,9 @@
 
 import { and, asc, eq, ilike, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 
 import type { Transaccion } from '@/db/conexion'
 import { ordenesServicio, terceros } from '@/db/schema'
@@ -11,7 +13,11 @@ import { normalizarNumero } from '@/lib/dinero'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
 import { cotizacionVigente } from '@/modulos/comercial/cotizacion'
+import { enviarPendientes } from '@/modulos/comunicaciones/correo'
 import { buscarHuecos } from '@/modulos/servicio/agenda'
+import { avisarCierre, avisarVisita, crearEncuesta } from '@/modulos/servicio/avisos'
+import { guardarConfiguracion } from '@/modulos/servicio/configuracion'
+import { guardarRecordatorio, marcarRecordatorio } from '@/modulos/servicio/recordatorios'
 import { guardarArchivo, quitarArchivo } from '@/modulos/servicio/archivos'
 import { generarPreventivos, guardarRegla, pausarRegla } from '@/modulos/servicio/preventivo'
 import {
@@ -53,6 +59,15 @@ const refrescar = (id: string) => {
   revalidatePath('/servicio/calendario')
   revalidatePath('/tecnico')
 }
+
+/** Dirección pública del sistema, para los enlaces de los correos (en producción, APP_URL). */
+async function origen() {
+  const h = await headers()
+  return process.env.APP_URL ?? `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('host')}`
+}
+
+/** Manda la bandeja de salida después de responder (no demora la pantalla). */
+const enviarDespues = (empresaId: string) => after(() => enviarPendientes(empresaId).catch(() => undefined))
 
 const json = (f: FormData, k: string): unknown => {
   try {
@@ -130,6 +145,7 @@ export async function guardarOrdenAccion(id: string | null, _: Estado, formData:
         'falla',
         'contacto',
         'telefono',
+        'email',
         'domicilio',
         'tecnicoId',
         'programada',
@@ -248,7 +264,7 @@ export async function quitarItemAccion(ordenId: string, itemId: string) {
 
 // ------------------------------------------------------- Técnico en campo
 
-export async function llegadaAccion(id: string, ubicacion: { lat: number | null; lng: number | null }) {
+export async function llegadaAccion(id: string, ubicacion: { lat: number | null; lng: number | null; cuando?: string }) {
   const r = await intentar(() =>
     enLaEmpresa('servicio.trabajar', async (tx, s) => {
       const no = await ajena(tx, s, id)
@@ -304,23 +320,84 @@ export async function informarAccion(id: string, _: Estado, formData: FormData):
   redirect(`/tecnico?enviada=${id}`)
 }
 
+/** El mismo envío, desde la cola de lo cargado sin señal: devuelve el resultado en vez de redirigir. */
+export async function informarDesdeColaAccion(
+  id: string,
+  d: { fecha: string; solucion: string; cierre: string; resultados: unknown },
+) {
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.trabajar', async (tx, s) => {
+      const no = await ajena(tx, s, id)
+      if (no) return no
+      return informarOrden(tx, s.usuario.id, id, d)
+    }),
+  )
+  refrescar(id)
+  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error }
+}
+
 // ------------------------------------------------------ Supervisor y cierre
 
 export async function cerrarAccion(id: string, _: Estado, formData: FormData): Promise<Estado> {
+  const base = await origen()
   const r = await intentar(() =>
-    enLaEmpresa('servicio.cargar', (tx, s) =>
-      cerrarOrden(tx, s.usuario.id, id, {
+    enLaEmpresa('servicio.cargar', async (tx, s) => {
+      const cierre = valor(formData, 'cierre')
+      const c = await cerrarOrden(tx, s.usuario.id, id, {
         fecha: valor(formData, 'fecha'),
-        cierre: valor(formData, 'cierre'),
+        cierre,
         nota: valor(formData, 'nota'),
         contador: valor(formData, 'contador'),
         creditos: valor(formData, 'creditos') || '0',
-      }),
-    ),
+      })
+      if (!c.ok) return c
+      // Hecha: resumen al cliente con la encuesta (si la empresa lo usa).
+      const aviso = cierre === 'no_cumplida' ? null : await avisarCierre(tx, s.usuario.id, id, { empresaId: s.empresa.id, base })
+      if (aviso && 'encolado' in aviso && aviso.encolado) enviarDespues(s.empresa.id)
+      return { ok: true as const, aviso }
+    }),
   )
   if (!r.ok) return { error: r.error }
   refrescar(id)
-  return { ok: 'Orden cerrada.' }
+  return {
+    ok:
+      r.aviso && 'encolado' in r.aviso
+        ? r.aviso.encolado
+          ? `Orden cerrada. Se le mandó el resumen a ${r.aviso.para}.`
+          : 'Orden cerrada. El cliente no tiene email: mandale el resumen por WhatsApp.'
+        : 'Orden cerrada.',
+  }
+}
+
+/** Avisos al cliente desde la orden: devuelve el texto y el enlace de WhatsApp (y encola el email si tiene). */
+export async function avisarClienteAccion(id: string, tipo: 'visita' | 'cierre') {
+  const base = await origen()
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.cargar', async (tx, s) => {
+      const a =
+        tipo === 'visita'
+          ? await avisarVisita(tx, s.usuario.id, id)
+          : await avisarCierre(tx, s.usuario.id, id, { empresaId: s.empresa.id, base })
+      if ('error' in a) return { ok: false as const, error: a.error }
+      if (a.encolado) enviarDespues(s.empresa.id)
+      return { ok: true as const, ...a }
+    }),
+  )
+  refrescar(id)
+  return r
+}
+
+/** Enlace de la encuesta para mandarlo a mano (renueva el anterior si no se respondió). */
+export async function enlaceEncuestaAccion(id: string) {
+  const base = await origen()
+  return intentar(() =>
+    enLaEmpresa('servicio.cargar', async (tx, s) => {
+      const token = await crearEncuesta(tx, id, s.empresa.id)
+      return token
+        ? { ok: true as const, enlace: `${base}/encuesta/${token}` }
+        : { ok: false as const, error: 'La encuesta ya fue respondida.' }
+    }),
+  )
 }
 
 export async function reabrirAccion(id: string) {
@@ -429,4 +506,63 @@ export async function generarPreventivosAccion() {
 export async function pausarReglaAccion(id: string, activa: boolean) {
   await intentar(() => enLaEmpresa('servicio.cargar', (tx, s) => pausarRegla(tx, s.usuario.id, id, activa)))
   revalidatePath('/servicio/preventivos')
+}
+
+// ------------------------------------------------- Configuración y recordatorios
+
+export async function guardarConfiguracionAccion(_: Estado, formData: FormData): Promise<Estado> {
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.configurar', (tx, s) =>
+      guardarConfiguracion(tx, s.usuario.id, {
+        ...Object.fromEntries(
+          ['respuestaNormal', 'respuestaUrgente', 'resolucionNormal', 'resolucionUrgente', 'emailCoordinacion', 'firma'].map(
+            (k) => [k, valor(formData, k)],
+          ),
+        ),
+        avisarVisita: formData.get('avisarVisita') === 'on',
+        avisarCierre: formData.get('avisarCierre') === 'on',
+        encuesta: formData.get('encuesta') === 'on',
+      }),
+    ),
+  )
+  if (!r.ok) return { error: r.error }
+  revalidatePath('/servicio/configuracion')
+  return { ok: 'Configuración guardada.' }
+}
+
+export async function enviarPendientesAccion() {
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.configurar', async (_, s) => ({ ok: true as const, ...(await enviarPendientes(s.empresa.id, 100)) })),
+  )
+  revalidatePath('/servicio/configuracion')
+  redirect(
+    r.ok
+      ? `/servicio/configuracion?enviados=${r.enviados}&fallidos=${r.fallidos}`
+      : `/servicio/configuracion?error=${encodeURIComponent(r.error)}`,
+  )
+}
+
+export async function guardarRecordatorioAccion(_: Estado, formData: FormData): Promise<Estado> {
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.cargar', (tx, s) =>
+      guardarRecordatorio(
+        tx,
+        s.usuario.id,
+        Object.fromEntries(
+          ['terceroId', 'equipoId', 'fecha', 'hora', 'titulo', 'detalle', 'color', 'avisarA', 'diasAntes'].map((k) => [
+            k,
+            valor(formData, k),
+          ]),
+        ),
+      ),
+    ),
+  )
+  if (!r.ok) return { error: r.error }
+  revalidatePath('/servicio/recordatorios')
+  return { ok: 'Recordatorio agregado.' }
+}
+
+export async function marcarRecordatorioAccion(id: string, hecho: boolean) {
+  await intentar(() => enLaEmpresa('servicio.cargar', (tx, s) => marcarRecordatorio(tx, s.usuario.id, id, hecho)))
+  revalidatePath('/servicio/recordatorios')
 }

@@ -6,7 +6,9 @@ import {
   archivosServicio,
   articulos,
   comprobantes,
+  contratos,
   depositos,
+  encuestas,
   equipos,
   listasPrecios,
   modelosEquipo,
@@ -26,6 +28,7 @@ import { registrarMovimientos, saldoDe } from '../comercial/stock'
 import { registrarLectura } from '../contratos/contratos'
 import { guardarComprobante } from '../facturacion/comprobantes'
 import { cotizacionVigente } from '../comercial/cotizacion'
+import { correosDe } from '../comunicaciones/correo'
 import { preciosVigentes } from '../maestros/articulos'
 import { archivosDe, campoDe, validarValores, type Campo, type Lectura, type Material, type Valores } from './formularios'
 import {
@@ -37,10 +40,12 @@ import {
   estaCerrada,
   estaHecha,
   estadoPlanificado,
+  limitesSla,
   seTrabaja,
   TIPOS_ORDEN,
   vencimiento,
 } from './tipos'
+import { obtenerConfiguracion } from './configuracion'
 import { obtenerPlantilla, plantillaVigente } from './tiposOrden'
 
 export { COBERTURAS, ESTADOS_ORDEN, TIPOS_ORDEN, coberturaSugerida, estaAbierta } from './tipos'
@@ -139,6 +144,13 @@ const EsquemaOrden = z.object({
   falla: z.string().trim().min(3, { error: 'Escribí qué pasa o qué pide el cliente.' }),
   contacto: texto,
   telefono: texto,
+  email: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((v) => v || null)
+    .pipe(z.email({ error: 'El email no es válido.' }).nullable()),
   domicilio: texto,
   tecnicoId: opcionalUuid,
   programada: fechaOpcional,
@@ -214,11 +226,30 @@ export async function guardarOrden(tx: Transaccion, usuarioId: string, entrada: 
   }
 
   const plan = await planificacion(tx, datos)
+  // SLA: se fija al abrir; si cambia la prioridad o el contrato de una orden abierta, se recalcula desde su apertura.
+  const recalcular =
+    !anterior ||
+    (estaAbierta(anterior.estado) && (anterior.prioridad !== datos.prioridad || anterior.contratoId !== datos.contratoId))
+  const sla = recalcular
+    ? limitesSla(
+        anterior?.creado ?? new Date(),
+        datos.prioridad,
+        await obtenerConfiguracion(tx),
+        datos.contratoId
+          ? (
+              await tx
+                .select({ slaRespuestaHoras: contratos.slaRespuestaHoras, slaResolucionHoras: contratos.slaResolucionHoras })
+                .from(contratos)
+                .where(eq(contratos.id, datos.contratoId))
+            )[0]
+          : null,
+      )
+    : {}
   let ordenId = id
   let numero: number
   if (anterior) {
     // Abierta: el estado sale de la planificación. En informe o cerrada se corrigen los datos, nada más.
-    const cambio = estaAbierta(anterior.estado) ? plan : {}
+    const cambio = estaAbierta(anterior.estado) ? { ...plan, ...sla } : {}
     await tx
       .update(ordenesServicio)
       .set({ ...datos, ...cambio })
@@ -228,7 +259,7 @@ export async function guardarOrden(tx: Transaccion, usuarioId: string, entrada: 
     numero = await siguienteNumero(tx, 'orden_servicio')
     const [nueva] = await tx
       .insert(ordenesServicio)
-      .values({ ...datos, ...plan, numero, usuarioId })
+      .values({ ...datos, ...plan, ...sla, numero, usuarioId })
       .returning({ id: ordenesServicio.id })
     ordenId = nueva.id
   }
@@ -299,6 +330,8 @@ export async function marcarVencidas(tx: Transaccion, ahora = new Date()) {
 const EsquemaLlegada = z.object({
   lat: z.coerce.number().min(-90).max(90).nullable().optional(),
   lng: z.coerce.number().min(-180).max(180).nullable().optional(),
+  /** Cuándo llegó, si se marcó sin señal y se manda después (del celular; no del futuro ni de hace más de una semana). */
+  cuando: z.iso.datetime({ offset: true }).nullable().optional(),
 })
 
 /** El técnico marca que llegó (con la ubicación del celular, si la dio). Vale la primera vez. */
@@ -309,7 +342,12 @@ export async function registrarLlegada(tx: Transaccion, usuarioId: string, id: s
   if (!o) return error('Esa orden de servicio ya no existe.')
   if (!estaAbierta(o.estado)) return error('La orden ya no está para hacerse.')
   if (o.llegada) return { ok: true as const, llegada: o.llegada }
-  const llegada = new Date()
+  const ahora = new Date()
+  const marcada = p.data.cuando ? new Date(p.data.cuando) : null
+  const llegada =
+    marcada && marcada.getTime() <= ahora.getTime() + 5 * 60_000 && ahora.getTime() - marcada.getTime() <= 7 * 86_400_000
+      ? marcada
+      : ahora
   const conUbicacion = p.data.lat != null && p.data.lng != null
   await tx
     .update(ordenesServicio)
@@ -825,6 +863,12 @@ export async function listarOrdenes(tx: Transaccion, filtro: FiltroOrdenes = {})
         color: tiposOrden.color,
         cierreTecnico: ordenesServicio.cierreTecnico,
         fechaResolucion: ordenesServicio.fechaResolucion,
+        creado: ordenesServicio.creado,
+        slaRespuesta: ordenesServicio.slaRespuesta,
+        slaResolucion: ordenesServicio.slaResolucion,
+        llegada: ordenesServicio.llegada,
+        informada: ordenesServicio.informada,
+        cerrada: ordenesServicio.cerrada,
         comprobanteId: ordenesServicio.comprobanteId,
         cliente: terceros.razonSocial,
         terceroId: ordenesServicio.terceroId,
@@ -950,7 +994,7 @@ export async function obtenerOrden(tx: Transaccion, id: string) {
           .where(eq(comprobantes.id, o.comprobanteId))
       : Promise.resolve([]),
   ])
-  const [tecnico, tipoOrden, plantilla, archivos] = await Promise.all([
+  const [tecnico, tipoOrden, plantilla, archivos, [encuesta], avisos] = await Promise.all([
     o.tecnicoId
       ? tx
           .select()
@@ -971,6 +1015,17 @@ export async function obtenerOrden(tx: Transaccion, id: string) {
       .from(archivosServicio)
       .where(eq(archivosServicio.ordenId, id))
       .orderBy(asc(archivosServicio.creado)),
+    tx
+      .select({
+        puntaje: encuestas.puntaje,
+        nps: encuestas.nps,
+        comentario: encuestas.comentario,
+        respondida: encuestas.respondida,
+        creado: encuestas.creado,
+      })
+      .from(encuestas)
+      .where(eq(encuestas.ordenId, id)),
+    correosDe(tx, 'orden_servicio', id),
   ])
   return {
     ...o,
@@ -982,6 +1037,8 @@ export async function obtenerOrden(tx: Transaccion, id: string) {
     tipoOrden,
     plantilla,
     archivos,
+    encuesta: encuesta ?? null,
+    avisos,
     visitas,
     items,
     factura: factura ?? null,

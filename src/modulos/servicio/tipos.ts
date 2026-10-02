@@ -98,3 +98,65 @@ export function coberturaSugerida(
 export const aMinutos = (hora: string) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5))
 export const aHora = (minutos: number) =>
   `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`
+
+// ------------------------------------------------------------------ SLA
+
+export type EstadoSla = 'en_termino' | 'por_vencer' | 'vencido' | 'cumplido' | 'incumplido'
+
+export const TEXTO_SLA: Record<EstadoSla, string> = {
+  en_termino: 'En término',
+  por_vencer: 'Por vencer',
+  vencido: 'Vencido',
+  cumplido: 'Cumplido',
+  incumplido: 'Fuera de término',
+}
+
+/**
+ * Situación de un plazo: si ya pasó el hito (llegó, resolvió), si se cumplió;
+ * si no, cuánto falta. Por vencer: queda menos de la quinta parte del plazo.
+ */
+export function situacionPlazo(desde: Date, limite: Date | null, hito: Date | null, ahora = new Date()): EstadoSla | null {
+  if (!limite) return null
+  if (hito) return hito <= limite ? 'cumplido' : 'incumplido'
+  if (ahora > limite) return 'vencido'
+  const total = limite.getTime() - desde.getTime()
+  return limite.getTime() - ahora.getTime() <= total / 5 ? 'por_vencer' : 'en_termino'
+}
+
+/** Respuesta: hasta que el técnico llega. Resolución: hasta que informa (o se cierra). */
+export function situacionSla(
+  o: {
+    creado: Date
+    estado: string
+    slaRespuesta: Date | null
+    slaResolucion: Date | null
+    llegada: Date | null
+    informada: Date | null
+    cerrada: Date | null
+  },
+  ahora = new Date(),
+) {
+  if (o.estado === 'cancelada') return { respuesta: null, resolucion: null }
+  const resuelta = o.informada ?? o.cerrada
+  return {
+    // Si se resolvió sin marcar llegada (por teléfono, por ejemplo), la respuesta es la resolución.
+    respuesta: situacionPlazo(o.creado, o.slaRespuesta, o.llegada ?? resuelta, ahora),
+    resolucion: situacionPlazo(o.creado, o.slaResolucion, resuelta, ahora),
+  }
+}
+
+/** Límites del SLA de una orden nueva: por prioridad, salvo que el contrato fije los suyos. */
+export function limitesSla(
+  creado: Date,
+  prioridad: string,
+  config: { respuestaNormal: number; respuestaUrgente: number; resolucionNormal: number; resolucionUrgente: number },
+  contrato?: { slaRespuestaHoras: number | null; slaResolucionHoras: number | null } | null,
+) {
+  const urgente = prioridad === 'urgente'
+  const respuesta = contrato?.slaRespuestaHoras ?? (urgente ? config.respuestaUrgente : config.respuestaNormal)
+  const resolucion = contrato?.slaResolucionHoras ?? (urgente ? config.resolucionUrgente : config.resolucionNormal)
+  return {
+    slaRespuesta: new Date(creado.getTime() + respuesta * 3_600_000),
+    slaResolucion: new Date(creado.getTime() + resolucion * 3_600_000),
+  }
+}

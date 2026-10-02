@@ -1,17 +1,19 @@
 import { CalendarDays, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { after } from 'next/server'
 
 import { BotonEnlace, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
-import { generarPreventivos } from '@/modulos/servicio/preventivo'
+import { enviarPendientes } from '@/modulos/comunicaciones/correo'
+import { ponerAlDia } from '@/modulos/servicio/avisos'
 import { listarOrdenes, listarTecnicos, marcarVencidas, resumenOrdenes } from '@/modulos/servicio/servicio'
 import { ESTADOS_ORDEN, estaAbierta, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
 
 import { paginaContratos } from '../contratos/modulo'
-import { ChipEstado } from './ChipEstado'
+import { ChipEstado, ChipSla } from './ChipEstado'
 
 export const metadata: Metadata = { title: 'Servicio técnico' }
 
@@ -23,8 +25,8 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
   const { q, estado, tecnico } = (await searchParams) as { q?: string; estado?: string; tecnico?: string }
   const { lista, resumen, tecnicos } = await conEmpresa(sesion.empresa.id, async (tx) => {
     // Al entrar se ponen al día los vencimientos y los preventivos (no hay procesos aparte).
-    await marcarVencidas(tx)
-    if (tienePermiso(sesion.permisos, 'servicio.cargar')) await generarPreventivos(tx, sesion.usuario.id)
+    if (tienePermiso(sesion.permisos, 'servicio.cargar')) await ponerAlDia(tx, sesion.usuario.id)
+    else await marcarVencidas(tx)
     return {
       lista: await listarOrdenes(tx, { q, estado: estado ?? 'activas', tecnicoId: tecnico || undefined }),
       resumen: await resumenOrdenes(tx),
@@ -32,6 +34,7 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
     }
   })
   const hoy = hoyArgentina()
+  after(() => enviarPendientes(sesion.empresa.id).catch(() => undefined))
 
   return (
     <>
@@ -185,6 +188,7 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
                       <div className="flex flex-wrap gap-1">
                         {o.prioridad === 'urgente' && abierta && <Chip tono="error">Urgente</Chip>}
                         <ChipEstado estado={o.estado} cobertura={o.cobertura} facturada={!!o.comprobanteId} />
+                        <ChipSla o={o} compacto />
                       </div>
                       {demora !== null && demora > 0 && (
                         <span className={`text-xs ${demora > 3 ? 'text-aviso' : 'text-texto-3'}`}>

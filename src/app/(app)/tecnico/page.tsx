@@ -2,6 +2,7 @@ import { CheckCircle2, ChevronRight, MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { Sincronizador } from '@/components/servicio/Sincronizador'
 import { Aviso, EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { hoyArgentina } from '@/lib/fechas'
@@ -55,6 +56,10 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
       <EncabezadoPagina
         titulo="Mi agenda"
         bajada={datos.nombre ? `${datos.nombre} · ${hoy.split('-').reverse().join('/')}` : undefined}
+      />
+      <Sincronizador
+        precargar={datos.ordenes.filter((o) => o.estado !== 'informe').map((o) => `/tecnico/${o.id}`)}
+        enviada={enviada}
       />
       {enviada && (
         <div className="mb-4">

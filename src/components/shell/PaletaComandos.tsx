@@ -79,6 +79,27 @@ const ACCIONES_CONTRATOS = [
     icono: Wrench,
     claves: 'plantilla checklist formulario',
   },
+  {
+    id: 'tablero-servicio',
+    texto: 'Tablero de servicio técnico',
+    href: '/servicio/tablero',
+    icono: Wrench,
+    claves: 'indicadores kpi sla nps',
+  },
+  {
+    id: 'recordatorios',
+    texto: 'Recordatorios de clientes',
+    href: '/servicio/recordatorios',
+    icono: Wrench,
+    claves: 'seguimiento llamar',
+  },
+  {
+    id: 'config-servicio',
+    texto: 'Configuración del servicio técnico',
+    href: '/servicio/configuracion',
+    icono: Wrench,
+    claves: 'sla avisos correo encuesta',
+  },
 ]
 
 const ACCIONES = [

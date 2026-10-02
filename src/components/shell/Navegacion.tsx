@@ -25,8 +25,11 @@ import {
   Users,
   Wallet,
   Wrench,
+  BellRing,
   CalendarDays,
+  ChartColumn,
   ListChecks,
+  Settings2,
   RefreshCw,
   Smartphone,
   type LucideIcon,
@@ -103,7 +106,10 @@ const SERVICIO: { titulo: string; items: Item[] } = {
     { href: '/servicio/calendario', texto: 'Calendario', icono: CalendarDays },
     { href: '/tecnico', texto: 'Mi agenda', icono: Smartphone },
     { href: '/servicio/preventivos', texto: 'Preventivos', icono: RefreshCw },
+    { href: '/servicio/recordatorios', texto: 'Recordatorios', icono: BellRing },
+    { href: '/servicio/tablero', texto: 'Tablero', icono: ChartColumn },
     { href: '/servicio/tipos', texto: 'Tipos de orden', icono: ListChecks },
+    { href: '/servicio/configuracion', texto: 'Configuración', icono: Settings2 },
   ],
 }
 

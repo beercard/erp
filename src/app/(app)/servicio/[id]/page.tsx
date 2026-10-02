@@ -15,10 +15,12 @@ import { tienePermiso } from '@/lib/permisos'
 import { equiposDelCliente, listarTecnicos, marcarVencidas, obtenerOrden } from '@/modulos/servicio/servicio'
 import { CIERRES, COBERTURAS, estaAbierta, estaHecha, seTrabaja, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
 import { tiposParaOrden } from '@/modulos/servicio/tiposOrden'
+import { correoConfigurado } from '@/modulos/comunicaciones/correo'
 
 import { alicuotas, paginaContratos } from '../../contratos/modulo'
 import { quitarItemAccion, reabrirAccion } from '../acciones'
-import { ChipEstado } from '../ChipEstado'
+import { AvisosCliente } from '../AvisosCliente'
+import { ChipEstado, ChipSla } from '../ChipEstado'
 import { Cancelar, Cerrar, Facturar, FormularioOrden, Item, Programar, Visita } from '../Formularios'
 
 export const metadata: Metadata = { title: 'Orden de servicio' }
@@ -100,6 +102,7 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
             </span>
             {o.prioridad === 'urgente' && abierta && <Chip tono="error">Urgente</Chip>}
             <ChipEstado estado={o.estado} cobertura={o.cobertura} facturada={!!o.comprobanteId} />
+            <ChipSla o={o} />
           </span>
         }
         acciones={
@@ -269,6 +272,46 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
           {o.solucion && <p className="mb-3 text-sm whitespace-pre-line">{o.solucion}</p>}
           {o.plantilla && (
             <VistaRespuestas campos={o.plantilla.devolucion} valores={o.resultados} equipos={nombresEquipos} vacio="" />
+          )}
+        </Panel>
+      )}
+
+      {cargar && ((abierta && !!o.programada) || estaHecha(o.estado) || o.avisos.length > 0 || o.encuesta) && (
+        <Panel className="mb-4 p-4">
+          <h2 className="mb-3 text-sm font-semibold">Avisos al cliente</h2>
+          <AvisosCliente
+            id={o.id}
+            visita={abierta && !!o.programada}
+            cierre={estaHecha(o.estado)}
+            correoConfigurado={correoConfigurado()}
+          />
+          {o.avisos.length > 0 && (
+            <ul className="mt-3 flex flex-col gap-1 border-t border-borde pt-3 text-xs text-texto-2">
+              {o.avisos.map((c) => (
+                <li key={c.id} className="flex flex-wrap gap-x-2">
+                  <span>{horaDe(c.creado)}</span>
+                  <span className="font-medium text-texto">{c.asunto}</span>
+                  <span>a {c.para}</span>
+                  <Chip tono={c.estado === 'enviado' ? 'ok' : c.estado === 'error' ? 'error' : 'neutro'}>
+                    {c.estado === 'enviado' ? 'Enviado' : c.estado === 'error' ? 'Error al enviar' : 'Pendiente de envío'}
+                  </Chip>
+                </li>
+              ))}
+            </ul>
+          )}
+          {o.encuesta && (
+            <p className="mt-3 border-t border-borde pt-3 text-sm">
+              {o.encuesta.respondida ? (
+                <>
+                  Encuesta: <span className="font-medium text-aviso">{'★'.repeat(o.encuesta.puntaje ?? 0)}</span>
+                  <span className="text-texto-3">{'★'.repeat(5 - (o.encuesta.puntaje ?? 0))}</span> · recomendaría{' '}
+                  {o.encuesta.nps}/10
+                  {o.encuesta.comentario && <span className="block text-texto-2">“{o.encuesta.comentario}”</span>}
+                </>
+              ) : (
+                <span className="text-texto-2">Encuesta enviada, sin respuesta todavía.</span>
+              )}
+            </p>
           )}
         </Panel>
       )}

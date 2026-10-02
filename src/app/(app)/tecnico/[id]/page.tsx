@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { Sincronizador } from '@/components/servicio/Sincronizador'
 import { VistaRespuestas } from '@/components/servicio/VistaRespuestas'
 import { Aviso, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
@@ -61,6 +62,7 @@ export default async function OrdenTecnico({ params }: PageProps<'/tecnico/[id]'
       <Link href="/tecnico" className="flex items-center gap-1 text-sm text-texto-2 hover:text-texto">
         <ArrowLeft aria-hidden className="size-4" /> Mi agenda
       </Link>
+      <Sincronizador />
       <header>
         <p className="text-xs text-texto-3">
           Orden {o.numero} · {o.tipoOrden?.nombre ?? o.tipo}

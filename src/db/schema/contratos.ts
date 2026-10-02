@@ -96,6 +96,9 @@ export const contratos = pgTable(
     estado: text('estado').notNull().default('activo'),
     /** Clave en el sistema anterior (cliente|grupo o equipo), para importar sin duplicar. */
     codigoOrigen: text('codigo_origen'),
+    /** Tiempos de servicio comprometidos en el contrato (horas); vacíos: los generales de la empresa. */
+    slaRespuestaHoras: integer('sla_respuesta_horas'),
+    slaResolucionHoras: integer('sla_resolucion_horas'),
     observaciones: text('observaciones'),
     ...marcasDeTiempo(),
   },
