@@ -94,7 +94,6 @@ if (prueba.status === 401) {
 linea('## Pedidos')
 const tiposOt = await bajar('tipos-ot', '/work-orders-schemas')
 const formularios = await bajar('formularios-esquemas', '/digital-forms-schemas')
-const estadosFormulario = await bajar('formularios-estados', '/digital-forms-states')
 const etiquetasOt = await bajar('etiquetas-ot', '/work-orders-labels')
 const camposCliente = await bajar('clientes-campos', '/client-custom-fields')
 const grupos = await bajar('clientes-grupos', '/client-groups')
@@ -108,26 +107,61 @@ const zonas = await bajar('zonas', '/zones')
 const tiposEntrega = await bajar('entregas-esquemas', '/deliveries-schemas')
 const clientes = await bajar('clientes-muestra', `/clients?limit=${MUESTRA}&offset=0`)
 
-// Esquemas completos de cada tipo de OT y formulario.
-for (const t of tiposOt as { id?: string | number }[])
-  if (t.id !== undefined) await bajar(`tipo-ot-${t.id}`, `/work-orders-schemas/${t.id}`)
-for (const f of formularios as { id?: string | number }[])
-  if (f.id !== undefined) await bajar(`formulario-${f.id}`, `/digital-forms-schemas/${f.id}`)
+// Esquemas completos de cada versión de tipo de OT, formulario, entrega y objeto en cliente.
+const idDe = (x: unknown) => {
+  const o = x as Record<string, unknown>
+  return o.wo_shema_id ?? o.wo_schema_id ?? o.schema_id ?? o.obj_id ?? o.mdb_id ?? o.id
+}
+for (const [nombre, lista, ruta] of [
+  ['tipo-ot', tiposOt, '/work-orders-schemas'],
+  ['formulario', formularios, '/digital-forms-schemas'],
+  ['entrega', tiposEntrega, '/deliveries-schemas'],
+  ['objeto', objetos, '/clientobj'],
+  ['masterdb', catalogos, '/masterdbs'],
+] as const)
+  for (const x of lista) {
+    const id = idDe(x)
+    if (id !== undefined) await bajar(`${nombre}-${id}`, `${ruta}/${id}`)
+  }
 
-// Órdenes de los últimos 90 días (muestra) y formularios.
+// Órdenes de los últimos 90 días, de a 15 días (la API no deja pedir más), y formularios.
+const iso = (d: Date) => d.toISOString()
 const hasta = new Date()
+const ordenes: unknown[] = []
+for (let fin = hasta; fin.getTime() > hasta.getTime() - 90 * 86400000;) {
+  const inicio = new Date(fin.getTime() - 14 * 86400000)
+  const r = await leer(`/work-orders?from=${iso(inicio)}&to=${iso(fin)}`)
+  if (r.ok) ordenes.push(...datos(r))
+  else console.warn(`/work-orders: ${r.status} ${JSON.stringify(r.cuerpo).slice(0, 200)}`)
+  fin = new Date(inicio.getTime() - 86400000)
+}
+await guardar('ordenes-90-dias', ordenes)
+linea(`- \`/work-orders\` (90 días, de a 15): ${ordenes.length} órdenes`)
 const desde = new Date(hasta.getTime() - 90 * 86400000)
-const ordenes = await bajar(
-  'ordenes-muestra',
-  `/work-orders?from=${desde.toISOString()}&to=${hasta.toISOString()}&limit=${MUESTRA}`,
+const enviados = await bajar(
+  'formularios-muestra',
+  `/digital-forms?from=${iso(desde)}&to=${iso(hasta)}&limit=${Math.min(100, MUESTRA)}&offset=0`,
 )
-const enviados = await bajar('formularios-muestra', `/digital-forms?limit=${MUESTRA}`)
+
+// Estados de formulario: por grupo de formulario.
+const gruposForm = [
+  ...new Set((formularios as { form_group?: string | number }[]).map((f) => f.form_group).filter((g) => g !== undefined)),
+]
+const estadosFormulario: unknown[] = []
+for (const g of gruposForm) {
+  const r = await leer(`/digital-forms-states?form_group=${encodeURIComponent(String(g))}&without_deleted=true`)
+  if (r.ok) estadosFormulario.push(...datos(r).map((e) => ({ ...(e as object), form_group: g })))
+}
+await guardar('formularios-estados', estadosFormulario)
 
 linea('')
 linea('## Lo que usa la cuenta')
-const nombre = (x: unknown) => {
+const nombre = (x: unknown): string => {
   const o = x as Record<string, unknown>
-  return String(o.name ?? o.title ?? o.label ?? o.description ?? o.id ?? '?')
+  const v = o.name ?? o.title ?? o.label ?? o.description ?? o.id ?? '?'
+  if (v && typeof v === 'object') return nombre(v)
+  const version = o.version !== undefined ? ` (v${o.version}${o.production ? ', publicada' : ''})` : ''
+  return `${String(v)}${version}`
 }
 const lista = (titulo: string, xs: unknown[]) => {
   linea('')
@@ -135,8 +169,8 @@ const lista = (titulo: string, xs: unknown[]) => {
   for (const x of xs.slice(0, 100)) linea(`- ${nombre(x)}`)
 }
 lista('Tipos de OT', tiposOt)
-for (const t of tiposOt as { id?: string | number }[]) {
-  const det = (await leer(`/work-orders-schemas/${t.id}`)).cuerpo
+for (const t of tiposOt) {
+  const det = (await leer(`/work-orders-schemas/${idDe(t)}`)).cuerpo
   const cs = campos(det)
   if (cs.length) {
     linea('')

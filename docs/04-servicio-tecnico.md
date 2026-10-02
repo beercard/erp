@@ -153,3 +153,27 @@ Por prioridad:
 10. **Entregas y rutas** (logística con ventanas horarias, capacidad y retrabajos): solo si la cuenta lo usa; el relevamiento lo dice.
 
 Lo que Persat no tiene y el ERP sí: lógica condicional en formularios, preventivo por contador de copias, historial por equipo, stock real de materiales, facturación y contratos, webhooks firmados (los de Persat no tienen firma documentada) y OT con prioridad y SLA.
+
+## 6. Relevamiento de la cuenta real (2 de octubre de 2026)
+
+Con `npm run persat:relevar` (solo lectura). Lo que se usa de verdad:
+
+- **Volumen:** 658 órdenes en 90 días (unas 220 por mes), 194 clientes distintos atendidos, 3 técnicos, 5 usuarios.
+- **Un solo tipo de orden** ("Servicio para Técnicos", 12 versiones, 60 min por defecto). La clase de trabajo va en un desplegable "Tipo de tarea": mantenimiento de equipos propios (37 %), toma de contador (20 %), reemplazo de insumos (14 %), diagnóstico (7 %), mantenimiento de equipos de terceros (5 %), asistencia remota (4 %), entrega de equipos (4 %).
+- **Instrucciones:** tipo de tarea, fecha y hora de asignación, equipo del cliente, detalle del inconveniente.
+- **Devolución del técnico:** estado (realizado, parcial, pendiente), hora de llegada y de fin, contador, cantidad de tóner por color (amarillo, cian, magenta, negro), fotos, trabajos realizados (toma de medidor, mantenimiento, reparación, diagnóstico, otro), detalle, tareas pendientes, equipos recibidos (cable 220 V, cable de red, tóner genérico, hoja), firma y aclaración.
+- **Etiquetas:** "Servicio contrato" (83 % de las órdenes), "Servicio a tercero" (17 %), "Urgente" y "Capacitación" casi sin uso. Cada orden lleva una.
+- **Estados:** 505 cerradas OK, 7 con desvío, 12 no cumplidas, 3 canceladas, 17 vencidas, 2 asignadas y **112 en informe sin revisar** (17 %): el cierre del supervisor se acumula.
+- **No usan:** preventivo (0 órdenes repetitivas), entregas (2 de prueba en 2024), formularios sueltos (0 en 90 días), rastreo de dispositivos (0), grupos de clientes (uno solo). Varios técnicos por orden: 3 de 658.
+- **Clientes:** razón social, dirección y ubicación en el mapa; campos propios Nombre, Email, Teléfono, Localidad y Anotaciones; 9 tipos (cliente grande, mediano, chico, estación de servicio, oficina, garage…). **No tienen CUIT**: para unirlos con los clientes del ERP hay que emparejar por nombre.
+- **Equipos (objetos en cliente):** una sola plantilla con "Serie - Modelo" en un mismo texto, "Contador" (texto) y "Ubicación".
+- **Catálogo:** "Listado recepción equipo" (código y detalle).
+- **Zonas:** 16, por ciudad (Córdoba, GBA Norte/Oeste/Sur, Rosario, Mendoza, Tucumán, Corrientes, Resistencia…).
+
+Consecuencias para el ERP:
+
+1. **El importador es lo primero:** clientes emparejados por nombre con los del ERP (los que no coinciden se revisan a mano), equipos separando serie y modelo, el contador como lectura, técnicos, etiquetas y el historial de órdenes con su devolución.
+2. **El tipo de orden de la cuenta se arma igual en el ERP** con nuestros campos (tabla de tóner por color, trabajos realizados, equipos recibidos, firma).
+3. **Toma de contador = 20 % de las visitas:** con los contratos por copia del ERP, el contador cargado en la visita ya factura; y el portal deja que el cliente lo cargue solo, sin visita.
+4. **Las 112 órdenes sin revisar** piden un **cierre en lote** desde el listado (revisar varias y cerrarlas OK de una vez).
+5. Lo que no usan (entregas, preventivo por regla, rastreo, grupos) baja de prioridad.
