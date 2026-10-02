@@ -8,12 +8,13 @@ import { after } from 'next/server'
 
 import type { Transaccion } from '@/db/conexion'
 import { ordenesServicio, terceros } from '@/db/schema'
-import { enLaEmpresa, SinPermiso, type SesionConEmpresa } from '@/lib/auth/servidor'
+import { enLaEmpresa, sesionActual, SinPermiso, type SesionConEmpresa } from '@/lib/auth/servidor'
 import { normalizarNumero } from '@/lib/dinero'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
 import { cotizacionVigente } from '@/modulos/comercial/cotizacion'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
+import { entregarPendientes } from '@/modulos/integraciones/webhooks'
 import { buscarHuecos } from '@/modulos/servicio/agenda'
 import { avisarCierre, avisarVisita, crearEncuesta } from '@/modulos/servicio/avisos'
 import { guardarConfiguracion } from '@/modulos/servicio/configuracion'
@@ -53,6 +54,11 @@ const valor = (f: FormData, k: string) => String(f.get(k) ?? '').trim()
 export type Estado = { error?: string; ok?: string; aviso?: string } | undefined
 
 const refrescar = (id: string) => {
+  // Los webhooks que haya disparado el cambio salen después de responder.
+  after(async () => {
+    const s = await sesionActual().catch(() => null)
+    if (s?.empresa) await entregarPendientes(s.empresa.id).catch(() => undefined)
+  })
   revalidatePath(`/servicio/${id}`)
   revalidatePath(`/tecnico/${id}`)
   revalidatePath('/servicio')

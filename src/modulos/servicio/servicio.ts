@@ -29,6 +29,7 @@ import { registrarLectura } from '../contratos/contratos'
 import { guardarComprobante } from '../facturacion/comprobantes'
 import { cotizacionVigente } from '../comercial/cotizacion'
 import { correosDe } from '../comunicaciones/correo'
+import { emitir } from '../integraciones/webhooks'
 import { preciosVigentes } from '../maestros/articulos'
 import { archivosDe, campoDe, validarValores, type Campo, type Lectura, type Material, type Valores } from './formularios'
 import {
@@ -166,13 +167,15 @@ const EsquemaOrden = z.object({
     .optional()
     .or(z.literal('').transform(() => null)),
   observaciones: texto,
+  /** Quién la abre (solo cuenta al crearla). */
+  origen: z.enum(['oficina', 'portal', 'api', 'preventivo']).default('oficina'),
 })
 
 /** Abre una orden nueva o corrige los datos de una que no está facturada ni cancelada. */
 export async function guardarOrden(tx: Transaccion, usuarioId: string, entrada: unknown, id?: string) {
   const p = EsquemaOrden.safeParse(entrada)
   if (!p.success) return error(primerError(p.error))
-  const { cobertura, instrucciones: respuestas, ...d } = p.data
+  const { cobertura, instrucciones: respuestas, origen, ...d } = p.data
 
   let equipo: typeof equipos.$inferSelect | undefined
   if (d.equipoId) {
@@ -259,9 +262,10 @@ export async function guardarOrden(tx: Transaccion, usuarioId: string, entrada: 
     numero = await siguienteNumero(tx, 'orden_servicio')
     const [nueva] = await tx
       .insert(ordenesServicio)
-      .values({ ...datos, ...plan, ...sla, numero, usuarioId })
+      .values({ ...datos, ...plan, ...sla, numero, origen, usuarioId })
       .returning({ id: ordenesServicio.id })
     ordenId = nueva.id
+    await emitir(tx, 'orden.creada', await datosEvento(tx, ordenId))
   }
   await auditar(tx, {
     usuarioId,
@@ -303,6 +307,7 @@ export async function programarOrden(tx: Transaccion, usuarioId: string, id: str
     .set({ ...d, ...plan })
     .where(eq(ordenesServicio.id, id))
   await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: d })
+  await emitir(tx, 'orden.programada', await datosEvento(tx, id))
   return { ok: true as const, estado: plan.estado }
 }
 
@@ -519,6 +524,7 @@ export async function informarOrden(tx: Transaccion, usuarioId: string, id: stri
     })
     .where(eq(ordenesServicio.id, id))
   await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: { informe: d } })
+  await emitir(tx, 'orden.informada', await datosEvento(tx, id))
   return { ok: true as const, avisos }
 }
 
@@ -702,6 +708,7 @@ export async function cerrarOrden(tx: Transaccion, usuarioId: string, id: string
     })
     .where(eq(ordenesServicio.id, id))
   await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: { cierre: d } })
+  await emitir(tx, 'orden.cerrada', await datosEvento(tx, id))
   return { ok: true as const }
 }
 
@@ -751,6 +758,7 @@ export async function cancelarOrden(tx: Transaccion, usuarioId: string, id: stri
     .set({ estado: 'cancelada', motivoCancelacion: motivo.trim(), vence: null })
     .where(eq(ordenesServicio.id, id))
   await auditar(tx, { usuarioId, accion: 'anulacion', entidad: 'orden_servicio', entidadId: id, despues: { motivo } })
+  await emitir(tx, 'orden.cancelada', await datosEvento(tx, id))
   return { ok: true as const }
 }
 
@@ -1168,4 +1176,55 @@ export async function agendaDelTecnico(tx: Transaccion, tecnicoId: string) {
       (a.hora ?? '99').localeCompare(b.hora ?? '99') ||
       a.numero - b.numero,
   )
+}
+
+/** Datos de una orden para la API y los webhooks (sin datos internos de la empresa). */
+export async function datosEvento(tx: Transaccion, id: string) {
+  const [f] = await tx
+    .select({
+      o: ordenesServicio,
+      cliente: { id: terceros.id, codigo: terceros.codigo, razonSocial: terceros.razonSocial },
+      serie: equipos.serie,
+      modelo: modelosEquipo.nombre,
+      tecnico: tecnicos.nombre,
+      tipo: { codigo: tiposOrden.codigo, nombre: tiposOrden.nombre },
+    })
+    .from(ordenesServicio)
+    .innerJoin(terceros, eq(terceros.id, ordenesServicio.terceroId))
+    .leftJoin(equipos, eq(equipos.id, ordenesServicio.equipoId))
+    .leftJoin(modelosEquipo, eq(modelosEquipo.id, equipos.modeloId))
+    .leftJoin(tecnicos, eq(tecnicos.id, ordenesServicio.tecnicoId))
+    .leftJoin(tiposOrden, eq(tiposOrden.id, ordenesServicio.tipoOrdenId))
+    .where(eq(ordenesServicio.id, id))
+  if (!f) return { id }
+  const o = f.o
+  return {
+    id: o.id,
+    numero: o.numero,
+    estado: o.estado,
+    origen: o.origen,
+    clase: o.tipo,
+    tipo: f.tipo?.codigo ? f.tipo : null,
+    prioridad: o.prioridad,
+    cobertura: o.cobertura,
+    fecha: o.fecha,
+    cliente: f.cliente,
+    equipo: f.serie ? { id: o.equipoId, serie: f.serie, modelo: f.modelo } : null,
+    falla: o.falla,
+    programada: o.programada,
+    hora: o.hora,
+    duracion: o.duracion,
+    tecnico: f.tecnico,
+    llegada: o.llegada,
+    informada: o.informada,
+    cerrada: o.cerrada,
+    solucion: o.solucion,
+    cierreTecnico: o.cierreTecnico,
+    contador: o.contador,
+    slaRespuesta: o.slaRespuesta,
+    slaResolucion: o.slaResolucion,
+    comprobanteId: o.comprobanteId,
+    instrucciones: o.instrucciones,
+    resultados: o.resultados,
+  }
 }

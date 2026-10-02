@@ -156,7 +156,10 @@ export async function generarPreventivos(tx: Transaccion, usuarioId: string, hor
         errores.push(`Preventivo de ${tipo.nombre}: ${o.error}`)
         return false
       }
-      await tx.update(ordenesServicio).set({ preventivoId: r.id, origenPreventivo: origen }).where(eq(ordenesServicio.id, o.id))
+      await tx
+        .update(ordenesServicio)
+        .set({ preventivoId: r.id, origenPreventivo: origen, origen: 'preventivo' })
+        .where(eq(ordenesServicio.id, o.id))
       creadas++
       return true
     }

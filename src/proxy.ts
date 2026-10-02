@@ -17,6 +17,6 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Todo menos la pantalla de ingreso, los archivos estáticos y los internos de Next.
   matcher: [
-    '/((?!ingresar|invitacion|registro|precios|encuesta|api/cron|manifest.webmanifest|sw.js|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp)$).*)',
+    '/((?!ingresar|invitacion|registro|precios|encuesta|portal|api/cron|api/v1|manifest.webmanifest|sw.js|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp)$).*)',
   ],
 }

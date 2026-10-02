@@ -273,7 +273,7 @@ export async function registrarLectura(
   tx: Transaccion,
   usuarioId: string,
   entrada: unknown,
-  origen: 'manual' | 'archivo' | 'mps' | 'tecnico' = 'manual',
+  origen: 'manual' | 'archivo' | 'mps' | 'tecnico' | 'portal' | 'api' = 'manual',
 ) {
   const p = EsquemaLectura.safeParse(entrada)
   if (!p.success) return { ok: false as const, error: primerError(p.error) }

@@ -77,6 +77,8 @@ export const tecnicos = pgTable(
     dias: text('dias').notNull().default('12345'),
     /** Desde dónde sale (domicilio), como el punto de partida de Persat. */
     partida: text('partida'),
+    partidaLat: numeric('partida_lat', { precision: 9, scale: 6 }),
+    partidaLng: numeric('partida_lng', { precision: 9, scale: 6 }),
     activo: boolean('activo').notNull().default(true),
     ...marcasDeTiempo(),
   },
@@ -107,6 +109,8 @@ export const tiposOrden = pgTable(
     duracion: integer('duracion').notNull().default(60),
     /** Horas que tiene el técnico para informar desde la hora programada; después la orden vence. */
     plazoHoras: integer('plazo_horas').notNull().default(48),
+    /** El cliente lo puede pedir desde el portal. */
+    portal: boolean('portal').notNull().default(false),
     /** Versión vigente de los formularios (la última de plantillas_orden). */
     version: integer('version').notNull().default(1),
     activo: boolean('activo').notNull().default(true),
@@ -255,6 +259,11 @@ export const ordenesServicio = pgTable(
     avisoVisita: timestamp('aviso_visita', { withTimezone: true }),
     /** Email del cliente para esta orden (si no, el de su ficha). */
     email: text('email'),
+    /** Quién la abrió: oficina | portal (el cliente) | api | preventivo */
+    origen: text('origen').notNull().default('oficina'),
+    /** Dónde es la visita (del equipo, o geocodificado del domicilio). */
+    lat: numeric('lat', { precision: 9, scale: 6 }),
+    lng: numeric('lng', { precision: 9, scale: 6 }),
     /** Regla de preventivo que la generó, y para qué fecha (o contador). */
     preventivoId: uuid('preventivo_id'),
     origenPreventivo: text('origen_preventivo'),
@@ -284,6 +293,7 @@ export const ordenesServicio = pgTable(
     ),
     check('ordenes_servicio_hora', sql`${t.hora} ~ '^[0-2][0-9]:[0-5][0-9]$'`),
     check('ordenes_servicio_duracion', sql`${t.duracion} between 5 and 1440`),
+    check('ordenes_servicio_origen', sql`${t.origen} in ('oficina', 'portal', 'api', 'preventivo')`),
     uniqueIndex('ordenes_servicio_preventivo').on(t.empresaId, t.preventivoId, t.origenPreventivo),
     deLaEmpresa('ordenes_servicio_tipo_orden_fk', t.empresaId, t.tipoOrdenId, tiposOrden),
     deLaEmpresa('ordenes_servicio_plantilla_fk', t.empresaId, t.plantillaId, plantillasOrden),
@@ -395,6 +405,12 @@ export const configuracionServicio = pgTable(
     encuesta: boolean('encuesta').notNull().default(true),
     /** Firma al pie de los correos (nombre, teléfono, horario). */
     firma: text('firma'),
+    /** Portal de clientes: activo, y si el cliente ve sus órdenes y carga contadores. */
+    portal: boolean('portal').notNull().default(false),
+    portalOrdenes: boolean('portal_ordenes').notNull().default(true),
+    portalContadores: boolean('portal_contadores').notNull().default(true),
+    /** Color del portal (el de la marca de la empresa). */
+    portalColor: text('portal_color').notNull().default('#0f766e'),
     ...marcasDeTiempo(),
   },
   (t) => [
@@ -462,5 +478,70 @@ export const encuestas = pgTable(
     check('encuestas_valores', sql`(${t.puntaje} between 1 and 5) and (${t.nps} between 0 and 10)`),
     check('encuestas_respondida', sql`(${t.respondida} is null) = (${t.puntaje} is null)`),
     deLaEmpresa('encuestas_orden_fk', t.empresaId, t.ordenId, ordenesServicio),
+  ],
+)
+
+/**
+ * Usuarios del portal de clientes: gente del cliente (no de la empresa), que
+ * entra con su email y ve solo lo de su cliente. Se dan de alta por invitación.
+ */
+export const usuariosPortal = pgTable(
+  'usuarios_portal',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    terceroId: uuid('tercero_id').notNull(),
+    email: text('email').notNull(),
+    nombre: text('nombre'),
+    /** scrypt (como los usuarios del ERP). Nulo hasta que acepta la invitación. */
+    hashClave: text('hash_clave'),
+    /** Hash del token de la invitación (o de recuperar la clave) y su vencimiento. */
+    invitacionHash: text('invitacion_hash'),
+    invitacionVence: timestamp('invitacion_vence', { withTimezone: true }),
+    activo: boolean('activo').notNull().default(true),
+    ultimoIngreso: timestamp('ultimo_ingreso', { withTimezone: true }),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex().on(t.empresaId, t.email),
+    uniqueIndex('usuarios_portal_invitacion').on(t.invitacionHash),
+    unique('usuarios_portal_empresa_id').on(t.empresaId, t.id),
+    deLaEmpresa('usuarios_portal_tercero_fk', t.empresaId, t.terceroId, terceros),
+  ],
+)
+
+export const sesionesPortal = pgTable(
+  'sesiones_portal',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    usuarioId: uuid('usuario_id').notNull(),
+    /** Hash del token de la cookie. */
+    tokenHash: text('token_hash').notNull(),
+    vence: timestamp('vence', { withTimezone: true }).notNull(),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('sesiones_portal_token').on(t.tokenHash),
+    deLaEmpresa('sesiones_portal_usuario_fk', t.empresaId, t.usuarioId, usuariosPortal).onDelete('cascade'),
+  ],
+)
+
+/** Posiciones del técnico (las manda el celular mientras tiene la app abierta, si lo acepta). */
+export const posicionesTecnicos = pgTable(
+  'posiciones_tecnicos',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    tecnicoId: uuid('tecnico_id').notNull(),
+    lat: numeric('lat', { precision: 9, scale: 6 }).notNull(),
+    lng: numeric('lng', { precision: 9, scale: 6 }).notNull(),
+    /** Precisión en metros, según el celular. */
+    precision: integer('precision'),
+    momento: timestamp('momento', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index().on(t.empresaId, t.tecnicoId, t.momento),
+    deLaEmpresa('posiciones_tecnicos_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
   ],
 )

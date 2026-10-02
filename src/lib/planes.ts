@@ -158,6 +158,7 @@ const FUNCION_DE_PERMISO: Record<string, Funcion> = {
   'ventas.presupuestos': 'comercial',
   'ventas.pedidos': 'comercial',
   'ventas.remitos': 'comercial',
+  'empresa.integraciones': 'api',
 }
 const FUNCION_DE_MODULO: Record<string, Funcion> = {
   stock: 'stock',

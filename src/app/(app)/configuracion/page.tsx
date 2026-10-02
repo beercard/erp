@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, CreditCard, Landmark, Percent, ShieldCheck } from 'lucide-react'
+import { Building2, ChevronRight, CreditCard, Landmark, Percent, Plug, ShieldCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -47,6 +47,13 @@ export default async function Configuracion() {
       texto: 'Retención de Ganancias (RG 830): regímenes, mínimos y escala.',
       icono: Percent,
       permiso: 'empresa.datos',
+    },
+    {
+      href: '/configuracion/integraciones',
+      titulo: 'API e integraciones',
+      texto: 'Claves de la API y webhooks para conectar otros sistemas.',
+      icono: Plug,
+      permiso: 'empresa.integraciones',
     },
   ].filter((e) => puede(e.permiso))
 
