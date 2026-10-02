@@ -18,6 +18,7 @@ import {
   arcaConfiguracion,
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { controlarPeriodoIva } from '../impuestos/presentaciones'
 import { validarCuit } from '../../lib/cuit'
 import { aImporte, D, monto } from '../../lib/dinero'
 import { hoyArgentina, sumarDias } from '../../lib/fechas'
@@ -464,6 +465,8 @@ export async function emitirComprobante(
     if (!c) return { error: 'Ese comprobante ya no existe.' }
     if (c.estado === 'autorizado') return { error: 'El comprobante ya está autorizado.' }
     if (c.estado === 'pendiente_verificacion') return { verificar: true as const }
+    const cerrado = await controlarPeriodoIva(tx, c.fecha.slice(0, 7))
+    if (cerrado) return { error: cerrado }
     // La ficha del cliente pudo cambiar desde que se armó el borrador.
     const [tercero] = await tx.select().from(terceros).where(eq(terceros.id, c.terceroId))
     const receptor = datosReceptor(tercero)

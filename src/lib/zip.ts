@@ -67,7 +67,10 @@ export function crc32(datos: Uint8Array) {
 }
 
 /** Arma un .zip sin comprimir (alcanza para un .xlsx chico y no necesita dependencias). */
-export function escribirZip(archivos: { nombre: string; datos: Uint8Array }[]): Uint8Array {
+export function escribirZip(archivos: { nombre: string; datos: Uint8Array }[], fecha = new Date()): Uint8Array {
+  // Fecha y hora en el formato de MS-DOS (las que muestra el explorador de archivos).
+  const hora = (fecha.getHours() << 11) | (fecha.getMinutes() << 5) | Math.floor(fecha.getSeconds() / 2)
+  const dia = ((fecha.getFullYear() - 1980) << 9) | ((fecha.getMonth() + 1) << 5) | fecha.getDate()
   const locales: Uint8Array[] = []
   const centrales: Uint8Array[] = []
   let desplazamiento = 0
@@ -80,6 +83,8 @@ export function escribirZip(archivos: { nombre: string; datos: Uint8Array }[]): 
     v.setUint16(4, 20, true)
     v.setUint16(6, 0x0800, true) // nombres en UTF-8
     v.setUint16(8, 0, true) // sin comprimir
+    v.setUint16(10, hora, true)
+    v.setUint16(12, dia, true)
     v.setUint32(14, crc, true)
     v.setUint32(18, a.datos.length, true)
     v.setUint32(22, a.datos.length, true)
@@ -92,6 +97,8 @@ export function escribirZip(archivos: { nombre: string; datos: Uint8Array }[]): 
     w.setUint16(6, 20, true)
     w.setUint16(8, 0x0800, true)
     w.setUint16(10, 0, true)
+    w.setUint16(12, hora, true)
+    w.setUint16(14, dia, true)
     w.setUint32(16, crc, true)
     w.setUint32(20, a.datos.length, true)
     w.setUint32(24, a.datos.length, true)

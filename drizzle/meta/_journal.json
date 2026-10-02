@@ -197,6 +197,20 @@
       "when": 1790963786813,
       "tag": "0027_fichadas_geocercas_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790965393384,
+      "tag": "0028_impuestos",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790965394918,
+      "tag": "0029_impuestos_seguridad",
+      "breakpoints": true
     }
   ]
 }
