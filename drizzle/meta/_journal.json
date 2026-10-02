@@ -239,6 +239,20 @@
       "when": 1790967612917,
       "tag": "0033_vencimientos_contador_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790968195677,
+      "tag": "0034_contabilidad",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790968197439,
+      "tag": "0035_contabilidad_seguridad",
+      "breakpoints": true
     }
   ]
 }
