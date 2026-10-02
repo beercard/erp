@@ -67,34 +67,35 @@ Marcas: **[doc]** confirmado en la ayuda o la API; **[mkt]** solo en marketing; 
 
 ## 2. Comparación con el ERP
 
-| Función                                                                 | Persat               | ERP                                                     | Estado                                 |
-| ----------------------------------------------------------------------- | -------------------- | ------------------------------------------------------- | -------------------------------------- |
-| Tipos de OT con instrucciones y devolución versionadas                  | Sí                   | Sí                                                      | Hecho                                  |
-| Estados pendiente → proyectada → asignada → informe → cerrada / vencida | Sí                   | Sí                                                      | Hecho                                  |
-| Cierre del supervisor con tipo (OK, desvío, no cumplida)                | Sí                   | Sí                                                      | Hecho                                  |
-| Formularios con fotos, firma, tablas, equipo, contador                  | Sí                   | Sí                                                      | Hecho                                  |
-| Lógica condicional en formularios                                       | **No**               | Sí                                                      | Hecho (mejor que Persat)               |
-| Calendario por técnico con arrastrar y soltar                           | Sí                   | Sí                                                      | Hecho                                  |
-| Asistente de huecos (horario laboral, carga)                            | Sí                   | Sí, sin tiempo de viaje                                 | Hecho (viaje en fase C, con mapas)     |
-| App del técnico: agenda, llegada y salida con GPS, devolución, firma    | Android              | Web (Android e iPhone)                                  | Hecho                                  |
-| Materiales usados con descuento de stock real (depósito por camioneta)  | **No**               | Sí                                                      | Hecho                                  |
-| Contador tomado en la visita como lectura del contrato                  | Manual               | Sí                                                      | —                                      |
-| Preventivo semanal o mensual                                            | Por cliente          | Por equipo o cliente                                    | Hecho                                  |
-| Preventivo por contador de copias                                       | **No**               | Sí                                                      | Hecho (mejor que Persat)               |
-| Constancia PDF con firma                                                | Sí                   | Sí                                                      | Hecho                                  |
-| Historial por equipo                                                    | **No**               | Sí                                                      | —                                      |
-| Facturación con ARCA y contratos por copia                              | **No**               | Sí                                                      | —                                      |
-| Trabajo sin señal (offline)                                             | Sí                   | App instalable; llegada, fotos, firma e informe en cola | Hecho (fase B)                         |
-| Recordatorios (seguimientos) de cliente                                 | Sí                   | Sí, con aviso por email                                 | Hecho (fase B)                         |
-| Aviso al cliente por email (visita, cierre con resumen)                 | Sí                   | Email y WhatsApp                                        | Hecho (fase B)                         |
-| Encuesta de satisfacción al cerrar                                      | [mkt]                | Estrellas y NPS, enlace sin usuario                     | Hecho (fase B)                         |
-| SLA por prioridad con alertas                                           | [mkt]                | Por prioridad o contrato, alerta a coordinación         | Hecho (fase B)                         |
-| Tablero de indicadores (cumplimiento, primera visita, tiempos)          | Sí                   | Sí, más reincidencias y consumos                        | Hecho (fase B)                         |
-| Portal de clientes                                                      | Sí                   | No                                                      | Fase C                                 |
-| Mapa de técnicos, rutas, geocercas                                      | Sí (licencia aparte) | No                                                      | Fase C                                 |
-| API y webhooks                                                          | Sí                   | No                                                      | Fase C (con el módulo de API del plan) |
-| Formularios sueltos con bandeja de entrada                              | Sí                   | No                                                      | Fase C                                 |
-| Asistente de IA sobre los datos, WhatsApp                               | Aparte               | No                                                      | Fase C                                 |
+| Función                                                                 | Persat               | ERP                                                     | Estado                   |
+| ----------------------------------------------------------------------- | -------------------- | ------------------------------------------------------- | ------------------------ |
+| Tipos de OT con instrucciones y devolución versionadas                  | Sí                   | Sí                                                      | Hecho                    |
+| Estados pendiente → proyectada → asignada → informe → cerrada / vencida | Sí                   | Sí                                                      | Hecho                    |
+| Cierre del supervisor con tipo (OK, desvío, no cumplida)                | Sí                   | Sí                                                      | Hecho                    |
+| Formularios con fotos, firma, tablas, equipo, contador                  | Sí                   | Sí                                                      | Hecho                    |
+| Lógica condicional en formularios                                       | **No**               | Sí                                                      | Hecho (mejor que Persat) |
+| Calendario por técnico con arrastrar y soltar                           | Sí                   | Sí                                                      | Hecho                    |
+| Asistente de huecos (horario laboral, carga)                            | Sí                   | Sí, con el viaje desde la visita anterior               | Hecho (viaje en fase C)  |
+| App del técnico: agenda, llegada y salida con GPS, devolución, firma    | Android              | Web (Android e iPhone)                                  | Hecho                    |
+| Materiales usados con descuento de stock real (depósito por camioneta)  | **No**               | Sí                                                      | Hecho                    |
+| Contador tomado en la visita como lectura del contrato                  | Manual               | Sí                                                      | —                        |
+| Preventivo semanal o mensual                                            | Por cliente          | Por equipo o cliente                                    | Hecho                    |
+| Preventivo por contador de copias                                       | **No**               | Sí                                                      | Hecho (mejor que Persat) |
+| Constancia PDF con firma                                                | Sí                   | Sí                                                      | Hecho                    |
+| Historial por equipo                                                    | **No**               | Sí                                                      | —                        |
+| Facturación con ARCA y contratos por copia                              | **No**               | Sí                                                      | —                        |
+| Trabajo sin señal (offline)                                             | Sí                   | App instalable; llegada, fotos, firma e informe en cola | Hecho (fase B)           |
+| Recordatorios (seguimientos) de cliente                                 | Sí                   | Sí, con aviso por email                                 | Hecho (fase B)           |
+| Aviso al cliente por email (visita, cierre con resumen)                 | Sí                   | Email y WhatsApp                                        | Hecho (fase B)           |
+| Encuesta de satisfacción al cerrar                                      | [mkt]                | Estrellas y NPS, enlace sin usuario                     | Hecho (fase B)           |
+| SLA por prioridad con alertas                                           | [mkt]                | Por prioridad o contrato, alerta a coordinación         | Hecho (fase B)           |
+| Tablero de indicadores (cumplimiento, primera visita, tiempos)          | Sí                   | Sí, más reincidencias y consumos                        | Hecho (fase B)           |
+| Portal de clientes                                                      | Sí                   | Equipos, seguimiento, pedir servicio, contadores        | Hecho (fase C)           |
+| Mapa de técnicos y hoja de ruta optimizada                              | Sí (licencia aparte) | Sí, incluido (OpenStreetMap, sin costo por técnico)     | Hecho (fase C)           |
+| Historial de recorridos, geocercas y alertas de velocidad               | Sí (licencia aparte) | Posición cada minuto con la app abierta, 2 días         | Parcial: sin geocercas   |
+| API y webhooks                                                          | Sí                   | API REST con claves y webhooks firmados                 | Hecho (fase C)           |
+| Formularios sueltos con bandeja de entrada                              | Sí                   | No                                                      | Fase C                   |
+| Asistente de IA sobre los datos, WhatsApp                               | Aparte               | No                                                      | Fase C                   |
 
 ## 3. Decisiones de diseño
 
@@ -108,10 +109,14 @@ Marcas: **[doc]** confirmado en la ayuda o la API; **[mkt]** solo en marketing; 
 ## 4. Dónde está cada cosa
 
 - Lógica: `src/modulos/servicio/` (`formularios.ts` el motor de formularios, `tiposOrden.ts` las versiones, `servicio.ts` el ciclo de la orden, `agenda.ts` calendario y huecos, `preventivo.ts`, `archivos.ts`).
-- Pantallas: `/servicio` (órdenes), `/servicio/calendario`, `/servicio/tipos`, `/servicio/preventivos`, `/tecnico` (Mi agenda, para el celular) e `/imprimir/servicio/[id]` (constancia).
+- Pantallas: `/servicio` (órdenes), `/servicio/calendario`, `/servicio/mapa`, `/configuracion/integraciones`, `/portal`, `/servicio/tipos`, `/servicio/preventivos`, `/tecnico` (Mi agenda, para el celular) e `/imprimir/servicio/[id]` (constancia).
 - Técnicos: Configuración › Técnicos (jornada, días, camioneta y el email con el que entra a Mi agenda). Rol de sistema "Técnico": ve solo sus órdenes.
 - Vencimientos, preventivos, avisos de visita, alertas de SLA y recordatorios se ponen al día al abrir el listado o el calendario, y desde la tarea programada `POST /api/cron/servicio` (con `CRON_SECRET`), que además manda los correos.
 - Correos: todo pasa por la bandeja de salida (Servicio técnico › Configuración). Con `SMTP_URL` salen solos; sin ella quedan guardados y cada aviso trae el texto listo para WhatsApp.
 - SLA en horas corridas desde que se abre la orden: respuesta = llegada del técnico, resolución = informe. Por prioridad, o los del contrato si los tiene.
 - Encuesta: el enlace lleva la empresa y un secreto derivado con `ERP_CLAVE_MAESTRA`; es siempre el mismo para una orden y se responde una sola vez.
+- API (fase C): Configuración › API e integraciones. Claves `erp_…` (se guardan como hash; solo lectura o lectura y escritura), endpoints en `/api/v1` (clientes, equipos, tipos de orden, órdenes y lecturas), paginados con `offset` y `limit`. Necesita la función "api" del plan.
+- Webhooks (fase C): por evento (`orden.creada`, `orden.programada`, `orden.informada`, `orden.cerrada`, `orden.cancelada`, `encuesta.respondida`, `lectura.registrada`), firmados con `X-ERP-Firma: t=…,v1=HMAC-SHA256(secreto, "t.cuerpo")`. Si el receptor no contesta 2xx se reintenta (1, 2, 4… minutos, hasta 8 veces). No se aceptan direcciones internas ni http salvo con `WEBHOOKS_PERMITIR_LOCAL=1` (solo para desarrollo).
+- Portal de clientes (fase C): se habilita en Servicio técnico › Configuración, con su color. Entrada: `/portal/ingresar?empresa=<CUIT>`. Cada usuario es de un cliente, se invita por email o WhatsApp y elige su contraseña. Ve sus equipos y órdenes (con el seguimiento paso a paso, la constancia y la encuesta), pide servicio con los tipos de orden marcados "portal" y carga contadores. La base aísla por empresa; el filtro por cliente lo hace el módulo `src/modulos/portal/portal.ts` en cada consulta.
+- Mapa y rutas (fase C): `/servicio/mapa`. Las órdenes toman la ubicación propia o la de su equipo; se buscan en OpenStreetMap (Nominatim, de a una por segundo, a pedido) o se marcan con un clic. La primera llegada con GPS ubica al equipo. La hoja de ruta pone las visitas con hora a su hora y ordena las demás por cercanía (vecino más cercano y 2-opt), con viaje estimado a 25 km/h en línea recta × 1,3 y el enlace a Google Maps. El técnico puede compartir su ubicación desde Mi agenda (cada minuto, mientras tiene la app abierta; se guardan 2 días).
 - Sin señal: la app del técnico se puede instalar (manifest y service worker). Lo visto queda guardado en el celular; la llegada, las fotos, la firma y el informe cargados sin señal quedan en una cola y se mandan solos al volver. El borrador del informe se guarda mientras se escribe.

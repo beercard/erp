@@ -64,6 +64,13 @@ const ACCIONES_CONTRATOS = [
     icono: Wrench,
     claves: 'agenda coordinacion asignar',
   },
+  {
+    id: 'mapa-servicio',
+    texto: 'Mapa y hojas de ruta',
+    href: '/servicio/mapa',
+    icono: Wrench,
+    claves: 'ubicacion tecnicos recorrido gps',
+  },
   { id: 'mi-agenda', texto: 'Mi agenda (técnico)', href: '/tecnico', icono: Wrench, claves: 'celular ordenes del dia' },
   {
     id: 'preventivos',

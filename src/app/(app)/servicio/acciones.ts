@@ -16,6 +16,7 @@ import { cotizacionVigente } from '@/modulos/comercial/cotizacion'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
 import { entregarPendientes } from '@/modulos/integraciones/webhooks'
 import { buscarHuecos } from '@/modulos/servicio/agenda'
+import { puntoDeOrden, registrarPosicion, ubicar, ubicarPendientes } from '@/modulos/servicio/mapa'
 import { avisarCierre, avisarVisita, crearEncuesta } from '@/modulos/servicio/avisos'
 import { guardarConfiguracion } from '@/modulos/servicio/configuracion'
 import { guardarRecordatorio, marcarRecordatorio } from '@/modulos/servicio/recordatorios'
@@ -220,6 +221,7 @@ export async function buscarHuecosAccion(id: string, desde: string) {
           duracion: o.duracion,
           desde: /^\d{4}-\d{2}-\d{2}$/.test(desde) ? desde : undefined,
           excluirOrdenId: id,
+          destino: await puntoDeOrden(tx, id),
         }),
       }
     }),
@@ -576,4 +578,32 @@ export async function guardarRecordatorioAccion(_: Estado, formData: FormData): 
 export async function marcarRecordatorioAccion(id: string, hecho: boolean) {
   await intentar(() => enLaEmpresa('servicio.cargar', (tx, s) => marcarRecordatorio(tx, s.usuario.id, id, hecho)))
   revalidatePath('/servicio/recordatorios')
+}
+
+// ---------------------------------------------------------------- Mapa
+
+/** Marca a mano dónde está una orden (y su equipo) o la partida de un técnico. */
+export async function ubicarAccion(que: 'orden' | 'tecnico', id: string, p: { lat: number; lng: number }) {
+  if (que !== 'orden' && que !== 'tecnico') return { ok: false as const, error: 'Inválido.' }
+  const r = await intentar(() => enLaEmpresa('servicio.cargar', (tx, s) => ubicar(tx, s.usuario.id, que, id, p)))
+  revalidatePath('/servicio/mapa')
+  return r
+}
+
+/** Busca en OpenStreetMap los domicilios de las órdenes abiertas sin ubicación (de a 10). */
+export async function ubicarPendientesAccion() {
+  const r = await intentar(() => enLaEmpresa('servicio.cargar', (tx, s) => ubicarPendientes(tx, s.usuario.id)))
+  revalidatePath('/servicio/mapa')
+  return 'ok' in r ? r : { ok: true as const, ...r }
+}
+
+/** Posición del celular del técnico (si eligió compartirla). */
+export async function posicionAccion(p: { lat: number; lng: number; precision?: number }) {
+  return intentar(() =>
+    enLaEmpresa('servicio.trabajar', async (tx, s) => {
+      const t = await tecnicoDeUsuario(tx, s.usuario)
+      if (!t) return { ok: false as const, error: 'Tu usuario no es de un técnico.' }
+      return registrarPosicion(tx, t.id, p)
+    }),
+  )
 }

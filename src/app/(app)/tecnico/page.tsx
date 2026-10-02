@@ -1,12 +1,14 @@
-import { CheckCircle2, ChevronRight, MapPin } from 'lucide-react'
+import { CheckCircle2, ChevronRight, MapPin, Navigation } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { CompartirUbicacion } from '@/components/servicio/CompartirUbicacion'
 import { Sincronizador } from '@/components/servicio/Sincronizador'
 import { Aviso, EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
+import { hojaDeRuta } from '@/modulos/servicio/mapa'
 import { agendaDelTecnico, listarTecnicos, marcarVencidas, tecnicoDeUsuario } from '@/modulos/servicio/servicio'
 
 import { paginaContratos } from '../contratos/modulo'
@@ -29,8 +31,21 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
     const tecnicos = coordina ? await listarTecnicos(tx) : []
     const id = (coordina && elegido) || propio?.id || null
     const nombre = tecnicos.find((t) => t.id === id)?.nombre ?? propio?.nombre ?? null
-    return { id, nombre, tecnicos, ordenes: id ? await agendaDelTecnico(tx, id) : [] }
+    return {
+      id,
+      nombre,
+      propio: !!propio && propio.id === id,
+      tecnicos,
+      ordenes: id ? await agendaDelTecnico(tx, id) : [],
+      ruta: id ? await hojaDeRuta(tx, id, hoy) : null,
+    }
   })
+  const paradas = datos.ruta?.paradas ?? []
+  const posicion = (id: string) => {
+    const i = paradas.findIndex((p) => p.id === id)
+    return i < 0 ? paradas.length : i
+  }
+  const viaje = new Map(paradas.map((p) => [p.id, p]))
   const grupos = [
     {
       titulo: 'Atrasadas',
@@ -40,7 +55,10 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
     },
     {
       titulo: 'Hoy',
-      filas: datos.ordenes.filter((o) => o.programada === hoy && o.estado !== 'vencida' && o.estado !== 'informe'),
+      // En el orden de la hoja de ruta (las con hora, a su hora; las demás, por cercanía).
+      filas: datos.ordenes
+        .filter((o) => o.programada === hoy && o.estado !== 'vencida' && o.estado !== 'informe')
+        .sort((a, b) => posicion(a.id) - posicion(b.id)),
     },
     {
       titulo: 'Próximas',
@@ -69,6 +87,24 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
             </span>
           </Aviso>
         </div>
+      )}
+      {datos.propio && <CompartirUbicacion />}
+      {datos.ruta?.enlace && (
+        <a
+          href={datos.ruta.enlace}
+          target="_blank"
+          rel="noreferrer"
+          className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-borde bg-superficie px-3 py-2 text-sm hover:border-acento"
+        >
+          <span className="flex items-center gap-2">
+            <Navigation aria-hidden className="size-4 text-acento" /> Recorrido de hoy en Google Maps
+          </span>
+          {datos.ruta.km > 0 && (
+            <span className="text-xs text-texto-2">
+              {datos.ruta.km.toLocaleString('es-AR')} km · {datos.ruta.minutos} min de viaje
+            </span>
+          )}
+        </a>
       )}
       {coordina && datos.tecnicos.length > 0 && (
         <form className="mb-4 flex gap-2">
@@ -126,6 +162,12 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
                           {o.prioridad === 'urgente' && <span className="font-semibold text-error">Urgente · </span>}
                           {o.tipoOrden ?? o.falla}
                         </span>
+                        {g.titulo === 'Hoy' && !!viaje.get(o.id)?.viajeMinutos && (
+                          <span className="block text-xs text-texto-3">
+                            {viaje.get(o.id)!.viajeMinutos} min de viaje ({viaje.get(o.id)!.viajeKm} km)
+                            {!o.hora && ` · llegarías ≈ ${viaje.get(o.id)!.llegaria}`}
+                          </span>
+                        )}
                         {o.serie && (
                           <span className="flex items-center gap-1 text-xs text-texto-3">
                             <MapPin aria-hidden className="size-3" />

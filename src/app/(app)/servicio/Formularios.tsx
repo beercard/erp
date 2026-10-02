@@ -421,6 +421,7 @@ export function Programar({
                     <span className="font-medium">{h.tecnico}</span>
                     <span className="block text-xs text-texto-2">
                       {h.fecha.split('-').reverse().join('/')} a las {h.hora} · libre hasta las {h.hasta}
+                      {h.viaje !== null && ` · ${h.viaje ? `${h.viaje} min de viaje` : 'en el mismo lugar'}`}
                     </span>
                   </span>
                   <span className="flex text-aviso" aria-label={`${h.estrellas} de 5`}>

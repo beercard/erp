@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, inArray, isNotNull, lt, or, sql } from 'drizzle-orm'
+import { and, asc, eq, ilike, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
 import type { Transaccion } from '../../db/conexion'
@@ -362,6 +362,12 @@ export async function registrarLlegada(tx: Transaccion, usuarioId: string, id: s
       llegadaLng: conUbicacion ? p.data.lng!.toFixed(6) : null,
     })
     .where(eq(ordenesServicio.id, id))
+  // El GPS del técnico en el lugar ubica al equipo en el mapa, si todavía no tenía ubicación.
+  if (conUbicacion && o.equipoId && !o.lat)
+    await tx
+      .update(equipos)
+      .set({ lat: p.data.lat!.toFixed(6), lng: p.data.lng!.toFixed(6) })
+      .where(and(eq(equipos.id, o.equipoId), isNull(equipos.lat)))
   await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: { llegada } })
   return { ok: true as const, llegada }
 }

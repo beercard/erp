@@ -3,6 +3,7 @@ import { and, asc, eq, gte, inArray, isNull, lte, ne, sql } from 'drizzle-orm'
 import type { Transaccion } from '../../db/conexion'
 import { equipos, modelosEquipo, ordenesServicio, tecnicos, terceros, tiposOrden } from '../../db/schema'
 import { hoyArgentina } from '../../lib/fechas'
+import { minutosDeViaje, punto, puntosProgramados, type Punto } from './mapa'
 import { aHora, aMinutos } from './tipos'
 
 /**
@@ -65,18 +66,28 @@ export type Hueco = {
   estrellas: number
   /** Minutos ya ocupados ese día. */
   carga: number
+  /** Minutos de viaje hasta la orden desde la visita anterior (o la partida); null sin ubicaciones. */
+  viaje: number | null
 }
 
 /**
  * Busca los mejores huecos para una orden en los próximos días: dentro de la
  * jornada de cada técnico, sin pisar sus visitas programadas. Mejor cuanto
  * antes y cuanto menos cargado esté el técnico ese día.
- * (Persat además tiene en cuenta el viaje desde el punto de partida; acá no
- * hay coordenadas todavía: queda para cuando se sumen los mapas.)
+ * Con la ubicación de la orden, como Persat, suma el viaje: desde la partida
+ * del técnico o la visita anterior hasta la orden, y de ahí a la siguiente.
  */
 export async function buscarHuecos(
   tx: Transaccion,
-  o: { duracion: number; desde?: string; dias?: number; tecnicoIds?: string[]; excluirOrdenId?: string },
+  o: {
+    duracion: number
+    desde?: string
+    dias?: number
+    tecnicoIds?: string[]
+    excluirOrdenId?: string
+    /** Dónde es la orden: para sumar el viaje. */
+    destino?: Punto | null
+  },
   ahora = new Date(),
 ): Promise<Hueco[]> {
   const hoy = hoyArgentina(ahora)
@@ -110,6 +121,13 @@ export async function buscarHuecos(
         o.excluirOrdenId ? ne(ordenesServicio.id, o.excluirOrdenId) : undefined,
       ),
     )
+  const puntos = o.destino
+    ? await puntosProgramados(
+        tx,
+        programadas.map((p) => p.id),
+      )
+    : new Map<string, Punto>()
+  const viajeDesde = (p: Punto | null | undefined) => (o.destino && p ? minutosDeViaje(p, o.destino) : null)
   const huecos: Hueco[] = []
   for (let n = 0; n < dias; n++) {
     const fecha = sumarDias(desde, n)
@@ -118,17 +136,25 @@ export async function buscarHuecos(
       const jornada = { desde: aMinutos(t.jornadaDesde), hasta: aMinutos(t.jornadaHasta) }
       const delDia = programadas.filter((p) => p.tecnicoId === t.id && p.programada === fecha)
       // Una visita sin hora ocupa el principio de la jornada.
+      // Con viaje: cada visita "ocupa" también el ir y volver desde la orden.
       const ocupados = delDia.map((p) => {
         const inicio = p.hora ? aMinutos(p.hora) : jornada.desde
-        return { inicio, fin: inicio + p.duracion }
+        const viaje = viajeDesde(puntos.get(p.id)) ?? 0
+        return { inicio: inicio - viaje, fin: inicio + p.duracion + viaje, real: inicio + p.duracion, punto: puntos.get(p.id) }
       })
+      const partida = punto(t.partidaLat, t.partidaLng)
+      const desdePartida = viajeDesde(partida) ?? 0
       const carga = delDia.reduce((s, p) => s + p.duracion, 0)
       // Hoy, desde ahora redondeado al cuarto de hora siguiente.
       const minimo = fecha === hoy ? Math.ceil((minutoArgentina(ahora) + 1) / 15) * 15 : 0
-      const libre = huecosLibres(jornada, ocupados, o.duracion, minimo)[0]
+      const libre = huecosLibres(jornada, ocupados, o.duracion, Math.max(minimo, jornada.desde + desdePartida))[0]
       if (!libre) continue
+      // De dónde sale: la última visita que termina antes del hueco, o la partida.
+      const anterior = ocupados.filter((x) => x.fin <= libre.inicio).sort((a, b) => b.real - a.real)[0]
+      const viaje = anterior ? viajeDesde(anterior.punto) : viajeDesde(partida)
       const ocupacion = carga / Math.max(1, jornada.hasta - jornada.desde)
-      const estrellas = Math.max(1, Math.min(5, 5 - n - (ocupacion > 0.75 ? 2 : ocupacion > 0.4 ? 1 : 0)))
+      const lejos = viaje !== null && viaje > 45 ? 1 : 0
+      const estrellas = Math.max(1, Math.min(5, 5 - n - (ocupacion > 0.75 ? 2 : ocupacion > 0.4 ? 1 : 0) - lejos))
       huecos.push({
         tecnicoId: t.id,
         tecnico: t.nombre,
@@ -137,10 +163,16 @@ export async function buscarHuecos(
         hasta: aHora(libre.fin),
         estrellas,
         carga,
+        viaje,
       })
     }
   }
-  return huecos.sort((a, b) => b.estrellas - a.estrellas || a.fecha.localeCompare(b.fecha) || a.carga - b.carga).slice(0, 12)
+  return huecos
+    .sort(
+      (a, b) =>
+        b.estrellas - a.estrellas || a.fecha.localeCompare(b.fecha) || (a.viaje ?? 0) - (b.viaje ?? 0) || a.carga - b.carga,
+    )
+    .slice(0, 12)
 }
 
 /**
