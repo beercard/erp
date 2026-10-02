@@ -1,11 +1,22 @@
 import { and, count, eq, gte, inArray, sql } from 'drizzle-orm'
-import { Boxes, ClipboardList, FilePlus, Package, UserPlus, Users } from 'lucide-react'
+import { Boxes, Circle, CircleCheck, ClipboardList, FilePlus, Package, UserPlus, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
-import { BotonEnlace, Chip, EncabezadoPagina, Panel, Tecla } from '@/components/ui'
-import { conEmpresa } from '@/db/empresa'
-import { articulos, auditoria, pedidos, presupuestos, terceros } from '@/db/schema'
+import { BotonEnlace, EncabezadoPagina, Panel, Tecla } from '@/components/ui'
+import { comoPlataforma, conEmpresa } from '@/db/empresa'
+import {
+  arcaConfiguracion,
+  articulos,
+  auditoria,
+  comprobantes,
+  empresas,
+  membresias,
+  pedidos,
+  presupuestos,
+  puntosVenta,
+  terceros,
+} from '@/db/schema'
 import { requerirEmpresa } from '@/lib/auth/servidor'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
@@ -14,16 +25,6 @@ import { cotizacionVigente } from '@/modulos/comercial/cotizacion'
 import { WidgetCotizacion } from './WidgetCotizacion'
 
 export const metadata: Metadata = { title: 'Inicio' }
-
-const ETAPAS = [
-  { n: 0, nombre: 'Cimientos', detalle: 'Empresas, usuarios, permisos, auditoría y maestros', estado: 'listo' },
-  { n: 1, nombre: 'Comercial', detalle: 'Presupuestos, pedidos, remitos y stock', estado: 'listo' },
-  { n: 2, nombre: 'Facturación', detalle: 'Factura electrónica ARCA, cuentas corrientes y cobranzas', estado: 'en curso' },
-  { n: 3, nombre: 'Compras y pagos', detalle: 'Mis Comprobantes, órdenes de pago y retenciones', estado: 'en curso' },
-  { n: 4, nombre: 'Tesorería', detalle: 'Caja, bancos, conciliación, cheques y ECHEQ', estado: 'en curso' },
-  { n: 5, nombre: 'Contratos', detalle: 'Equipos, contadores y facturación por copias', estado: 'en curso' },
-  { n: 6, nombre: 'Impuestos e informes', detalle: 'Libros de IVA, presentaciones e informes de gestión', estado: 'próxima' },
-] as const
 
 export default async function Inicio() {
   const sesion = await requerirEmpresa()
@@ -46,7 +47,17 @@ export default async function Inicio() {
       .from(pedidos)
       .where(inArray(pedidos.estado, ['pendiente', 'parcial']))
     const [enviados] = await tx.select({ n: count() }).from(presupuestos).where(eq(presupuestos.estado, 'enviado'))
+    // Para "Primeros pasos".
+    const [arca] = await tx.select({ certificado: arcaConfiguracion.certificado }).from(arcaConfiguracion)
+    const [puntos] = await tx
+      .select({ n: count() })
+      .from(puntosVenta)
+      .where(and(eq(puntosVenta.activo, true), inArray(puntosVenta.tipo, ['electronico', 'fce'])))
+    const [emitidos] = await tx.select({ n: count() }).from(comprobantes).where(eq(comprobantes.estado, 'autorizado'))
     return {
+      arca: !!arca?.certificado,
+      puntosVenta: puntos.n,
+      emitidos: emitidos.n,
       clientes: clientes.n,
       proveedores: proveedores.n,
       articulos: arts.n,
@@ -56,6 +67,25 @@ export default async function Inicio() {
       dolar: await cotizacionVigente(tx, 'DOL'),
     }
   })
+
+  const [empresa, equipo] = await comoPlataforma(async (tx) => [
+    (await tx.select().from(empresas).where(eq(empresas.id, sesion.empresa.id)))[0],
+    (await tx.select({ n: count() }).from(membresias).where(eq(membresias.empresaId, sesion.empresa.id)))[0].n,
+  ])
+  const pasos = [
+    {
+      hecho: !!(empresa.domicilioFiscal && empresa.inicioActividades),
+      texto: 'Completar los datos fiscales de la empresa',
+      href: '/configuracion/empresa',
+    },
+    { hecho: datos.arca, texto: 'Conectar con ARCA (certificado de factura electrónica)', href: '/configuracion/arca' },
+    { hecho: datos.puntosVenta > 0, texto: 'Dar de alta el punto de venta electrónico', href: '/configuracion/puntos-venta' },
+    { hecho: datos.clientes > 0, texto: 'Cargar o importar los clientes', href: '/terceros' },
+    { hecho: datos.articulos > 0, texto: 'Cargar o importar los artículos y precios', href: '/articulos' },
+    { hecho: equipo > 1, texto: 'Invitar al equipo', href: '/configuracion/usuarios' },
+    { hecho: datos.emitidos > 0, texto: 'Emitir la primera factura', href: '/facturas/nueva' },
+  ]
+  const hechos = pasos.filter((p) => p.hecho).length
 
   const cifras = [
     { valor: datos.clientes, texto: 'clientes activos', href: '/terceros?tipo=clientes' },
@@ -104,26 +134,33 @@ export default async function Inicio() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <Panel>
-          <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">Plan de implementación</h2>
+        <Panel className="h-fit">
+          <div className="flex items-center justify-between gap-3 border-b border-borde px-4 py-3">
+            <h2 className="text-sm font-semibold">{hechos === pasos.length ? 'Todo listo para trabajar' : 'Primeros pasos'}</h2>
+            <span className="cifras text-xs text-texto-2">
+              {hechos} de {pasos.length}
+            </span>
+          </div>
           <ol className="divide-y divide-borde">
-            {ETAPAS.map((e) => (
-              <li key={e.n} className="flex items-start gap-3 px-4 py-3">
-                <span className="cifras mt-0.5 w-5 shrink-0 text-xs text-texto-3">{e.n}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{e.nombre}</span>
-                  <span className="block text-xs text-texto-2">{e.detalle}</span>
-                </span>
-                <Chip
-                  tono={
-                    e.estado === 'listo' ? 'ok' : e.estado === 'en curso' ? 'acento' : e.estado === 'próxima' ? 'info' : 'neutro'
-                  }
-                >
-                  {e.estado}
-                </Chip>
+            {pasos.map((p) => (
+              <li key={p.texto}>
+                <Link href={p.href} className="flex items-center gap-3 px-4 py-2.5 hover:bg-superficie-2">
+                  {p.hecho ? (
+                    <CircleCheck aria-label="Hecho" className="size-4 shrink-0 text-ok" />
+                  ) : (
+                    <Circle aria-label="Pendiente" className="size-4 shrink-0 text-texto-3" />
+                  )}
+                  <span className={`text-sm ${p.hecho ? 'text-texto-2 line-through' : 'font-medium'}`}>{p.texto}</span>
+                </Link>
               </li>
             ))}
           </ol>
+          <p className="border-t border-borde px-4 py-3 text-xs text-texto-2">
+            Plan {sesion.suscripcion.nombrePlan}.{' '}
+            <Link href="/configuracion/suscripcion" className="text-acento hover:underline">
+              Ver la suscripción
+            </Link>
+          </p>
         </Panel>
         <div className="flex h-fit flex-col gap-6">
           <WidgetCotizacion

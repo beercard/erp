@@ -55,16 +55,20 @@ const [empresa] = await base
     localidad: 'Resistencia',
     codigoPostal: '3500',
     provincia: 'H',
-    modulos: ['contratos'],
   })
   .returning()
+// La demo tiene todo: plan Empresa con la aplicación de contratos.
+await base
+  .insert(t.suscripciones)
+  .values({ empresaId: empresa.id, plan: 'empresa', estado: 'activa', aplicaciones: ['contratos'] })
 
 const email = process.env.SEMILLA_EMAIL ?? 'admin@demo.local'
 const clave = process.env.SEMILLA_CLAVE ?? `${randomBytes(9).toString('base64url')}-${randomBytes(2).readUInt16BE()}`
 const [rolDueno] = await base.select().from(t.roles).where(eq(t.roles.nombre, 'Dueño'))
 const [usuario] = await base
   .insert(t.usuarios)
-  .values({ email, nombre: 'Administrador Demo', hashClave: await hashearClave(clave) })
+  // En desarrollo, el usuario demo también administra la plataforma.
+  .values({ email, nombre: 'Administrador Demo', hashClave: await hashearClave(clave), adminPlataforma: true })
   .onConflictDoNothing()
   .returning()
 const usuarioId = usuario?.id ?? (await base.select().from(t.usuarios).where(eq(t.usuarios.email, email)))[0].id

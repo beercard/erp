@@ -26,6 +26,7 @@ import { ErrorArca, ErrorIncierto, ErrorSinEnviar } from '../arca/soap'
 import type { SolicitudCae } from '../arca/wsfe'
 import { calcularTotales } from '../comercial/calculo'
 import { decimal, EsquemaItem, errorDeBase, opcionalUuid, primerError } from '../comercial/documentos'
+import { controlarLimite } from '../plataforma/suscripciones'
 import { enPesos, imputarNotaCreditoAsociada } from './cuentas'
 import {
   codigoComprobante,
@@ -455,6 +456,9 @@ export async function emitirComprobante(
   crearCliente: CrearCliente,
   hoy: string = hoyArgentina(),
 ): Promise<ResultadoEmision> {
+  // Cada comprobante con CAE cuenta para el límite mensual del plan.
+  const limite = await controlarLimite(empresaId, 'comprobantesMes', hoy)
+  if (limite) return { ok: false, error: limite }
   const preparado = await conEmpresa(empresaId, async (tx) => {
     const [c] = await tx.select().from(comprobantes).where(eq(comprobantes.id, id)).for('update')
     if (!c) return { error: 'Ese comprobante ya no existe.' }

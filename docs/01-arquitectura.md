@@ -50,9 +50,21 @@ ERP en la nube para pymes argentinas, vendido como servicio (SaaS). El primer cl
 - Condiciones de IVA, tipos de documento, alícuotas, tipos de comprobante, monedas y jurisdicciones son **datos globales con los códigos de ARCA**. No se escriben en el código.
 - Las alícuotas y escalas que cambian (retenciones, percepciones) tienen vigencia por fecha.
 
-### 9. Módulos
-- **Núcleo:** maestros, ventas, compras, stock, tesorería e impuestos.
-- **Módulos opcionales**, que cada empresa activa según su plan. El primero es **parque instalado y contratos** (equipos con contador, facturación por copias), que necesita KOMSA y sirve a cualquier empresa de impresión o alquiler.
+### 9. Planes, aplicaciones y suscripción
+- El catálogo está en `src/lib/planes.ts` y es la única fuente de verdad: lo usan la sesión, el menú, la página de precios y el panel de la plataforma.
+- Un **plan** (Gratis, Inicial, Pyme, Empresa) habilita **funciones** (grupos de pantallas: facturación, ventas, stock, compras, tesorería, informes, roles a medida, API) y fija **límites** (usuarios, comprobantes con CAE por mes, puntos de venta).
+- Las **aplicaciones** se contratan aparte sobre un plan pago. La primera es **contratos y parque instalado**; le sigue la tienda online con MercadoLibre.
+- Cada empresa tiene una fila en `suscripciones`, con plan, estado, aplicaciones, usuarios adicionales, fechas y precio acordado. Su historial (altas, cambios, pagos y pedidos) queda en `eventos_suscripcion`.
+- **Permisos efectivos = permisos del rol ∩ lo que habilita la suscripción.** Se calculan una sola vez, al leer la sesión. Por eso `tienePermiso` y `enLaEmpresa` no necesitan saber nada de planes.
+- Cada sección tiene un `layout.tsx` que llama a `exigirFuncion`. Lo que el plan no incluye se ve en el menú con un candado y lleva a Configuración › Suscripción.
+- **Prueba vencida, impaga después de los días de gracia, suspendida o cancelada:** la empresa queda en **solo lectura**. Se conservan los permisos `*.ver` y `empresa.suscripcion`, y nunca se borran datos.
+- **Límites:** se controlan al invitar usuarios, al pedir un CAE y al dar de alta un punto de venta electrónico (`controlarLimite`).
+- **Alta:** `/registro` crea la cuenta, la empresa y 30 días de prueba del plan Pyme. Quien ya tiene cuenta crea otra empresa desde "Elegir empresa".
+- **Cambios de plan:**
+  - Durante la prueba, o al pasar al plan gratis, se aplican en el momento.
+  - Si hay que cobrar, quedan como pedido y la plataforma los confirma al registrar el pago.
+  - El cobro automático (Mercado Pago Suscripciones) es el paso siguiente.
+- **Panel de la plataforma:** `/plataforma`, solo para usuarios con `admin_plataforma`. Muestra empresas, estado, ingreso mensual recurrente, pedidos y pagos. No da acceso a los datos de negocio de las empresas.
 
 ### 10. Integraciones
 - API propia, con tokens por empresa. La tienda online de KOMSA es la primera integración: consulta stock y precios y manda pedidos como lo haría la de cualquier cliente.

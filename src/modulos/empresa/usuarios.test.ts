@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import type { BaseDeDatos } from '../../db/conexion'
 import { baseDePrueba } from '../../db/pruebas'
-import { empresas, membresias, roles, usuarios } from '../../db/schema'
+import { empresas, membresias, roles, suscripciones, usuarios } from '../../db/schema'
 import { hashearClave } from '../../lib/auth/clave'
 import { iniciarSesion, leerSesion } from '../../lib/auth/sesiones'
 import { aceptarInvitacion, cambiarAcceso, cambiarRol, guardarRol, invitar, leerInvitacion, miembros } from './usuarios'
@@ -27,6 +27,10 @@ beforeAll(async () => {
     .returning()
   empresaA = a.id
   empresaB = b.id
+  await base.insert(suscripciones).values([
+    { empresaId: empresaA, plan: 'empresa', estado: 'activa' },
+    { empresaId: empresaB, plan: 'pyme', estado: 'activa' },
+  ])
   rolDueno = (await base.select().from(roles).where(eq(roles.nombre, 'Dueño')))[0].id
   rolVentas = (await base.select().from(roles).where(eq(roles.nombre, 'Ventas')))[0].id
   const [u] = await base
@@ -39,6 +43,19 @@ beforeAll(async () => {
 })
 
 describe('invitaciones', () => {
+  it('no invita por encima de los usuarios del plan', async () => {
+    const [g] = await base.insert(empresas).values({ razonSocial: 'Gamma', cuit: '30333333334', condicionIva: 1 }).returning()
+    await base.insert(suscripciones).values({ empresaId: g.id, plan: 'gratis', estado: 'activa' })
+    const [u] = await base
+      .insert(usuarios)
+      .values({ email: 'solo@gamma.com', nombre: 'Solo', hashClave: await hashearClave('clave-solo-2026') })
+      .returning()
+    await base.insert(membresias).values({ usuarioId: u.id, empresaId: g.id, rolId: rolDueno })
+    const r = await invitar(g.id, u.id, { email: 'otro@gamma.com', rolId: rolVentas })
+    expect(r).toMatchObject({ ok: false })
+    expect(!r.ok && r.error).toContain('plan Gratis')
+  })
+
   it('una persona nueva acepta, crea su cuenta y entra a la empresa con el rol elegido', async () => {
     const inv = await invitar(empresaA, dueno, { email: 'Vendedor@Alfa.com', rolId: rolVentas })
     if (!inv.ok) throw new Error(inv.error)

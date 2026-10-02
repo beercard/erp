@@ -4,6 +4,10 @@ import { and, eq, gt, isNull, or, sql } from 'drizzle-orm'
 
 import { conEmpresa, comoPlataforma } from '../../db/empresa'
 import { auditoria, empresas, membresias, roles, sesiones, usuarios } from '../../db/schema'
+import { suscripcionDe } from '../../modulos/plataforma/suscripciones'
+import { hoyArgentina } from '../fechas'
+import { PERMISOS, tienePermiso } from '../permisos'
+import { permitidoPorPlan, situacion, type Funcion, type Situacion } from '../planes'
 import { hashearClave, verificarClave } from './clave'
 
 /**
@@ -20,9 +24,17 @@ export type EmpresaDeUsuario = { id: string; razonSocial: string; cuit: string; 
 
 export type SesionActiva = {
   sesionId: string
-  usuario: { id: string; nombre: string; email: string }
+  usuario: { id: string; nombre: string; email: string; adminPlataforma: boolean }
   /** Empresa en la que se está trabajando; null hasta que elige una. */
-  empresa: { id: string; razonSocial: string; cuit: string; modulos: string[] } | null
+  empresa: { id: string; razonSocial: string; cuit: string } | null
+  /** Lo que habilita la suscripción de esa empresa. */
+  suscripcion: {
+    plan: string
+    nombrePlan: string
+    funciones: Funcion[]
+    soloLectura: boolean
+    aviso: Situacion['aviso']
+  } | null
   rol: string | null
   permisos: string[]
   empresas: EmpresaDeUsuario[]
@@ -95,7 +107,7 @@ export async function leerSesion(token: string): Promise<SesionActiva | null> {
       .select({
         sesionId: sesiones.id,
         empresaId: sesiones.empresaId,
-        usuario: { id: usuarios.id, nombre: usuarios.nombre, email: usuarios.email },
+        usuario: { id: usuarios.id, nombre: usuarios.nombre, email: usuarios.email, adminPlataforma: usuarios.adminPlataforma },
       })
       .from(sesiones)
       .innerJoin(usuarios, eq(usuarios.id, sesiones.usuarioId))
@@ -106,12 +118,13 @@ export async function leerSesion(token: string): Promise<SesionActiva | null> {
 
   const disponibles = await empresasDe(fila.usuario.id)
   const base = { sesionId: fila.sesionId, usuario: fila.usuario, empresas: disponibles }
-  if (!fila.empresaId) return { ...base, empresa: null, rol: null, permisos: [] }
+  const sinEmpresa = { ...base, empresa: null, suscripcion: null, rol: null, permisos: [] }
+  if (!fila.empresaId) return sinEmpresa
 
   const actual = await comoPlataforma(async (tx) => {
     const [m] = await tx
       .select({
-        empresa: { id: empresas.id, razonSocial: empresas.razonSocial, cuit: empresas.cuit, modulos: empresas.modulos },
+        empresa: { id: empresas.id, razonSocial: empresas.razonSocial, cuit: empresas.cuit },
         rol: roles.nombre,
         permisos: roles.permisos,
       })
@@ -131,8 +144,23 @@ export async function leerSesion(token: string): Promise<SesionActiva | null> {
     return m
   })
   // Si le quitaron el acceso a la empresa, la sesión sigue pero sin empresa.
-  if (!actual) return { ...base, empresa: null, rol: null, permisos: [] }
-  return { ...base, empresa: actual.empresa, rol: actual.rol, permisos: actual.permisos }
+  if (!actual) return sinEmpresa
+  // Los permisos que valen son los del rol que además habilita la suscripción.
+  const sit = situacion(await suscripcionDe(actual.empresa.id), hoyArgentina())
+  const permisos = Object.keys(PERMISOS).filter((p) => tienePermiso(actual.permisos, p) && permitidoPorPlan(sit, p))
+  return {
+    ...base,
+    empresa: actual.empresa,
+    suscripcion: {
+      plan: sit.plan.id,
+      nombrePlan: sit.plan.nombre,
+      funciones: sit.funciones,
+      soloLectura: sit.soloLectura,
+      aviso: sit.aviso,
+    },
+    rol: actual.rol,
+    permisos,
+  }
 }
 
 export async function elegirEmpresa(token: string, empresaId: string, meta: Meta = {}): Promise<boolean> {

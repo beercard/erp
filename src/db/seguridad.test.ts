@@ -7,7 +7,7 @@ import { baseDePrueba } from './pruebas'
 import { auditoria, empresas, terceros, vendedores } from './schema'
 
 /** Tablas con empresa_id que son de plataforma y NO llevan RLS (ver plataforma.ts). */
-const PLATAFORMA = new Set(['roles', 'membresias', 'sesiones', 'invitaciones'])
+const PLATAFORMA = new Set(['roles', 'membresias', 'sesiones', 'invitaciones', 'suscripciones', 'eventos_suscripcion'])
 
 /** Mensaje de Postgres detrás del error de Drizzle: la prueba verifica el MOTIVO del rechazo. */
 async function motivo(operacion: Promise<unknown>): Promise<string> {

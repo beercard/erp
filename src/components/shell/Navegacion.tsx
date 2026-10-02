@@ -14,6 +14,7 @@ import {
   FileText,
   Landmark,
   LayoutDashboard,
+  Lock,
   Package,
   Printer,
   Receipt,
@@ -28,7 +29,9 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-type Item = { href: string; texto: string; icono: LucideIcon; etapa?: string }
+import { planQueIncluye, type Funcion } from '@/lib/planes'
+
+type Item = { href: string; texto: string; icono: LucideIcon; etapa?: string; funcion?: Funcion }
 
 const SECCIONES: { titulo?: string; items: Item[] }[] = [
   { items: [{ href: '/', texto: 'Inicio', icono: LayoutDashboard }] },
@@ -42,39 +45,39 @@ const SECCIONES: { titulo?: string; items: Item[] }[] = [
   {
     titulo: 'Operación',
     items: [
-      { href: '/presupuestos', texto: 'Presupuestos', icono: FileText },
-      { href: '/pedidos', texto: 'Pedidos', icono: ClipboardList },
-      { href: '/remitos', texto: 'Remitos', icono: Truck },
-      { href: '/stock', texto: 'Stock', icono: Boxes },
+      { href: '/presupuestos', texto: 'Presupuestos', icono: FileText, funcion: 'comercial' },
+      { href: '/pedidos', texto: 'Pedidos', icono: ClipboardList, funcion: 'comercial' },
+      { href: '/remitos', texto: 'Remitos', icono: Truck, funcion: 'comercial' },
+      { href: '/stock', texto: 'Stock', icono: Boxes, funcion: 'stock' },
     ],
   },
   {
     titulo: 'Facturación',
     items: [
-      { href: '/facturas', texto: 'Facturas y notas', icono: Receipt },
-      { href: '/cobranzas', texto: 'Cobranzas', icono: Wallet },
-      { href: '/cuentas', texto: 'Cuentas corrientes', icono: BookOpen },
+      { href: '/facturas', texto: 'Facturas y notas', icono: Receipt, funcion: 'facturacion' },
+      { href: '/cobranzas', texto: 'Cobranzas', icono: Wallet, funcion: 'facturacion' },
+      { href: '/cuentas', texto: 'Cuentas corrientes', icono: BookOpen, funcion: 'facturacion' },
     ],
   },
   {
     titulo: 'Compras',
     items: [
-      { href: '/ordenes-compra', texto: 'Órdenes de compra', icono: ShoppingCart },
-      { href: '/compras', texto: 'Comprobantes de compra', icono: FileInput },
-      { href: '/pagos', texto: 'Pagos a proveedores', icono: HandCoins },
-      { href: '/cuentas-proveedores', texto: 'Cuentas de proveedores', icono: Scale },
+      { href: '/ordenes-compra', texto: 'Órdenes de compra', icono: ShoppingCart, funcion: 'compras' },
+      { href: '/compras', texto: 'Comprobantes de compra', icono: FileInput, funcion: 'compras' },
+      { href: '/pagos', texto: 'Pagos a proveedores', icono: HandCoins, funcion: 'compras' },
+      { href: '/cuentas-proveedores', texto: 'Cuentas de proveedores', icono: Scale, funcion: 'compras' },
     ],
   },
   {
     titulo: 'Tesorería',
     items: [
-      { href: '/tesoreria', texto: 'Cajas y bancos', icono: Landmark },
-      { href: '/tesoreria/cheques', texto: 'Cheques', icono: Banknote },
+      { href: '/tesoreria', texto: 'Cajas y bancos', icono: Landmark, funcion: 'tesoreria' },
+      { href: '/tesoreria/cheques', texto: 'Cheques', icono: Banknote, funcion: 'tesoreria' },
     ],
   },
   {
-    titulo: 'Próximas etapas',
-    items: [{ href: '#fiscal', texto: 'Libros de IVA e informes', icono: FileSpreadsheet, etapa: 'Etapa 6' }],
+    titulo: 'Próximamente',
+    items: [{ href: '#fiscal', texto: 'Libros de IVA e informes', icono: FileSpreadsheet, etapa: 'Pronto' }],
   },
 ]
 
@@ -96,9 +99,9 @@ function rutaActiva(ruta: string, secciones: { items: Item[] }[]) {
     .sort((a, b) => b.length - a.length)[0]
 }
 
-export function Navegacion({ modulos }: { modulos: string[] }) {
+export function Navegacion({ funciones }: { funciones: string[] }) {
   const ruta = usePathname()
-  const secciones = modulos.includes('contratos')
+  const secciones = funciones.includes('contratos')
     ? [...SECCIONES.slice(0, -1), CONTRATOS, SECCIONES[SECCIONES.length - 1]]
     : SECCIONES
   const activa = rutaActiva(ruta, secciones)
@@ -110,6 +113,21 @@ export function Navegacion({ modulos }: { modulos: string[] }) {
           {s.items.map((item) => {
             const activo = item.href === activa
             const Icono = item.icono
+            if (item.funcion && !funciones.includes(item.funcion)) {
+              const plan = planQueIncluye(item.funcion)
+              return (
+                <Link
+                  key={item.href}
+                  href={`/configuracion/suscripcion?funcion=${item.funcion}`}
+                  className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-texto-3 hover:bg-superficie-2"
+                  title={`Incluido desde el plan ${plan?.nombre}`}
+                >
+                  <Icono aria-hidden className="size-4 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">{item.texto}</span>
+                  <Lock aria-hidden className="size-3.5 shrink-0" />
+                </Link>
+              )
+            }
             if (item.etapa) {
               return (
                 <span

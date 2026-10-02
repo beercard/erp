@@ -91,6 +91,7 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     permisos: {
       'empresa.datos': 'Modificar los datos fiscales de la empresa',
       'empresa.usuarios': 'Administrar usuarios, invitaciones y roles',
+      'empresa.suscripcion': 'Ver y cambiar el plan de la suscripción',
     },
   },
 ]

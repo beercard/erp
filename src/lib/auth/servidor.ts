@@ -7,6 +7,7 @@ import { cache } from 'react'
 import type { Transaccion } from '../../db/conexion'
 import { conEmpresa } from '../../db/empresa'
 import { tienePermiso } from '../permisos'
+import { FUNCIONES, funcionDePermiso, permisoDeLectura, type Funcion } from '../planes'
 import { DIAS_DE_SESION, leerSesion, type SesionActiva } from './sesiones'
 
 /** Cookie de sesión: solo la lee el servidor (httpOnly). */
@@ -51,7 +52,10 @@ export async function requerirSesion(): Promise<SesionActiva> {
   return sesion
 }
 
-export type SesionConEmpresa = SesionActiva & { empresa: NonNullable<SesionActiva['empresa']> }
+export type SesionConEmpresa = SesionActiva & {
+  empresa: NonNullable<SesionActiva['empresa']>
+  suscripcion: NonNullable<SesionActiva['suscripcion']>
+}
 
 /** Sesión con empresa elegida; si falta alguna de las dos, lleva a elegirla. */
 export async function requerirEmpresa(): Promise<SesionConEmpresa> {
@@ -66,13 +70,26 @@ export async function requerirEmpresa(): Promise<SesionConEmpresa> {
  */
 export async function exigirPermiso(permiso: string): Promise<SesionConEmpresa> {
   const sesion = await requerirEmpresa()
-  if (!tienePermiso(sesion.permisos, permiso)) redirect(`/sin-permiso?permiso=${encodeURIComponent(permiso)}`)
+  if (!tienePermiso(sesion.permisos, permiso)) {
+    // Lo que falta es el plan, no el permiso: se muestra qué plan lo incluye.
+    const funcion = funcionDePermiso(permiso)
+    if (funcion && !sesion.suscripcion.funciones.includes(funcion)) redirect(`/configuracion/suscripcion?funcion=${funcion}`)
+    if (sesion.suscripcion.soloLectura && !permisoDeLectura(permiso)) redirect('/configuracion/suscripcion')
+    redirect(`/sin-permiso?permiso=${encodeURIComponent(permiso)}`)
+  }
   return sesion
 }
 
 export class SinPermiso extends Error {
-  constructor(permiso: string) {
-    super(`No tenés permiso para esta acción (${permiso}). Pedíselo a quien administra la empresa.`)
+  constructor(permiso: string, sesion?: SesionConEmpresa) {
+    const funcion = funcionDePermiso(permiso)
+    super(
+      sesion && funcion && !sesion.suscripcion.funciones.includes(funcion)
+        ? `${FUNCIONES[funcion].nombre} no está incluido en el plan ${sesion.suscripcion.nombrePlan}. Se suma desde Configuración › Suscripción.`
+        : sesion?.suscripcion.soloLectura && !permisoDeLectura(permiso)
+          ? 'La suscripción no está al día: se pueden consultar los datos, pero no cargar nada nuevo.'
+          : `No tenés permiso para esta acción (${permiso}). Pedíselo a quien administra la empresa.`,
+    )
   }
 }
 
@@ -86,6 +103,16 @@ export async function enLaEmpresa<T>(
   trabajo: (tx: Transaccion, sesion: SesionConEmpresa) => Promise<T>,
 ): Promise<T> {
   const sesion = await requerirEmpresa()
-  if (!tienePermiso(sesion.permisos, permiso)) throw new SinPermiso(permiso)
+  if (!tienePermiso(sesion.permisos, permiso)) throw new SinPermiso(permiso, sesion)
   return conEmpresa(sesion.empresa.id, (tx) => trabajo(tx, sesion))
+}
+
+/**
+ * Para secciones enteras (su layout): si el plan no incluye la función, lleva
+ * a la suscripción, que explica qué plan la trae.
+ */
+export async function exigirFuncion(funcion: Funcion): Promise<SesionConEmpresa> {
+  const sesion = await requerirEmpresa()
+  if (!sesion.suscripcion.funciones.includes(funcion)) redirect(`/configuracion/suscripcion?funcion=${funcion}`)
+  return sesion
 }

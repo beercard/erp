@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import type { BaseDeDatos } from '../../db/conexion'
 import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
-import { auditoria, empresas, membresias, roles, sesiones, usuarios } from '../../db/schema'
+import { auditoria, empresas, membresias, roles, sesiones, suscripciones, usuarios } from '../../db/schema'
 import { hashearClave } from './clave'
 import { cerrarSesion, elegirEmpresa, iniciarSesion, leerSesion } from './sesiones'
 
@@ -25,6 +25,12 @@ beforeAll(async () => {
     ])
     .returning()
   ;[empresaA, empresaB, empresaC] = filas.map((f) => f.id)
+  // Alfa en el plan Empresa, Beta en el gratis y Gamma con la prueba vencida.
+  await base.insert(suscripciones).values([
+    { empresaId: empresaA, plan: 'empresa', estado: 'activa' },
+    { empresaId: empresaB, plan: 'gratis', estado: 'activa' },
+    { empresaId: empresaC, plan: 'pyme', estado: 'prueba', pruebaHasta: '2020-01-31' },
+  ])
   const [dueno] = await base.select().from(roles).where(eq(roles.nombre, 'Dueño'))
   const [ventas] = await base.select().from(roles).where(eq(roles.nombre, 'Ventas'))
   const hash = await hashearClave(CLAVE)
@@ -57,7 +63,11 @@ describe('sesiones', () => {
     if (!r.ok) return
     const s = await leerSesion(r.token)
     expect(s?.empresa?.id).toBe(empresaA)
-    expect(s?.permisos).toEqual(['*'])
+    // Dueño: todo lo que incluye el plan Empresa, y nada de la aplicación de contratos (no la contrató).
+    expect(s?.suscripcion?.plan).toBe('empresa')
+    expect(s?.permisos).toContain('compras.pagar')
+    expect(s?.permisos).toContain('empresa.suscripcion')
+    expect(s?.permisos.some((p) => p.startsWith('contratos.'))).toBe(false)
     const ingresos = await conEmpresa(empresaA, (tx) => tx.select().from(auditoria).where(eq(auditoria.accion, 'ingreso')))
     expect(ingresos.length).toBeGreaterThan(0)
   })
@@ -80,6 +90,24 @@ describe('sesiones', () => {
     const despues = await leerSesion(r.token)
     expect(despues?.empresa?.razonSocial).toBe('Beta S.R.L.')
     expect(despues?.rol).toBe('Ventas')
+    // El plan gratis solo factura: el rol tiene presupuestos, pero el plan no.
+    expect(despues?.permisos).toContain('ventas.facturar')
+    expect(despues?.permisos).not.toContain('ventas.presupuestos')
+  })
+
+  it('con la prueba vencida solo puede consultar y arreglar la suscripción', async () => {
+    const [dueno] = await base.select().from(roles).where(eq(roles.nombre, 'Dueño'))
+    const [carla] = await base
+      .insert(usuarios)
+      .values({ email: 'carla@gamma.com', nombre: 'Carla', hashClave: await hashearClave(CLAVE) })
+      .returning()
+    await base.insert(membresias).values({ usuarioId: carla.id, empresaId: empresaC, rolId: dueno.id })
+    const r = await iniciarSesion('carla@gamma.com', CLAVE)
+    if (!r.ok) throw new Error('no entró')
+    const s = await leerSesion(r.token)
+    expect(s?.suscripcion?.soloLectura).toBe(true)
+    expect(s?.permisos.every((p) => p.endsWith('.ver') || p === 'empresa.suscripcion')).toBe(true)
+    expect(s?.permisos).toContain('compras.ver')
   })
 
   it('si le quitan el acceso, pierde la empresa en la próxima lectura', async () => {

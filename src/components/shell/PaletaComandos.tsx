@@ -121,7 +121,7 @@ const ACCIONES = [
  * Búsqueda universal: Ctrl + K (o Cmd + K) desde cualquier pantalla. Busca
  * clientes, proveedores y artículos en el servidor y ofrece acciones.
  */
-export function PaletaComandos({ modulos = [] }: { modulos?: string[] }) {
+export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
   const [abierta, setAbierta] = useState(false)
   const [texto, setTexto] = useState('')
   const [resultados, setResultados] = useState<Resultado[]>([])
@@ -155,7 +155,7 @@ export function PaletaComandos({ modulos = [] }: { modulos?: string[] }) {
   }
 
   const filtro = texto.toLowerCase()
-  const acciones = [...ACCIONES, ...(modulos.includes('contratos') ? ACCIONES_CONTRATOS : [])].filter(
+  const acciones = [...ACCIONES, ...(funciones.includes('contratos') ? ACCIONES_CONTRATOS : [])].filter(
     (a) => !filtro || `${a.texto} ${a.claves}`.toLowerCase().includes(filtro),
   )
   const mostrarSalir = !filtro || 'cerrar sesion salir'.includes(filtro)

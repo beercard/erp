@@ -20,7 +20,7 @@ import { eq, sql } from 'drizzle-orm'
 
 import { db } from '../src/db/conexion'
 import { migrar } from '../src/db/migrar'
-import { empresas, membresias, roles, usuarios } from '../src/db/schema'
+import { empresas, membresias, roles, suscripciones, usuarios } from '../src/db/schema'
 import { validarCuit } from '../src/lib/cuit'
 import { importarPymexis } from '../src/modulos/importacion/pymexis'
 
@@ -63,13 +63,18 @@ if (values.usuario) {
 const inicio = Date.now()
 const informe = await importarPymexis(carpeta, empresa.id, usuarioId, undefined, { saldos: values.saldos })
 writeFileSync(join(carpeta, 'informe.json'), JSON.stringify(informe, null, 2))
-// Con equipos en contrato, la empresa usa el módulo de contratos.
-if (informe.cantidades.contratos && !empresa.modulos.includes('contratos')) {
+// Una empresa migrada entra en el plan Empresa; con equipos en contrato, suma la aplicación de contratos.
+await base
+  .insert(suscripciones)
+  .values({ empresaId: empresa.id, plan: 'empresa', estado: 'activa', observaciones: 'Migrada desde PYMEXIS' })
+  .onConflictDoNothing()
+const [suscripcion] = await base.select().from(suscripciones).where(eq(suscripciones.empresaId, empresa.id))
+if (informe.cantidades.contratos && !suscripcion.aplicaciones.includes('contratos')) {
   await base
-    .update(empresas)
-    .set({ modulos: [...empresa.modulos, 'contratos'] })
-    .where(eq(empresas.id, empresa.id))
-  console.log('Módulo de contratos activado.')
+    .update(suscripciones)
+    .set({ aplicaciones: [...suscripcion.aplicaciones, 'contratos'] })
+    .where(eq(suscripciones.id, suscripcion.id))
+  console.log('Aplicación de contratos activada.')
 }
 console.log(`Importación terminada en ${((Date.now() - inicio) / 1000).toFixed(1)} s.`)
 console.table(informe.cantidades)

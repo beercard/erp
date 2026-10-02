@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, Landmark, Percent, ShieldCheck } from 'lucide-react'
+import { Building2, ChevronRight, CreditCard, Landmark, Percent, ShieldCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -13,6 +13,13 @@ export default async function Configuracion() {
   const sesion = await requerirEmpresa()
   const puede = (p: string) => tienePermiso(sesion.permisos, p)
   const empresa = [
+    {
+      href: '/configuracion/suscripcion',
+      titulo: 'Suscripción',
+      texto: `Plan ${sesion.suscripcion.nombrePlan}: uso, aplicaciones y cambio de plan.`,
+      icono: CreditCard,
+      permiso: 'empresa.suscripcion',
+    },
     {
       href: '/configuracion/empresa',
       titulo: 'Datos de la empresa',

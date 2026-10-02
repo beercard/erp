@@ -9,6 +9,7 @@ import { empresas, invitaciones, membresias, roles, usuarios } from '../../db/sc
 import { auditar } from '../../lib/auditoria'
 import { hashearClave, problemaDeClave, verificarClave } from '../../lib/auth/clave'
 import { PERMISOS } from '../../lib/permisos'
+import { controlarLimite } from '../plataforma/suscripciones'
 
 /**
  * Usuarios, invitaciones y roles de una empresa. Son tablas de plataforma
@@ -89,6 +90,8 @@ export async function invitar(
     .safeParse(entrada)
   if (!p.success) return { ok: false, error: p.error.issues[0].message }
   const { email, rolId } = p.data
+  const limite = await controlarLimite(empresaId, 'usuarios')
+  if (limite) return { ok: false, error: limite }
   const token = randomBytes(32).toString('base64url')
   const vence = new Date(Date.now() + DIAS_INVITACION * 86_400_000)
   const r = await comoPlataforma(async (tx) => {

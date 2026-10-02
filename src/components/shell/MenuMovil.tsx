@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { Navegacion } from './Navegacion'
 
 /** Menú lateral en pantallas chicas: se abre con el botón y se cierra al navegar. */
-export function MenuMovil({ modulos }: { modulos: string[] }) {
+export function MenuMovil({ funciones }: { funciones: string[] }) {
   const [abierto, setAbierto] = useState(false)
   const ruta = usePathname()
   // eslint-disable-next-line react-hooks/set-state-in-effect -- cerrar al cambiar de página
@@ -30,7 +30,7 @@ export function MenuMovil({ modulos }: { modulos: string[] }) {
           id="menu-movil"
           className="fixed inset-x-0 top-14 bottom-0 z-40 overflow-y-auto border-t border-borde bg-superficie p-4"
         >
-          <Navegacion modulos={modulos} />
+          <Navegacion funciones={funciones} />
         </div>
       )}
     </div>

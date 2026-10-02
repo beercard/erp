@@ -1,4 +1,4 @@
-import { Building2, ChevronRight } from 'lucide-react'
+import { Building2, ChevronRight, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 
 import { Boton, Panel } from '@/components/ui'
@@ -6,6 +6,7 @@ import { requerirSesion } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
 
 import { elegir, salir } from '../ingresar/acciones'
+import { FormularioOtraEmpresa } from '../registro/FormularioRegistro'
 
 export const metadata: Metadata = { title: 'Elegir empresa' }
 
@@ -39,6 +40,15 @@ export default async function PaginaEmpresas() {
           ))}
         </Panel>
       )}
+      <details className="mt-6 rounded-lg border border-borde bg-superficie" open={sesion.empresas.length === 0}>
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+          <Plus aria-hidden className="mr-1.5 inline size-4 align-[-3px]" />
+          Crear una empresa
+        </summary>
+        <div className="border-t border-borde p-4">
+          <FormularioOtraEmpresa />
+        </div>
+      </details>
       <form action={salir} className="mt-6">
         <Boton type="submit" variante="fantasma">
           Cerrar sesión

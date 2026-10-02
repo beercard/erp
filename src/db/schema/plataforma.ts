@@ -1,5 +1,19 @@
 import { sql } from 'drizzle-orm'
-import { boolean, date, index, inet, pgTable, smallint, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  check,
+  date,
+  index,
+  inet,
+  jsonb,
+  numeric,
+  pgTable,
+  smallint,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
 
 import { condicionesIva, monedas, provincias } from './catalogos'
 import { id, marcasDeTiempo } from './comunes'
@@ -30,11 +44,6 @@ export const empresas = pgTable('empresas', {
     .notNull()
     .default('PES')
     .references(() => monedas.codigo),
-  /** Módulos opcionales activos, por ejemplo "contratos". */
-  modulos: text('modulos')
-    .array()
-    .notNull()
-    .default(sql`'{}'::text[]`),
   activa: boolean('activa').notNull().default(true),
   ...marcasDeTiempo(),
 })
@@ -48,6 +57,8 @@ export const usuarios = pgTable(
     /** scrypt: "scrypt$N$r$p$sal$hash" (ver src/lib/auth/clave.ts). */
     hashClave: text('hash_clave').notNull(),
     activo: boolean('activo').notNull().default(true),
+    /** Administra la plataforma: ve todas las empresas y sus suscripciones (no sus datos). */
+    adminPlataforma: boolean('admin_plataforma').notNull().default(false),
     ultimoIngreso: timestamp('ultimo_ingreso', { withTimezone: true }),
     ...marcasDeTiempo(),
   },
@@ -130,4 +141,70 @@ export const sesiones = pgTable(
     creada: timestamp('creada', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index().on(t.usuarioId)],
+)
+
+/**
+ * Suscripción de cada empresa al servicio (una por empresa). Qué incluye cada
+ * plan está en src/lib/planes.ts; acá queda lo contratado y su estado.
+ */
+export const suscripciones = pgTable(
+  'suscripciones',
+  {
+    id: id(),
+    empresaId: uuid('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    /** gratis | inicial | pyme | empresa (src/lib/planes.ts) */
+    plan: text('plan').notNull(),
+    /** prueba | activa | impaga | suspendida | cancelada */
+    estado: text('estado').notNull(),
+    /** mensual | anual */
+    ciclo: text('ciclo').notNull().default('mensual'),
+    /** Aplicaciones contratadas sobre el plan, por ejemplo "contratos". */
+    aplicaciones: text('aplicaciones')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    usuariosAdicionales: smallint('usuarios_adicionales').notNull().default(0),
+    pruebaHasta: date('prueba_hasta'),
+    /** Hasta cuándo está pagada; vencida, corren los días de gracia. */
+    pagadoHasta: date('pagado_hasta'),
+    /** Precio mensual acordado sin IVA; nulo es el de lista. */
+    precioAcordado: numeric('precio_acordado', { precision: 18, scale: 2 }),
+    observaciones: text('observaciones'),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex().on(t.empresaId),
+    check('suscripciones_plan', sql`${t.plan} in ('gratis', 'inicial', 'pyme', 'empresa')`),
+    check('suscripciones_estado', sql`${t.estado} in ('prueba', 'activa', 'impaga', 'suspendida', 'cancelada')`),
+    check('suscripciones_ciclo', sql`${t.ciclo} in ('mensual', 'anual')`),
+  ],
+)
+
+/**
+ * Historial de cada suscripción: altas, cambios de plan, pagos y pedidos de
+ * la empresa (que la plataforma atiende).
+ */
+export const eventosSuscripcion = pgTable(
+  'eventos_suscripcion',
+  {
+    id: id(),
+    empresaId: uuid('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    /** alta | cambio | pago | pedido | nota */
+    tipo: text('tipo').notNull(),
+    detalle: jsonb('detalle')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    /** Solo los pedidos: pendiente | atendido | rechazado */
+    estado: text('estado'),
+    usuarioId: uuid('usuario_id').references(() => usuarios.id),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index().on(t.empresaId, t.creado),
+    check('eventos_suscripcion_tipo', sql`${t.tipo} in ('alta', 'cambio', 'pago', 'pedido', 'nota')`),
+  ],
 )
