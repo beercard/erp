@@ -25,6 +25,10 @@ import {
   Users,
   Wallet,
   Wrench,
+  CalendarDays,
+  ListChecks,
+  RefreshCw,
+  Smartphone,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -89,7 +93,17 @@ const CONTRATOS: { titulo: string; items: Item[] } = {
     { href: '/equipos', texto: 'Equipos', icono: Printer },
     { href: '/contratos/lecturas', texto: 'Lecturas', icono: Gauge },
     { href: '/contratos/facturar', texto: 'Facturar el mes', icono: ReceiptText },
-    { href: '/servicio', texto: 'Servicio técnico', icono: Wrench },
+  ],
+}
+
+const SERVICIO: { titulo: string; items: Item[] } = {
+  titulo: 'Servicio técnico',
+  items: [
+    { href: '/servicio', texto: 'Órdenes', icono: Wrench },
+    { href: '/servicio/calendario', texto: 'Calendario', icono: CalendarDays },
+    { href: '/tecnico', texto: 'Mi agenda', icono: Smartphone },
+    { href: '/servicio/preventivos', texto: 'Preventivos', icono: RefreshCw },
+    { href: '/servicio/tipos', texto: 'Tipos de orden', icono: ListChecks },
   ],
 }
 
@@ -104,7 +118,7 @@ function rutaActiva(ruta: string, secciones: { items: Item[] }[]) {
 export function Navegacion({ funciones }: { funciones: string[] }) {
   const ruta = usePathname()
   const secciones = funciones.includes('contratos')
-    ? [...SECCIONES.slice(0, -1), CONTRATOS, SECCIONES[SECCIONES.length - 1]]
+    ? [...SECCIONES.slice(0, -1), CONTRATOS, SERVICIO, SECCIONES[SECCIONES.length - 1]]
     : SECCIONES
   const activa = rutaActiva(ruta, secciones)
   return (

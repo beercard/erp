@@ -127,6 +127,20 @@
       "when": 1790954025174,
       "tag": "0017_servicio_tecnico_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790956907011,
+      "tag": "0018_servicio_persat",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790956916780,
+      "tag": "0019_servicio_persat_seguridad",
+      "breakpoints": true
     }
   ]
 }

@@ -1,21 +1,25 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { Star } from 'lucide-react'
+import { useActionState, useEffect, useState, useTransition } from 'react'
 
 import { Buscador } from '@/components/comercial/Buscador'
+import { FormularioDinamico } from '@/components/servicio/FormularioDinamico'
 import { Aviso, Boton } from '@/components/ui'
-import { COBERTURAS, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
+import type { Campo, Valores } from '@/modulos/servicio/formularios'
+import { CIERRES, COBERTURAS, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
 
 import {
-  asignarAccion,
   buscarArticulosOrden,
   buscarClientesServicio,
+  buscarHuecosAccion,
   cancelarAccion,
+  cerrarAccion,
   equiposDelClienteAccion,
   facturarAccion,
   guardarOrdenAccion,
   itemAccion,
-  resolverAccion,
+  programarAccion,
   visitaAccion,
   type Estado,
 } from './acciones'
@@ -70,20 +74,30 @@ export type DatosOrden = {
   domicilio: string | null
   tecnicoId: string | null
   programada: string | null
+  hora: string | null
+  duracion: number
   cobertura: string
   observaciones: string | null
+  tipoOrdenId: string | null
+  instrucciones: Valores
 }
+
+export type TipoParaOrden = { id: string; nombre: string; clase: string; duracion: number; instrucciones: Campo[] }
 
 export function FormularioOrden({
   id,
   inicial,
   tecnicos,
+  tipos,
 }: {
   id: string | null
   inicial: Partial<DatosOrden> & { fecha: string }
   tecnicos: Opcion[]
+  tipos: TipoParaOrden[]
 }) {
   const [estado, accion, enviando] = useActionState(guardarOrdenAccion.bind(null, id), undefined)
+  const [tipoId, setTipoId] = useState(inicial.tipoOrdenId ?? (id ? '' : (tipos[0]?.id ?? '')))
+  const tipo = tipos.find((t) => t.id === tipoId)
   const [cliente, setCliente] = useState(inicial.terceroId ? { id: inicial.terceroId, razonSocial: inicial.cliente ?? '' } : null)
   const [equipos, setEquipos] = useState<EquipoCliente[] | null>(null)
   const [equipoId, setEquipoId] = useState(inicial.equipoId ?? '')
@@ -162,15 +176,28 @@ export function FormularioOrden({
         <input type="date" name="fecha" defaultValue={inicial.fecha} className={control} required />
       </label>
       <label className="flex flex-col gap-1">
-        <span className={etiqueta}>Tipo</span>
-        <select name="tipo" defaultValue={inicial.tipo ?? 'correctivo'} className={control}>
-          {Object.entries(TIPOS_ORDEN).map(([k, t]) => (
-            <option key={k} value={k}>
-              {t}
+        <span className={etiqueta}>Tipo de orden</span>
+        <select name="tipoOrdenId" value={tipoId} onChange={(e) => setTipoId(e.target.value)} className={control}>
+          {tipos.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.nombre}
             </option>
           ))}
+          <option value="">Sin formulario</option>
         </select>
       </label>
+      {!tipo && (
+        <label className="flex flex-col gap-1">
+          <span className={etiqueta}>Clase</span>
+          <select name="tipo" defaultValue={inicial.tipo ?? 'correctivo'} className={control}>
+            {Object.entries(TIPOS_ORDEN).map(([k, t]) => (
+              <option key={k} value={k}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="flex flex-col gap-1">
         <span className={etiqueta}>Prioridad</span>
         <select name="prioridad" defaultValue={inicial.prioridad ?? 'normal'} className={control}>
@@ -197,15 +224,27 @@ export function FormularioOrden({
         </select>
       </label>
       <label className="flex flex-col gap-1 sm:col-span-2 lg:col-span-4">
-        <span className={etiqueta}>Falla o pedido del cliente</span>
+        <span className={etiqueta}>Pedido del cliente (resumen)</span>
         <textarea
           name="falla"
           defaultValue={inicial.falla ?? ''}
-          rows={3}
+          rows={2}
           required
           className="rounded-md border border-borde bg-superficie px-2 py-1.5 text-sm focus:border-acento"
         />
       </label>
+      {tipo && tipo.instrucciones.some((c) => c.tipo !== 'equipo') && (
+        <div className="rounded-md border border-borde p-3 sm:col-span-2 lg:col-span-4">
+          <p className="mb-3 text-xs font-semibold tracking-wide text-texto-2 uppercase">Instrucciones para el técnico</p>
+          <FormularioDinamico
+            key={tipo.id}
+            campos={tipo.instrucciones}
+            inicial={tipo.id === inicial.tipoOrdenId ? inicial.instrucciones : null}
+            nombre="instrucciones"
+            contexto={{ omitir: ['equipo'] }}
+          />
+        </div>
+      )}
       <label className="flex flex-col gap-1">
         <span className={etiqueta}>Contacto</span>
         <input
@@ -236,6 +275,20 @@ export function FormularioOrden({
         <span className={etiqueta}>Visita programada</span>
         <input type="date" name="programada" defaultValue={inicial.programada ?? ''} className={control} />
       </label>
+      <label className="flex flex-col gap-1">
+        <span className={etiqueta}>Hora</span>
+        <input type="time" name="hora" defaultValue={inicial.hora ?? ''} className={control} />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className={etiqueta}>Duración (minutos)</span>
+        <input
+          name="duracion"
+          inputMode="numeric"
+          defaultValue={id ? inicial.duracion : ''}
+          placeholder={tipo ? String(tipo.duracion) : '60'}
+          className={`${control} cifras`}
+        />
+      </label>
       <label className="flex flex-col gap-1 sm:col-span-2">
         <span className={etiqueta}>Observaciones internas</span>
         <input name="observaciones" defaultValue={inicial.observaciones ?? ''} className={control} />
@@ -252,35 +305,126 @@ export function FormularioOrden({
   )
 }
 
-export function Asignar({
+type Hueco = Extract<Awaited<ReturnType<typeof buscarHuecosAccion>>, { huecos: unknown }>['huecos'][number]
+
+/** Programar la visita a mano o con el asistente de huecos (el "Coordinator" de Persat). */
+export function Programar({
   id,
   tecnicos,
-  tecnicoId,
-  programada,
+  inicial,
+  hoy,
 }: {
   id: string
   tecnicos: Opcion[]
-  tecnicoId: string | null
-  programada: string | null
+  inicial: { tecnicoId: string | null; programada: string | null; hora: string | null; duracion: number }
+  hoy: string
 }) {
-  const [estado, accion, enviando] = useActionState(asignarAccion.bind(null, id), undefined)
+  const [estado, accion, enviando] = useActionState(programarAccion.bind(null, id), undefined)
+  const [valores, setValores] = useState(inicial)
+  const [huecos, setHuecos] = useState<Hueco[] | null>(null)
+  const [error, setError] = useState('')
+  const [buscando, iniciar] = useTransition()
+  const buscar = () =>
+    iniciar(async () => {
+      setError('')
+      const r = await buscarHuecosAccion(id, valores.programada ?? hoy)
+      if (r.ok) setHuecos(r.huecos)
+      else setError(r.error)
+    })
   return (
-    <form action={accion} className="flex flex-wrap items-end gap-2">
-      <label className="flex min-w-48 flex-1 flex-col gap-1">
-        <span className={etiqueta}>Técnico</span>
-        <SelectorTecnico tecnicos={tecnicos} inicial={tecnicoId} />
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className={etiqueta}>Visita programada</span>
-        <input type="date" name="programada" defaultValue={programada ?? ''} className={control} />
-      </label>
-      <Boton type="submit" disabled={enviando}>
-        Asignar
-      </Boton>
-      <div className="w-full">
-        <Resultado estado={estado} />
-      </div>
-    </form>
+    <div className="flex flex-col gap-3">
+      <form action={accion} className="grid gap-2 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 sm:col-span-2">
+          <span className={etiqueta}>Técnico</span>
+          <select
+            name="tecnicoId"
+            value={valores.tecnicoId ?? ''}
+            onChange={(e) => setValores({ ...valores, tecnicoId: e.target.value || null })}
+            className={control}
+          >
+            <option value="">Sin técnico</option>
+            {tecnicos.map((t) => (
+              <option key={t.valor} value={t.valor}>
+                {t.texto}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className={etiqueta}>Día</span>
+          <input
+            type="date"
+            name="programada"
+            value={valores.programada ?? ''}
+            onChange={(e) => setValores({ ...valores, programada: e.target.value || null })}
+            className={control}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className={etiqueta}>Hora</span>
+          <input
+            type="time"
+            name="hora"
+            value={valores.hora ?? ''}
+            onChange={(e) => setValores({ ...valores, hora: e.target.value || null })}
+            className={control}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className={etiqueta}>Duración (min)</span>
+          <input
+            name="duracion"
+            inputMode="numeric"
+            value={valores.duracion}
+            onChange={(e) => setValores({ ...valores, duracion: Number(e.target.value.replace(/\D/g, '')) || 0 })}
+            className={`${control} cifras`}
+          />
+        </label>
+        <div className="flex flex-wrap items-end gap-2 sm:col-span-2">
+          <Boton type="submit" variante="primario" disabled={enviando}>
+            Programar
+          </Boton>
+          <Boton type="button" onClick={buscar} disabled={buscando || !tecnicos.length}>
+            {buscando ? 'Buscando…' : 'Buscar huecos'}
+          </Boton>
+        </div>
+        <div className="sm:col-span-2">
+          <Resultado estado={estado} />
+        </div>
+      </form>
+      {error && <Aviso>{error}</Aviso>}
+      {huecos &&
+        (huecos.length ? (
+          <ul className="divide-y divide-borde rounded-md border border-borde text-sm">
+            {huecos.map((h) => (
+              <li key={`${h.tecnicoId}${h.fecha}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValores({ ...valores, tecnicoId: h.tecnicoId, programada: h.fecha, hora: h.hora })
+                    setHuecos(null)
+                  }}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-superficie-2"
+                >
+                  <span>
+                    <span className="font-medium">{h.tecnico}</span>
+                    <span className="block text-xs text-texto-2">
+                      {h.fecha.split('-').reverse().join('/')} a las {h.hora} · libre hasta las {h.hasta}
+                    </span>
+                  </span>
+                  <span className="flex text-aviso" aria-label={`${h.estrellas} de 5`}>
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <Star key={i} aria-hidden className={`size-3.5 ${i < h.estrellas ? 'fill-current' : 'opacity-30'}`} />
+                    ))}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Aviso tono="aviso">No hay huecos en la próxima semana con la jornada de los técnicos.</Aviso>
+        ))}
+    </div>
   )
 }
 
@@ -432,32 +576,71 @@ export function Item({
   )
 }
 
-export function Resolver({ id, hoy, conEquipo }: { id: string; hoy: string; conEquipo: boolean }) {
-  const [estado, accion, enviando] = useActionState(resolverAccion.bind(null, id), undefined)
+/** Cierre del supervisor: después del informe del técnico, o directo desde la oficina. */
+export function Cerrar({
+  id,
+  hoy,
+  conEquipo,
+  sugerido,
+  informada,
+}: {
+  id: string
+  hoy: string
+  conEquipo: boolean
+  sugerido: string | null
+  informada: boolean
+}) {
+  const [estado, accion, enviando] = useActionState(cerrarAccion.bind(null, id), undefined)
+  const [cierre, setCierre] = useState(sugerido ?? 'ok')
   return (
-    <form action={accion} className="grid gap-2 sm:grid-cols-[auto_1fr_1fr]">
+    <form action={accion} className="grid gap-3 sm:grid-cols-3">
+      <fieldset className="flex flex-col gap-1 sm:col-span-3">
+        <legend className={`${etiqueta} mb-1`}>
+          Cierre{sugerido && ` (el técnico propuso: ${CIERRES[sugerido as keyof typeof CIERRES]})`}
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(CIERRES).map(([k, t]) => (
+            <label
+              key={k}
+              className={`flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm ${cierre === k ? 'border-acento bg-acento-suave' : 'border-borde'}`}
+            >
+              <input
+                type="radio"
+                name="cierre"
+                value={k}
+                checked={cierre === k}
+                onChange={() => setCierre(k)}
+                className="sr-only"
+              />
+              {t}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <label className="flex flex-col gap-1">
-        <span className={etiqueta}>Resuelta el</span>
+        <span className={etiqueta}>Fecha</span>
         <input type="date" name="fecha" defaultValue={hoy} className={control} required />
       </label>
-      {conEquipo && (
+      {conEquipo && !informada && (
         <>
           <label className="flex flex-col gap-1">
             <span className={etiqueta}>Contador del equipo (opcional)</span>
             <input name="contador" inputMode="numeric" className={`${control} cifras`} />
           </label>
           <label className="flex flex-col gap-1">
-            <span className={etiqueta}>Copias de prueba (no se cobran)</span>
+            <span className={etiqueta}>Copias de prueba</span>
             <input name="creditos" inputMode="numeric" className={`${control} cifras`} />
           </label>
         </>
       )}
       <label className="flex flex-col gap-1 sm:col-span-3">
-        <span className={etiqueta}>Solución</span>
+        <span className={etiqueta}>
+          {informada ? 'Nota del supervisor' : 'Qué se hizo'}
+          {cierre !== 'ok' ? ' (obligatoria: el desvío o por qué no se cumplió)' : informada ? ' (opcional)' : ''}
+        </span>
         <textarea
-          name="solucion"
+          name="nota"
           rows={2}
-          required
           className="rounded-md border border-borde bg-superficie px-2 py-1.5 text-sm focus:border-acento"
         />
       </label>
@@ -465,7 +648,7 @@ export function Resolver({ id, hoy, conEquipo }: { id: string; hoy: string; conE
         <Resultado estado={estado} />
         <div>
           <Boton type="submit" variante="primario" disabled={enviando}>
-            Dar por resuelta
+            Cerrar la orden
           </Boton>
         </div>
       </div>

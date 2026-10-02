@@ -118,7 +118,8 @@ describe('órdenes de servicio técnico', () => {
     if (!v.ok) throw new Error(v.error)
     const [uno, dos] = await en((tx) => Promise.all([obtenerOrden(tx, o.id), obtenerOrden(tx, v.id)]))
     expect(uno).toMatchObject({ cobertura: 'contrato', estado: 'pendiente', contratoId: expect.any(String) })
-    expect(dos).toMatchObject({ cobertura: 'cargo', estado: 'asignada', domicilio: 'Mitre 100', numero: 2 })
+    // Con técnico pero sin día de visita sigue pendiente (como en Persat).
+    expect(dos).toMatchObject({ cobertura: 'cargo', estado: 'pendiente', domicilio: 'Mitre 100', numero: 2, tecnicoId: tecnico })
 
     // Un equipo de otro cliente no.
     expect(

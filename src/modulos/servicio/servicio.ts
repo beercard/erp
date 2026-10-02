@@ -1,8 +1,9 @@
-import { and, asc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, eq, ilike, inArray, isNotNull, lt, or, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
 import type { Transaccion } from '../../db/conexion'
 import {
+  archivosServicio,
   articulos,
   comprobantes,
   depositos,
@@ -14,6 +15,7 @@ import {
   ordenesServicioVisitas,
   tecnicos,
   terceros,
+  tiposOrden,
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { monto } from '../../lib/dinero'
@@ -23,8 +25,23 @@ import { siguienteNumero } from '../comercial/numeracion'
 import { registrarMovimientos, saldoDe } from '../comercial/stock'
 import { registrarLectura } from '../contratos/contratos'
 import { guardarComprobante } from '../facturacion/comprobantes'
+import { cotizacionVigente } from '../comercial/cotizacion'
 import { preciosVigentes } from '../maestros/articulos'
-import { COBERTURAS, coberturaSugerida, estaAbierta, TIPOS_ORDEN } from './tipos'
+import { archivosDe, campoDe, validarValores, type Campo, type Lectura, type Material, type Valores } from './formularios'
+import {
+  ABIERTAS,
+  CIERRES,
+  COBERTURAS,
+  coberturaSugerida,
+  estaAbierta,
+  estaCerrada,
+  estaHecha,
+  estadoPlanificado,
+  seTrabaja,
+  TIPOS_ORDEN,
+  vencimiento,
+} from './tipos'
+import { obtenerPlantilla, plantillaVigente } from './tiposOrden'
 
 export { COBERTURAS, ESTADOS_ORDEN, TIPOS_ORDEN, coberturaSugerida, estaAbierta } from './tipos'
 
@@ -32,6 +49,12 @@ export { COBERTURAS, ESTADOS_ORDEN, TIPOS_ORDEN, coberturaSugerida, estaAbierta 
  * Servicio técnico: órdenes sobre los equipos de los clientes, con sus
  * visitas, los insumos y repuestos usados (descuentan stock al cargarlos) y,
  * si van con cargo, la factura en borrador.
+ *
+ * Ciclo (como Persat): la oficina abre la orden con las instrucciones y la
+ * programa (pendiente → proyectada → asignada); el técnico marca la llegada y
+ * manda la devolución desde el celular (informe); el supervisor la revisa y
+ * la cierra OK, con desvío o no cumplida. Si el técnico no informa dentro del
+ * plazo del tipo, vence.
  */
 
 const texto = z
@@ -47,6 +70,25 @@ const fechaOpcional = z
   .transform((v) => v || null)
   .pipe(z.iso.date({ error: 'Fecha inválida.' }).nullable())
 const fecha = z.iso.date({ error: 'Fecha inválida.' })
+const horaOpcional = z
+  .string()
+  .nullable()
+  .optional()
+  .transform((v) => v || null)
+  .pipe(
+    z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: 'Hora inválida.' })
+      .nullable(),
+  )
+const contadorOpcional = z
+  .union([z.string(), z.number()])
+  .nullable()
+  .optional()
+  .transform((v) => (v === null || v === undefined || String(v).trim() === '' ? null : Number(String(v).replace(/\./g, ''))))
+  .pipe(
+    z.number({ error: 'El contador es un número entero.' }).int({ error: 'El contador es un número entero.' }).min(0).nullable(),
+  )
 const claves = <T extends Record<string, string>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]]
 
 type Error = { ok: false; error: string }
@@ -58,11 +100,32 @@ async function ordenParaCambiar(tx: Transaccion, id: string) {
   return o ?? null
 }
 
-function soloAbierta(o: typeof ordenesServicio.$inferSelect | null): Error | null {
+type Orden = typeof ordenesServicio.$inferSelect
+
+/** Se le pueden cargar visitas e insumos: abierta o en informe. */
+function soloAbierta(o: Orden | null): Error | null {
   if (!o) return error('Esa orden de servicio ya no existe.')
   if (o.estado === 'cancelada') return error('La orden está cancelada.')
-  if (o.estado === 'resuelta') return error('La orden ya está resuelta: reabrila para cambiarla.')
+  if (estaCerrada(o.estado)) return error('La orden ya está cerrada: reabrila para cambiarla.')
+  if (!seTrabaja(o.estado)) return error('La orden no admite cambios en este estado.')
   return null
+}
+
+/** Plazo para informar del tipo de la orden (48 h si no tiene tipo). */
+async function plazoDe(tx: Transaccion, tipoOrdenId: string | null) {
+  if (!tipoOrdenId) return 48
+  const [t] = await tx.select({ plazo: tiposOrden.plazoHoras }).from(tiposOrden).where(eq(tiposOrden.id, tipoOrdenId))
+  return t?.plazo ?? 48
+}
+
+/** Estado y vencimiento según la planificación (para una orden abierta). */
+async function planificacion(
+  tx: Transaccion,
+  o: { programada: string | null; hora: string | null; tecnicoId: string | null; tipoOrdenId: string | null },
+) {
+  const estado = estadoPlanificado(o)
+  const vence = estado === 'asignada' ? vencimiento(o.programada, o.hora, await plazoDe(tx, o.tipoOrdenId)) : null
+  return { estado, vence }
 }
 
 // ---------------------------------------------------------------- Órdenes
@@ -79,6 +142,11 @@ const EsquemaOrden = z.object({
   domicilio: texto,
   tecnicoId: opcionalUuid,
   programada: fechaOpcional,
+  hora: horaOpcional,
+  duracion: z.coerce.number().int().min(5).max(1440).nullable().optional(),
+  /** Tipo de orden (con sus formularios) y respuestas a las instrucciones. */
+  tipoOrdenId: opcionalUuid,
+  instrucciones: z.record(z.string(), z.unknown()).default({}),
   /** Vacía: la sugerida según el equipo (contrato, garantía o cargo). */
   cobertura: z
     .enum(claves(COBERTURAS))
@@ -92,7 +160,7 @@ const EsquemaOrden = z.object({
 export async function guardarOrden(tx: Transaccion, usuarioId: string, entrada: unknown, id?: string) {
   const p = EsquemaOrden.safeParse(entrada)
   if (!p.success) return error(primerError(p.error))
-  const { cobertura, ...d } = p.data
+  const { cobertura, instrucciones: respuestas, ...d } = p.data
 
   let equipo: typeof equipos.$inferSelect | undefined
   if (d.equipoId) {
@@ -102,8 +170,42 @@ export async function guardarOrden(tx: Transaccion, usuarioId: string, entrada: 
   }
   if (d.programada && d.programada < d.fecha) return error('La visita no puede ser antes de la fecha del pedido.')
 
+  const anterior = id ? await ordenParaCambiar(tx, id) : null
+  if (id) {
+    if (!anterior) return error('Esa orden de servicio ya no existe.')
+    if (anterior.estado === 'cancelada') return error('La orden está cancelada.')
+    if (anterior.comprobanteId) return error('La orden ya está facturada: no se modifica.')
+  }
+
+  // Tipo de orden: sus formularios (la versión vigente, o la que ya tenía la orden si no cambió de tipo).
+  let plantillaId: string | null = null
+  let instrucciones: Valores = {}
+  let clase = d.tipo
+  let duracion = d.duracion ?? 60
+  if (d.tipoOrdenId) {
+    const [t] = await tx.select().from(tiposOrden).where(eq(tiposOrden.id, d.tipoOrdenId))
+    if (!t) return error('Ese tipo de orden ya no existe.')
+    const mismoTipo = anterior?.tipoOrdenId === t.id && anterior.plantillaId
+    if (!t.activo && !mismoTipo) return error(`El tipo de orden ${t.nombre} está dado de baja.`)
+    const plantilla = mismoTipo ? await obtenerPlantilla(tx, anterior.plantillaId!) : await plantillaVigente(tx, t.id)
+    if (!plantilla) return error(`El tipo de orden ${t.nombre} no tiene formularios.`)
+    // El campo de equipo de las instrucciones es el equipo de la orden.
+    const campoEquipo = campoDe(plantilla.instrucciones, 'equipo')
+    const valores = { ...respuestas, ...(campoEquipo ? { [campoEquipo.id]: d.equipoId ?? '' } : {}) }
+    const v = validarValores(plantilla.instrucciones, valores)
+    if (!v.ok) return error(v.error)
+    plantillaId = plantilla.id
+    instrucciones = v.valores
+    clase = t.clase as typeof clase
+    duracion = d.duracion ?? t.duracion
+  }
+
   const datos = {
     ...d,
+    tipo: clase,
+    duracion,
+    plantillaId,
+    instrucciones,
     contratoId: equipo?.contratoId ?? null,
     domicilio: d.domicilio ?? (equipo ? [equipo.domicilio, equipo.localidad].filter(Boolean).join(', ') || null : null),
     contacto: d.contacto ?? equipo?.contacto ?? null,
@@ -111,24 +213,22 @@ export async function guardarOrden(tx: Transaccion, usuarioId: string, entrada: 
     cobertura: cobertura ?? coberturaSugerida(equipo ?? null, d.fecha),
   }
 
+  const plan = await planificacion(tx, datos)
   let ordenId = id
   let numero: number
-  if (id) {
-    const o = await ordenParaCambiar(tx, id)
-    if (!o) return error('Esa orden de servicio ya no existe.')
-    if (o.estado === 'cancelada') return error('La orden está cancelada.')
-    if (o.comprobanteId) return error('La orden ya está facturada: no se modifica.')
-    const estado = estaAbierta(o.estado) ? (datos.tecnicoId ? 'asignada' : 'pendiente') : o.estado
+  if (anterior) {
+    // Abierta: el estado sale de la planificación. En informe o cerrada se corrigen los datos, nada más.
+    const cambio = estaAbierta(anterior.estado) ? plan : {}
     await tx
       .update(ordenesServicio)
-      .set({ ...datos, estado })
-      .where(eq(ordenesServicio.id, id))
-    numero = o.numero
+      .set({ ...datos, ...cambio })
+      .where(eq(ordenesServicio.id, anterior.id))
+    numero = anterior.numero
   } else {
     numero = await siguienteNumero(tx, 'orden_servicio')
     const [nueva] = await tx
       .insert(ordenesServicio)
-      .values({ ...datos, numero, estado: datos.tecnicoId ? 'asignada' : 'pendiente', usuarioId })
+      .values({ ...datos, ...plan, numero, usuarioId })
       .returning({ id: ordenesServicio.id })
     ordenId = nueva.id
   }
@@ -142,22 +242,246 @@ export async function guardarOrden(tx: Transaccion, usuarioId: string, entrada: 
   return { ok: true as const, id: ordenId!, numero }
 }
 
-const EsquemaAsignacion = z.object({ tecnicoId: opcionalUuid, programada: fechaOpcional })
+const EsquemaProgramacion = z.object({
+  tecnicoId: opcionalUuid,
+  programada: fechaOpcional,
+  hora: horaOpcional,
+  duracion: z.coerce.number().int().min(5).max(1440).optional(),
+})
 
-/** Asigna (o desasigna) el técnico y el día de la visita. */
-export async function asignarOrden(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
-  const p = EsquemaAsignacion.safeParse(entrada)
+/**
+ * Programa la visita (lo que hace el calendario al arrastrar): técnico, día,
+ * hora y duración. Sin día queda pendiente; con día y sin técnico, proyectada;
+ * con los dos, asignada. Reprogramar una vencida la vuelve a asignar.
+ */
+export async function programarOrden(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
+  const p = EsquemaProgramacion.safeParse(entrada)
   if (!p.success) return error(primerError(p.error))
   const o = await ordenParaCambiar(tx, id)
-  const no = soloAbierta(o)
-  if (no) return no
-  if (p.data.programada && p.data.programada < o!.fecha) return error('La visita no puede ser antes de la fecha del pedido.')
+  if (!o) return error('Esa orden de servicio ya no existe.')
+  if (!estaAbierta(o.estado)) return error('Solo se programa una orden que todavía no se hizo.')
+  const d = { ...p.data, duracion: p.data.duracion ?? o.duracion }
+  if (d.programada && d.programada < o.fecha) return error('La visita no puede ser antes de la fecha del pedido.')
+  if (d.tecnicoId) {
+    const [t] = await tx.select({ activo: tecnicos.activo }).from(tecnicos).where(eq(tecnicos.id, d.tecnicoId))
+    if (!t?.activo) return error('Ese técnico no está activo.')
+  }
+  const plan = await planificacion(tx, { ...d, tipoOrdenId: o.tipoOrdenId })
   await tx
     .update(ordenesServicio)
-    .set({ ...p.data, estado: p.data.tecnicoId ? 'asignada' : 'pendiente' })
+    .set({ ...d, ...plan })
     .where(eq(ordenesServicio.id, id))
-  await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: p.data })
-  return { ok: true as const }
+  await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: d })
+  return { ok: true as const, estado: plan.estado }
+}
+
+/** Compatibilidad: asignar es programar sin cambiar la hora ni la duración. */
+export async function asignarOrden(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
+  const [o] = await tx.select({ hora: ordenesServicio.hora }).from(ordenesServicio).where(eq(ordenesServicio.id, id))
+  return programarOrden(tx, usuarioId, id, { hora: o?.hora ?? null, ...(entrada as object) })
+}
+
+/**
+ * Pasa a vencidas las asignadas cuyo plazo para informar ya pasó. Se llama al
+ * consultar (listado, calendario, agenda): no hace falta un proceso aparte.
+ */
+export async function marcarVencidas(tx: Transaccion, ahora = new Date()) {
+  const r = await tx
+    .update(ordenesServicio)
+    .set({ estado: 'vencida' })
+    .where(and(eq(ordenesServicio.estado, 'asignada'), isNotNull(ordenesServicio.vence), lt(ordenesServicio.vence, ahora)))
+    .returning({ id: ordenesServicio.id })
+  return r.length
+}
+
+// ------------------------------------------------------------ Técnico en campo
+
+const EsquemaLlegada = z.object({
+  lat: z.coerce.number().min(-90).max(90).nullable().optional(),
+  lng: z.coerce.number().min(-180).max(180).nullable().optional(),
+})
+
+/** El técnico marca que llegó (con la ubicación del celular, si la dio). Vale la primera vez. */
+export async function registrarLlegada(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
+  const p = EsquemaLlegada.safeParse(entrada)
+  if (!p.success) return error('Ubicación inválida.')
+  const o = await ordenParaCambiar(tx, id)
+  if (!o) return error('Esa orden de servicio ya no existe.')
+  if (!estaAbierta(o.estado)) return error('La orden ya no está para hacerse.')
+  if (o.llegada) return { ok: true as const, llegada: o.llegada }
+  const llegada = new Date()
+  const conUbicacion = p.data.lat != null && p.data.lng != null
+  await tx
+    .update(ordenesServicio)
+    .set({
+      llegada,
+      llegadaLat: conUbicacion ? p.data.lat!.toFixed(6) : null,
+      llegadaLng: conUbicacion ? p.data.lng!.toFixed(6) : null,
+    })
+    .where(eq(ordenesServicio.id, id))
+  await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: { llegada } })
+  return { ok: true as const, llegada }
+}
+
+/** Precios en pesos de la lista del cliente (o de la primera lista activa), para lo que cobra la orden. */
+async function preciosDelCliente(tx: Transaccion, terceroId: string, articuloIds: string[]) {
+  if (!articuloIds.length) return new Map<string, string>()
+  const [cliente] = await tx.select({ lista: terceros.listaPreciosId }).from(terceros).where(eq(terceros.id, terceroId))
+  const listaId =
+    cliente?.lista ??
+    (
+      await tx
+        .select({ id: listasPrecios.id })
+        .from(listasPrecios)
+        .where(eq(listasPrecios.activa, true))
+        .orderBy(asc(listasPrecios.codigo))
+        .limit(1)
+    )[0]?.id
+  const salida = new Map<string, string>()
+  if (!listaId) return salida
+  const dolar = (await cotizacionVigente(tx, 'DOL'))?.valor ?? '0'
+  for (const [articuloId, p] of await preciosVigentes(tx, listaId, articuloIds)) {
+    try {
+      salida.set(articuloId, convertir(p.precio, p.moneda, 'PES', dolar))
+    } catch {
+      // Sin cotización para pasarlo a pesos: queda sin precio y lo completa la oficina.
+    }
+  }
+  return salida
+}
+
+const EsquemaInforme = z.object({
+  fecha,
+  solucion: z.string().trim().min(3, { error: 'Escribí un resumen de lo que hiciste.' }).max(2000),
+  cierre: z.enum(Object.keys(CIERRES) as [keyof typeof CIERRES, ...(keyof typeof CIERRES)[]], {
+    error: '¿Cómo quedó? Elegí OK, con desvío o no cumplida.',
+  }),
+  resultados: z.record(z.string(), z.unknown()).default({}),
+})
+
+/**
+ * Devolución del técnico desde el celular: valida el formulario de la orden
+ * y aplica sus efectos en la misma transacción.
+ * - Materiales: salen de la camioneta del técnico (o del primer depósito) y
+ *   quedan como renglones; si la orden es con cargo, con el precio de lista.
+ * - Contador: queda como lectura del equipo (factura de contratos).
+ * - Queda una visita con el tiempo entre la llegada y el envío.
+ * La orden pasa a informe, para que la revise el supervisor.
+ */
+export async function informarOrden(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
+  const p = EsquemaInforme.safeParse(entrada)
+  if (!p.success) return error(primerError(p.error))
+  const d = p.data
+  const o = await ordenParaCambiar(tx, id)
+  if (!o) return error('Esa orden de servicio ya no existe.')
+  if (!estaAbierta(o.estado)) {
+    return error(o.estado === 'informe' ? 'La orden ya se informó.' : 'La orden ya no está para hacerse.')
+  }
+  if (d.fecha < o.fecha) return error('No se puede informar antes de la fecha del pedido.')
+
+  const plantilla = o.plantillaId ? await obtenerPlantilla(tx, o.plantillaId) : null
+  const campos: Campo[] = plantilla?.devolucion ?? []
+  const v = validarValores(campos, d.resultados)
+  if (!v.ok) return error(v.error)
+  const resultados = v.valores
+
+  // Fotos y firma tienen que ser de esta orden.
+  const archivos = archivosDe(campos, resultados)
+  if (archivos.length) {
+    const propios = await tx
+      .select({ id: archivosServicio.id })
+      .from(archivosServicio)
+      .where(and(eq(archivosServicio.ordenId, id), inArray(archivosServicio.id, archivos)))
+    if (propios.length !== new Set(archivos).size) return error('Hay fotos o firmas que no son de esta orden: volvé a cargarlas.')
+  }
+
+  // Equipo elegido en la devolución (si la orden no tenía).
+  let equipoId = o.equipoId
+  const campoEquipo = campoDe(campos, 'equipo')
+  if (campoEquipo && resultados[campoEquipo.id]) {
+    const elegido = resultados[campoEquipo.id] as string
+    const [e] = await tx.select({ terceroId: equipos.terceroId }).from(equipos).where(eq(equipos.id, elegido))
+    if (!e || e.terceroId !== o.terceroId) return error('El equipo elegido no es de este cliente.')
+    equipoId ??= elegido
+  }
+
+  // Contador → lectura del equipo.
+  let contador: number | null = null
+  const campoContador = campoDe(campos, 'contador')
+  const lectura = campoContador ? (resultados[campoContador.id] as Lectura | undefined) : undefined
+  if (lectura) {
+    if (!equipoId) return error('La orden no tiene equipo: el contador no se puede guardar.')
+    const l = await registrarLectura(
+      tx,
+      usuarioId,
+      { equipoId, fecha: d.fecha, contador: lectura.contador, creditos: lectura.creditos },
+      'tecnico',
+    )
+    if (!l.ok) return l
+    contador = lectura.contador
+  }
+
+  // Materiales → renglones de la orden con su salida de stock.
+  const campoMateriales = campoDe(campos, 'materiales')
+  const materiales = campoMateriales ? ((resultados[campoMateriales.id] as Material[] | undefined) ?? []) : []
+  const avisos: string[] = []
+  if (materiales.length) {
+    const [tecnico] = o.tecnicoId ? await tx.select().from(tecnicos).where(eq(tecnicos.id, o.tecnicoId)) : []
+    const depositoId =
+      tecnico?.depositoId ??
+      (
+        await tx
+          .select({ id: depositos.id })
+          .from(depositos)
+          .where(eq(depositos.activo, true))
+          .orderBy(asc(depositos.codigo))
+          .limit(1)
+      )[0]?.id
+    const precios =
+      o.cobertura === 'cargo'
+        ? await preciosDelCliente(
+            tx,
+            o.terceroId,
+            materiales.flatMap((m) => (m.articuloId ? [m.articuloId] : [])),
+          )
+        : new Map<string, string>()
+    for (const m of materiales) {
+      const r = await agregarItem(tx, usuarioId, id, {
+        articuloId: m.articuloId,
+        descripcion: m.descripcion || null,
+        cantidad: m.cantidad,
+        depositoId,
+        precioUnitario: (m.articuloId && precios.get(m.articuloId)) || '0',
+      })
+      if (!r.ok) return r
+      avisos.push(...r.avisos)
+    }
+  }
+
+  const salida = new Date()
+  await tx.insert(ordenesServicioVisitas).values({
+    ordenId: id,
+    fecha: d.fecha,
+    tecnicoId: o.tecnicoId,
+    horas: o.llegada ? Math.max(0, (salida.getTime() - o.llegada.getTime()) / 3_600_000).toFixed(2) : '0',
+    detalle: d.solucion,
+    usuarioId,
+  })
+  await tx
+    .update(ordenesServicio)
+    .set({
+      estado: 'informe',
+      resultados,
+      solucion: d.solucion,
+      cierreTecnico: d.cierre,
+      informada: salida,
+      salida,
+      equipoId,
+      contador: contador ?? o.contador,
+    })
+    .where(eq(ordenesServicio.id, id))
+  await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: { informe: d } })
+  return { ok: true as const, avisos }
 }
 
 // ---------------------------------------------------------------- Visitas
@@ -180,7 +504,11 @@ export async function registrarVisita(tx: Transaccion, usuarioId: string, ordenI
   await tx.insert(ordenesServicioVisitas).values({ ...p.data, tecnicoId, ordenId, usuarioId })
   // Quien fue a verla queda como técnico de la orden si no había uno.
   if (!o!.tecnicoId && tecnicoId) {
-    await tx.update(ordenesServicio).set({ tecnicoId, estado: 'asignada' }).where(eq(ordenesServicio.id, ordenId))
+    const cambio = estaAbierta(o!.estado) ? await planificacion(tx, { ...o!, tecnicoId }) : {}
+    await tx
+      .update(ordenesServicio)
+      .set({ tecnicoId, ...cambio })
+      .where(eq(ordenesServicio.id, ordenId))
   }
   await auditar(tx, { usuarioId, accion: 'alta', entidad: 'visita_servicio', entidadId: ordenId, despues: p.data })
   return { ok: true as const }
@@ -285,65 +613,85 @@ export async function quitarItem(tx: Transaccion, usuarioId: string, itemId: str
   return { ok: true as const }
 }
 
-// ----------------------------------------------- Resolver, reabrir, cancelar
+// ------------------------------------------------- Cerrar, reabrir, cancelar
 
-const EsquemaResolucion = z.object({
+const EsquemaCierre = z.object({
   fecha,
-  solucion: z.string().trim().min(3, { error: 'Escribí qué se hizo para resolverla.' }),
-  contador: z
-    .union([z.string(), z.number()])
-    .nullable()
-    .optional()
-    .transform((v) => (v === null || v === undefined || String(v).trim() === '' ? null : Number(String(v).replace(/\./g, ''))))
-    .pipe(
-      z
-        .number({ error: 'El contador es un número entero.' })
-        .int({ error: 'El contador es un número entero.' })
-        .min(0)
-        .nullable(),
-    ),
+  cierre: z.enum(Object.keys(CIERRES) as [keyof typeof CIERRES, ...(keyof typeof CIERRES)[]]),
+  nota: texto,
+  /** Para cerrar desde la oficina una orden que el técnico no informó por el celular. */
+  contador: contadorOpcional,
   creditos: z.coerce.number().int().min(0, { error: 'Las copias de prueba son un número entero.' }).default(0),
 })
 
 /**
- * Da la orden por resuelta. Si el técnico tomó el contador del equipo, queda
- * también como lectura (con las copias de prueba, que no se le cobran).
+ * El supervisor cierra la orden: OK, con desvío (hecha con algo pendiente) o
+ * no cumplida. Normalmente después del informe del técnico; también se puede
+ * cerrar directo desde la oficina (resuelta por teléfono, por ejemplo), y
+ * entonces la nota es la solución.
  */
-export async function resolverOrden(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
-  const p = EsquemaResolucion.safeParse(entrada)
+export async function cerrarOrden(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
+  const p = EsquemaCierre.safeParse(entrada)
   if (!p.success) return error(primerError(p.error))
   const d = p.data
   const o = await ordenParaCambiar(tx, id)
-  const no = soloAbierta(o)
-  if (no) return no
-  if (d.fecha < o!.fecha) return error('No se puede resolver antes de la fecha del pedido.')
+  if (!o) return error('Esa orden de servicio ya no existe.')
+  if (o.estado !== 'informe' && !estaAbierta(o.estado)) return error('La orden ya está cerrada o cancelada.')
+  if (d.fecha < o.fecha) return error('No se puede cerrar antes de la fecha del pedido.')
+  const solucion = o.solucion ?? d.nota
+  if (!solucion || solucion.length < 3) return error('Escribí qué se hizo (o por qué no se hizo).')
+  if (d.cierre !== 'ok' && !d.nota) return error('Contá el desvío o por qué no se cumplió.')
   if (d.contador !== null) {
-    if (!o!.equipoId) return error('La orden no tiene equipo: el contador no se puede guardar.')
+    if (!o.equipoId) return error('La orden no tiene equipo: el contador no se puede guardar.')
     const l = await registrarLectura(
       tx,
       usuarioId,
-      { equipoId: o!.equipoId, fecha: d.fecha, contador: d.contador, creditos: d.creditos },
+      { equipoId: o.equipoId, fecha: d.fecha, contador: d.contador, creditos: d.creditos },
       'tecnico',
     )
     if (!l.ok) return l
   }
   await tx
     .update(ordenesServicio)
-    .set({ estado: 'resuelta', solucion: d.solucion, fechaResolucion: d.fecha, contador: d.contador })
+    .set({
+      estado: `cerrada_${d.cierre}`,
+      solucion,
+      notaCierre: d.nota,
+      fechaResolucion: d.fecha,
+      cerrada: new Date(),
+      cerradaPor: usuarioId,
+      contador: d.contador ?? o.contador,
+    })
     .where(eq(ordenesServicio.id, id))
-  await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: d })
+  await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: { cierre: d } })
   return { ok: true as const }
 }
 
-/** Vuelve a abrir una orden resuelta (por ejemplo, si la falla se repitió). No si ya se facturó. */
+/** Compatibilidad: resolver es cerrar OK desde la oficina con la solución. */
+export async function resolverOrden(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
+  const e = (entrada ?? {}) as { fecha?: string; solucion?: string; contador?: unknown; creditos?: unknown }
+  return cerrarOrden(tx, usuarioId, id, {
+    fecha: e.fecha,
+    cierre: 'ok',
+    nota: e.solucion,
+    contador: e.contador,
+    creditos: e.creditos,
+  })
+}
+
+/**
+ * Vuelve a abrir una orden cerrada o en informe (la falla se repitió, el
+ * informe está incompleto): queda como estaba planificada. No si ya se facturó.
+ */
 export async function reabrirOrden(tx: Transaccion, usuarioId: string, id: string) {
   const o = await ordenParaCambiar(tx, id)
   if (!o) return error('Esa orden de servicio ya no existe.')
-  if (o.estado !== 'resuelta') return error('Solo se reabre una orden resuelta.')
+  if (!estaCerrada(o.estado) && o.estado !== 'informe') return error('Solo se reabre una orden cerrada o en informe.')
   if (o.comprobanteId) return error('La orden ya está facturada: abrí una nueva.')
+  const plan = await planificacion(tx, o)
   await tx
     .update(ordenesServicio)
-    .set({ estado: o.tecnicoId ? 'asignada' : 'pendiente', fechaResolucion: null })
+    .set({ ...plan, fechaResolucion: null, cerrada: null, cerradaPor: null, informada: null })
     .where(eq(ordenesServicio.id, id))
   await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: { reabierta: true } })
   return { ok: true as const }
@@ -351,18 +699,18 @@ export async function reabrirOrden(tx: Transaccion, usuarioId: string, id: strin
 
 export async function cancelarOrden(tx: Transaccion, usuarioId: string, id: string, motivo: string) {
   const o = await ordenParaCambiar(tx, id)
-  const no = soloAbierta(o)
-  if (no) return no
+  if (!o) return error('Esa orden de servicio ya no existe.')
+  if (!estaAbierta(o.estado)) return error('Solo se cancela una orden que todavía no se hizo.')
   if (motivo.trim().length < 3) return error('Escribí por qué se cancela.')
   const [usado] = await tx
     .select({ id: ordenesServicioItems.id })
     .from(ordenesServicioItems)
     .where(eq(ordenesServicioItems.ordenId, id))
     .limit(1)
-  if (usado) return error('La orden tiene insumos cargados: quitalos primero (vuelven al depósito) o resolvela.')
+  if (usado) return error('La orden tiene insumos cargados: quitalos primero (vuelven al depósito) o cerrala.')
   await tx
     .update(ordenesServicio)
-    .set({ estado: 'cancelada', motivoCancelacion: motivo.trim() })
+    .set({ estado: 'cancelada', motivoCancelacion: motivo.trim(), vence: null })
     .where(eq(ordenesServicio.id, id))
   await auditar(tx, { usuarioId, accion: 'anulacion', entidad: 'orden_servicio', entidadId: id, despues: { motivo } })
   return { ok: true as const }
@@ -386,7 +734,7 @@ export async function facturarOrden(tx: Transaccion, usuarioId: string, id: stri
   if (!p.success) return error(primerError(p.error))
   const o = await ordenParaCambiar(tx, id)
   if (!o) return error('Esa orden de servicio ya no existe.')
-  if (o.estado !== 'resuelta') return error('Se factura una orden resuelta.')
+  if (!estaHecha(o.estado)) return error('Se factura una orden cerrada OK o con desvío.')
   if (o.comprobanteId) return error('La orden ya está facturada.')
   if (o.cobertura !== 'cargo') {
     return error(`La orden está ${o.cobertura === 'contrato' ? 'cubierta por el contrato' : 'en garantía'}: no se factura.`)
@@ -436,7 +784,7 @@ export async function facturarOrden(tx: Transaccion, usuarioId: string, id: stri
 
 export type FiltroOrdenes = {
   q?: string
-  /** abiertas (sin asignar + asignadas), un estado, o todas */
+  /** activas (abiertas y en informe), un estado, cerradas, o todas */
   estado?: string
   tecnicoId?: string
   equipoId?: string
@@ -444,14 +792,20 @@ export type FiltroOrdenes = {
   limite?: number
 }
 
+/** Abiertas y en informe: lo que todavía pide atención. */
+const ACTIVAS = [...ABIERTAS, 'informe']
+const activa = sql`${ordenesServicio.estado} in ('pendiente', 'proyectada', 'asignada', 'vencida', 'informe')`
+
 export async function listarOrdenes(tx: Transaccion, filtro: FiltroOrdenes = {}) {
   const q = filtro.q?.trim()
   const estado =
     filtro.estado === 'todas'
       ? undefined
-      : filtro.estado && filtro.estado !== 'abiertas'
-        ? eq(ordenesServicio.estado, filtro.estado)
-        : inArray(ordenesServicio.estado, ['pendiente', 'asignada'])
+      : filtro.estado === 'cerradas'
+        ? sql`${ordenesServicio.estado} like 'cerrada%'`
+        : filtro.estado && !['abiertas', 'activas'].includes(filtro.estado)
+          ? eq(ordenesServicio.estado, filtro.estado)
+          : inArray(ordenesServicio.estado, ACTIVAS)
   return (
     tx
       .select({
@@ -464,6 +818,12 @@ export async function listarOrdenes(tx: Transaccion, filtro: FiltroOrdenes = {})
         cobertura: ordenesServicio.cobertura,
         falla: ordenesServicio.falla,
         programada: ordenesServicio.programada,
+        hora: ordenesServicio.hora,
+        duracion: ordenesServicio.duracion,
+        tecnicoId: ordenesServicio.tecnicoId,
+        tipoOrden: tiposOrden.nombre,
+        color: tiposOrden.color,
+        cierreTecnico: ordenesServicio.cierreTecnico,
         fechaResolucion: ordenesServicio.fechaResolucion,
         comprobanteId: ordenesServicio.comprobanteId,
         cliente: terceros.razonSocial,
@@ -478,6 +838,7 @@ export async function listarOrdenes(tx: Transaccion, filtro: FiltroOrdenes = {})
       .leftJoin(equipos, eq(equipos.id, ordenesServicio.equipoId))
       .leftJoin(modelosEquipo, eq(modelosEquipo.id, equipos.modeloId))
       .leftJoin(tecnicos, eq(tecnicos.id, ordenesServicio.tecnicoId))
+      .leftJoin(tiposOrden, eq(tiposOrden.id, ordenesServicio.tipoOrdenId))
       .where(
         and(
           estado,
@@ -494,24 +855,26 @@ export async function listarOrdenes(tx: Transaccion, filtro: FiltroOrdenes = {})
             : undefined,
         ),
       )
-      // Abiertas: primero las urgentes y las más viejas. El resto, las más nuevas arriba.
+      // Activas: primero las urgentes y las más viejas. El resto, las más nuevas arriba.
       .orderBy(
-        sql`case when ${ordenesServicio.estado} in ('pendiente', 'asignada') then 0 else 1 end`,
-        sql`case when ${ordenesServicio.estado} in ('pendiente', 'asignada') and ${ordenesServicio.prioridad} = 'urgente' then 0 else 1 end`,
-        sql`case when ${ordenesServicio.estado} in ('pendiente', 'asignada') then ${ordenesServicio.numero} else -${ordenesServicio.numero} end`,
+        sql`case when ${activa} then 0 else 1 end`,
+        sql`case when ${activa} and ${ordenesServicio.prioridad} = 'urgente' then 0 else 1 end`,
+        sql`case when ${activa} then ${ordenesServicio.numero} else -${ordenesServicio.numero} end`,
       )
       .limit(filtro.limite ?? 300)
   )
 }
 
-/** Cuántas hay abiertas, sin asignar y urgentes (para el encabezado). */
+/** Cuántas hay en cada situación que pide atención (para el encabezado). */
 export async function resumenOrdenes(tx: Transaccion) {
   const [r] = await tx
     .select({
-      abiertas: sql<number>`count(*) filter (where ${ordenesServicio.estado} in ('pendiente', 'asignada'))::int`,
-      sinAsignar: sql<number>`count(*) filter (where ${ordenesServicio.estado} = 'pendiente')::int`,
-      urgentes: sql<number>`count(*) filter (where ${ordenesServicio.estado} in ('pendiente', 'asignada') and ${ordenesServicio.prioridad} = 'urgente')::int`,
-      porFacturar: sql<number>`count(*) filter (where ${ordenesServicio.estado} = 'resuelta' and ${ordenesServicio.cobertura} = 'cargo' and ${ordenesServicio.comprobanteId} is null)::int`,
+      abiertas: sql<number>`count(*) filter (where ${activa})::int`,
+      sinAsignar: sql<number>`count(*) filter (where ${ordenesServicio.estado} in ('pendiente', 'proyectada'))::int`,
+      urgentes: sql<number>`count(*) filter (where ${activa} and ${ordenesServicio.prioridad} = 'urgente')::int`,
+      vencidas: sql<number>`count(*) filter (where ${ordenesServicio.estado} = 'vencida')::int`,
+      paraRevisar: sql<number>`count(*) filter (where ${ordenesServicio.estado} = 'informe')::int`,
+      porFacturar: sql<number>`count(*) filter (where ${ordenesServicio.estado} in ('cerrada_ok', 'cerrada_desvio') and ${ordenesServicio.cobertura} = 'cargo' and ${ordenesServicio.comprobanteId} is null)::int`,
     })
     .from(ordenesServicio)
   return r
@@ -522,7 +885,13 @@ export async function obtenerOrden(tx: Transaccion, id: string) {
   if (!o) return null
   const [[cliente], [equipo], visitas, items, [factura]] = await Promise.all([
     tx
-      .select({ id: terceros.id, razonSocial: terceros.razonSocial, listaPreciosId: terceros.listaPreciosId })
+      .select({
+        id: terceros.id,
+        razonSocial: terceros.razonSocial,
+        listaPreciosId: terceros.listaPreciosId,
+        telefono: terceros.telefono,
+        email: terceros.email,
+      })
       .from(terceros)
       .where(eq(terceros.id, o.terceroId)),
     o.equipoId
@@ -581,13 +950,53 @@ export async function obtenerOrden(tx: Transaccion, id: string) {
           .where(eq(comprobantes.id, o.comprobanteId))
       : Promise.resolve([]),
   ])
-  const tecnico = o.tecnicoId ? (await tx.select().from(tecnicos).where(eq(tecnicos.id, o.tecnicoId)))[0] : null
-  return { ...o, cliente, equipo: equipo ?? null, tecnico, visitas, items, factura: factura ?? null }
+  const [tecnico, tipoOrden, plantilla, archivos] = await Promise.all([
+    o.tecnicoId
+      ? tx
+          .select()
+          .from(tecnicos)
+          .where(eq(tecnicos.id, o.tecnicoId))
+          .then((r) => r[0] ?? null)
+      : null,
+    o.tipoOrdenId
+      ? tx
+          .select()
+          .from(tiposOrden)
+          .where(eq(tiposOrden.id, o.tipoOrdenId))
+          .then((r) => r[0] ?? null)
+      : null,
+    o.plantillaId ? obtenerPlantilla(tx, o.plantillaId) : null,
+    tx
+      .select({ id: archivosServicio.id, clase: archivosServicio.clase, creado: archivosServicio.creado })
+      .from(archivosServicio)
+      .where(eq(archivosServicio.ordenId, id))
+      .orderBy(asc(archivosServicio.creado)),
+  ])
+  return {
+    ...o,
+    instrucciones: o.instrucciones as Valores,
+    resultados: (o.resultados ?? null) as Valores | null,
+    cliente,
+    equipo: equipo ?? null,
+    tecnico,
+    tipoOrden,
+    plantilla,
+    archivos,
+    visitas,
+    items,
+    factura: factura ?? null,
+  }
 }
 
 export async function listarTecnicos(tx: Transaccion) {
   return tx
-    .select({ id: tecnicos.id, nombre: tecnicos.nombre })
+    .select({
+      id: tecnicos.id,
+      nombre: tecnicos.nombre,
+      jornadaDesde: tecnicos.jornadaDesde,
+      jornadaHasta: tecnicos.jornadaHasta,
+      dias: tecnicos.dias,
+    })
     .from(tecnicos)
     .where(eq(tecnicos.activo, true))
     .orderBy(asc(tecnicos.nombre))
@@ -675,4 +1084,31 @@ export async function articulosParaOrden(tx: Transaccion, ordenId: string, busca
 /** Órdenes de un equipo, para su ficha. */
 export async function ordenesDelEquipo(tx: Transaccion, equipoId: string) {
   return listarOrdenes(tx, { equipoId, estado: 'todas', limite: 50 })
+}
+
+/** El técnico de un usuario: el vinculado, o el que tiene su email (así no hay que vincularlo a mano). */
+export async function tecnicoDeUsuario(tx: Transaccion, usuario: { id: string; email: string }) {
+  const [t] = await tx
+    .select()
+    .from(tecnicos)
+    .where(
+      and(
+        eq(tecnicos.activo, true),
+        or(eq(tecnicos.usuarioId, usuario.id), sql`lower(${tecnicos.email}) = lower(${usuario.email})`),
+      ),
+    )
+    .orderBy(sql`case when ${tecnicos.usuarioId} = ${usuario.id} then 0 else 1 end`)
+    .limit(1)
+  return t ?? null
+}
+
+/** Agenda del técnico: lo asignado y lo vencido (lo que tiene que hacer), y lo que mandó a revisar hace poco. */
+export async function agendaDelTecnico(tx: Transaccion, tecnicoId: string) {
+  const ordenes = await listarOrdenes(tx, { tecnicoId, estado: 'activas', limite: 200 })
+  return ordenes.sort(
+    (a, b) =>
+      (a.programada ?? '9999').localeCompare(b.programada ?? '9999') ||
+      (a.hora ?? '99').localeCompare(b.hora ?? '99') ||
+      a.numero - b.numero,
+  )
 }

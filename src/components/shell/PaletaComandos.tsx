@@ -57,6 +57,28 @@ const ACCIONES_CONTRATOS = [
     icono: Wrench,
     claves: 'falla reparacion llamado tecnico',
   },
+  {
+    id: 'calendario-servicio',
+    texto: 'Calendario de técnicos',
+    href: '/servicio/calendario',
+    icono: Wrench,
+    claves: 'agenda coordinacion asignar',
+  },
+  { id: 'mi-agenda', texto: 'Mi agenda (técnico)', href: '/tecnico', icono: Wrench, claves: 'celular ordenes del dia' },
+  {
+    id: 'preventivos',
+    texto: 'Mantenimiento preventivo',
+    href: '/servicio/preventivos',
+    icono: Wrench,
+    claves: 'repetitiva periodica copias',
+  },
+  {
+    id: 'tipos-orden',
+    texto: 'Tipos de orden y formularios',
+    href: '/servicio/tipos',
+    icono: Wrench,
+    claves: 'plantilla checklist formulario',
+  },
 ]
 
 const ACCIONES = [

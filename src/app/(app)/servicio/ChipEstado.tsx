@@ -1,13 +1,28 @@
 import { Chip } from '@/components/ui'
-import { ESTADOS_ORDEN } from '@/modulos/servicio/tipos'
+import { AYUDA_ESTADOS, ESTADOS_ORDEN, type EstadoOrden } from '@/modulos/servicio/tipos'
 
-const TONO = { pendiente: 'aviso', asignada: 'info', resuelta: 'ok', cancelada: 'neutro' } as const
+/** Colores de estado como en el calendario de Persat. */
+export const TONO_ESTADO: Record<EstadoOrden, 'aviso' | 'info' | 'ok' | 'error' | 'neutro' | 'acento'> = {
+  pendiente: 'neutro',
+  proyectada: 'info',
+  asignada: 'info',
+  informe: 'acento',
+  vencida: 'error',
+  cerrada_ok: 'ok',
+  cerrada_desvio: 'aviso',
+  cerrada_no_cumplida: 'error',
+  cancelada: 'neutro',
+}
 
-/** Estado de la orden; una resuelta con cargo dice si falta facturarla. */
+/** Estado de la orden; una hecha con cargo dice si falta facturarla. */
 export function ChipEstado({ estado, cobertura, facturada }: { estado: string; cobertura: string; facturada: boolean }) {
-  const e = estado as keyof typeof ESTADOS_ORDEN
-  if (e === 'resuelta' && cobertura === 'cargo') {
-    return facturada ? <Chip tono="ok">Facturada</Chip> : <Chip tono="acento">Resuelta · a facturar</Chip>
-  }
-  return <Chip tono={TONO[e] ?? 'neutro'}>{ESTADOS_ORDEN[e] ?? estado}</Chip>
+  const e = estado as EstadoOrden
+  const texto = ESTADOS_ORDEN[e] ?? estado
+  const porFacturar = (e === 'cerrada_ok' || e === 'cerrada_desvio') && cobertura === 'cargo'
+  return (
+    <span title={AYUDA_ESTADOS[e]} className="inline-flex flex-wrap gap-1">
+      <Chip tono={TONO_ESTADO[e] ?? 'neutro'}>{texto}</Chip>
+      {porFacturar && (facturada ? <Chip tono="ok">Facturada</Chip> : <Chip tono="acento">A facturar</Chip>)}
+    </span>
+  )
 }

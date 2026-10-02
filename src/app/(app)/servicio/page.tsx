@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { CalendarDays, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -6,8 +6,9 @@ import { BotonEnlace, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
-import { listarOrdenes, listarTecnicos, resumenOrdenes } from '@/modulos/servicio/servicio'
-import { ESTADOS_ORDEN, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
+import { generarPreventivos } from '@/modulos/servicio/preventivo'
+import { listarOrdenes, listarTecnicos, marcarVencidas, resumenOrdenes } from '@/modulos/servicio/servicio'
+import { ESTADOS_ORDEN, estaAbierta, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
 
 import { paginaContratos } from '../contratos/modulo'
 import { ChipEstado } from './ChipEstado'
@@ -20,11 +21,16 @@ const dias = (desde: string, hasta: string) => Math.round((Date.parse(hasta) - D
 export default async function Servicio({ searchParams }: PageProps<'/servicio'>) {
   const sesion = await paginaContratos('servicio.ver')
   const { q, estado, tecnico } = (await searchParams) as { q?: string; estado?: string; tecnico?: string }
-  const { lista, resumen, tecnicos } = await conEmpresa(sesion.empresa.id, async (tx) => ({
-    lista: await listarOrdenes(tx, { q, estado: estado ?? 'abiertas', tecnicoId: tecnico || undefined }),
-    resumen: await resumenOrdenes(tx),
-    tecnicos: await listarTecnicos(tx),
-  }))
+  const { lista, resumen, tecnicos } = await conEmpresa(sesion.empresa.id, async (tx) => {
+    // Al entrar se ponen al día los vencimientos y los preventivos (no hay procesos aparte).
+    await marcarVencidas(tx)
+    if (tienePermiso(sesion.permisos, 'servicio.cargar')) await generarPreventivos(tx, sesion.usuario.id)
+    return {
+      lista: await listarOrdenes(tx, { q, estado: estado ?? 'activas', tecnicoId: tecnico || undefined }),
+      resumen: await resumenOrdenes(tx),
+      tecnicos: await listarTecnicos(tx),
+    }
+  })
   const hoy = hoyArgentina()
 
   return (
@@ -33,13 +39,29 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
         titulo="Servicio técnico"
         bajada={
           <>
-            {resumen.abiertas} abiertas
-            {resumen.sinAsignar > 0 && ` · ${resumen.sinAsignar} sin asignar`}
+            {resumen.abiertas} activas
+            {resumen.sinAsignar > 0 && ` · ${resumen.sinAsignar} sin técnico`}
             {resumen.urgentes > 0 && ` · ${resumen.urgentes} urgentes`}
+            {resumen.paraRevisar > 0 && (
+              <>
+                {' · '}
+                <Link href="/servicio?estado=informe" className="text-acento hover:underline">
+                  {resumen.paraRevisar} para revisar
+                </Link>
+              </>
+            )}
+            {resumen.vencidas > 0 && (
+              <>
+                {' · '}
+                <Link href="/servicio?estado=vencida" className="text-error hover:underline">
+                  {resumen.vencidas} vencidas
+                </Link>
+              </>
+            )}
             {resumen.porFacturar > 0 && (
               <>
                 {' · '}
-                <Link href="/servicio?estado=resuelta" className="text-acento hover:underline">
+                <Link href="/servicio?estado=cerradas" className="text-acento hover:underline">
                   {resumen.porFacturar} con cargo para facturar
                 </Link>
               </>
@@ -47,11 +69,16 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
           </>
         }
         acciones={
-          tienePermiso(sesion.permisos, 'servicio.cargar') && (
-            <BotonEnlace href="/servicio/nueva" variante="primario">
-              <Plus aria-hidden className="size-4" /> Nueva orden
+          <>
+            <BotonEnlace href="/servicio/calendario">
+              <CalendarDays aria-hidden className="size-4" /> Calendario
             </BotonEnlace>
-          )
+            {tienePermiso(sesion.permisos, 'servicio.cargar') && (
+              <BotonEnlace href="/servicio/nueva" variante="primario">
+                <Plus aria-hidden className="size-4" /> Nueva orden
+              </BotonEnlace>
+            )}
+          </>
         }
       />
       <form className="mb-4 flex flex-wrap gap-2">
@@ -63,10 +90,11 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
         />
         <select
           name="estado"
-          defaultValue={estado ?? 'abiertas'}
+          defaultValue={estado ?? 'activas'}
           className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
         >
-          <option value="abiertas">Abiertas</option>
+          <option value="activas">Activas (sin cerrar)</option>
+          <option value="cerradas">Cerradas</option>
           {Object.entries(ESTADOS_ORDEN).map(([k, t]) => (
             <option key={k} value={k}>
               {t}
@@ -92,7 +120,7 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
       </form>
       {lista.length === 0 ? (
         <Panel className="p-6 text-sm text-texto-2">
-          {q || (estado && estado !== 'abiertas') ? 'No hay órdenes que coincidan.' : 'No hay órdenes abiertas.'}
+          {q || (estado && estado !== 'activas') ? 'No hay órdenes que coincidan.' : 'No hay órdenes activas.'}
           {tecnicos.length === 0 && tienePermiso(sesion.permisos, 'maestros.configuracion') && (
             <>
               {' '}
@@ -118,7 +146,7 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
             </thead>
             <tbody className="divide-y divide-borde">
               {lista.map((o) => {
-                const abierta = o.estado === 'pendiente' || o.estado === 'asignada'
+                const abierta = estaAbierta(o.estado)
                 const demora = abierta ? dias(o.fecha, hoy) : null
                 return (
                   <tr key={o.id} className="group align-top hover:bg-superficie-2">
@@ -126,7 +154,7 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
                       <Link href={`/servicio/${o.id}`} className="font-medium group-hover:text-acento">
                         {o.numero}
                       </Link>
-                      <span className="block text-xs text-texto-3">{o.fecha}</span>
+                      <span className="block text-xs text-texto-3">{o.fecha.split('-').reverse().join('/')}</span>
                     </td>
                     <td className="px-4 py-2">
                       {o.cliente}
@@ -139,13 +167,17 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
                     </td>
                     <td className="max-w-80 px-4 py-2">
                       <span className="line-clamp-2">{o.falla}</span>
-                      <span className="text-xs text-texto-3">{TIPOS_ORDEN[o.tipo as keyof typeof TIPOS_ORDEN]}</span>
+                      <span className="flex items-center gap-1.5 text-xs text-texto-3">
+                        {o.color && <span aria-hidden className="size-2 rounded-full" style={{ background: o.color }} />}
+                        {o.tipoOrden ?? TIPOS_ORDEN[o.tipo as keyof typeof TIPOS_ORDEN]}
+                      </span>
                     </td>
                     <td className="px-4 py-2">
-                      {o.tecnico ?? <span className="text-texto-3">Sin asignar</span>}
+                      {o.tecnico ?? <span className="text-texto-3">Sin técnico</span>}
                       {o.programada && abierta && (
                         <span className={`block text-xs ${o.programada < hoy ? 'text-error' : 'text-texto-3'}`}>
-                          Visita {o.programada === hoy ? 'hoy' : o.programada}
+                          Visita {o.programada === hoy ? 'hoy' : o.programada.split('-').reverse().join('/')}
+                          {o.hora ? ` ${o.hora}` : ''}
                         </span>
                       )}
                     </td>

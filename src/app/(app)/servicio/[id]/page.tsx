@@ -1,26 +1,31 @@
 import { and, asc, eq, inArray } from 'drizzle-orm'
+import { MapPin, Printer, Smartphone } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { BotonConfirmar } from '@/components/BotonConfirmar'
-import { Aviso, Chip, EncabezadoPagina, Panel } from '@/components/ui'
+import { VistaRespuestas } from '@/components/servicio/VistaRespuestas'
+import { Aviso, BotonEnlace, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { depositos, puntosVenta } from '@/db/schema'
 import { formatearMonto, monto, sumar } from '@/lib/dinero'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
-import { listarTecnicos, obtenerOrden } from '@/modulos/servicio/servicio'
-import { COBERTURAS, estaAbierta, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
+import { equiposDelCliente, listarTecnicos, marcarVencidas, obtenerOrden } from '@/modulos/servicio/servicio'
+import { CIERRES, COBERTURAS, estaAbierta, estaHecha, seTrabaja, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
+import { tiposParaOrden } from '@/modulos/servicio/tiposOrden'
 
 import { alicuotas, paginaContratos } from '../../contratos/modulo'
 import { quitarItemAccion, reabrirAccion } from '../acciones'
 import { ChipEstado } from '../ChipEstado'
-import { Asignar, Cancelar, Facturar, FormularioOrden, Item, Resolver, Visita } from '../Formularios'
+import { Cancelar, Cerrar, Facturar, FormularioOrden, Item, Programar, Visita } from '../Formularios'
 
 export const metadata: Metadata = { title: 'Orden de servicio' }
 
 const cifra = (v: string) => monto(v).toNumber().toLocaleString('es-AR', { maximumFractionDigits: 4 })
+const horaDe = (d: Date) =>
+  d.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' })
 
 export default async function Orden({ params, searchParams }: PageProps<'/servicio/[id]'>) {
   const sesion = await paginaContratos('servicio.ver')
@@ -28,9 +33,10 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const { guardada, error } = (await searchParams) as { guardada?: string; error?: string }
   const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
+    await marcarVencidas(tx)
     const o = await obtenerOrden(tx, id)
     if (!o) return null
-    const [tecnicos, deps, puntos] = await Promise.all([
+    const [tecnicos, deps, puntos, tipos, equipos] = await Promise.all([
       listarTecnicos(tx),
       tx.select().from(depositos).where(eq(depositos.activo, true)).orderBy(asc(depositos.codigo)),
       tx
@@ -38,17 +44,35 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
         .from(puntosVenta)
         .where(and(eq(puntosVenta.activo, true), inArray(puntosVenta.tipo, ['electronico'])))
         .orderBy(puntosVenta.numero),
+      tiposParaOrden(tx),
+      equiposDelCliente(tx, o.terceroId),
     ])
-    return { o, tecnicos, deps, puntos }
+    return { o, tecnicos, deps, puntos, tipos, equipos }
   })
   if (!datos) notFound()
-  const { o, deps, puntos } = datos
+  const { o, deps, puntos, equipos } = datos
+  // El tipo de la orden aunque se haya dado de baja, con su versión de formulario.
+  const tipos =
+    o.tipoOrden && o.plantilla && !datos.tipos.some((t) => t.id === o.tipoOrdenId)
+      ? [
+          ...datos.tipos,
+          {
+            id: o.tipoOrden.id,
+            nombre: o.tipoOrden.nombre,
+            clase: o.tipoOrden.clase,
+            duracion: o.tipoOrden.duracion,
+            instrucciones: o.plantilla.instrucciones,
+          },
+        ]
+      : datos.tipos
   const tecnicos = datos.tecnicos.map((t) => ({ valor: t.id, texto: t.nombre }))
+  const nombresEquipos = Object.fromEntries(
+    [...equipos, ...(o.equipo ? [o.equipo] : [])].map((e) => [e.id, `${e.serie}${e.modelo ? ` · ${e.modelo}` : ''}`]),
+  )
   const hoy = hoyArgentina()
   const abierta = estaAbierta(o.estado)
   const puede = (p: string) => tienePermiso(sesion.permisos, p)
   const cargar = puede('servicio.cargar')
-  const trabajar = puede('servicio.trabajar')
   const conCargo = o.cobertura === 'cargo'
   const totalNeto = sumar(o.items.map((i) => monto(i.cantidad).times(i.precioUnitario)))
   const horas = sumar(o.visitas.map((v) => v.horas))
@@ -71,11 +95,24 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
                 </>
               )}
               {' · '}
-              {TIPOS_ORDEN[o.tipo as keyof typeof TIPOS_ORDEN]}
+              {o.tipoOrden?.nombre ?? TIPOS_ORDEN[o.tipo as keyof typeof TIPOS_ORDEN]}
+              {o.plantilla && <span className="text-texto-3"> (formulario v{o.plantilla.version})</span>}
             </span>
             {o.prioridad === 'urgente' && abierta && <Chip tono="error">Urgente</Chip>}
             <ChipEstado estado={o.estado} cobertura={o.cobertura} facturada={!!o.comprobanteId} />
           </span>
+        }
+        acciones={
+          <>
+            {abierta && o.tecnicoId && (
+              <BotonEnlace href={`/tecnico/${o.id}`}>
+                <Smartphone aria-hidden className="size-4" /> Vista del técnico
+              </BotonEnlace>
+            )}
+            <BotonEnlace href={`/imprimir/servicio/${o.id}`}>
+              <Printer aria-hidden className="size-4" /> Constancia
+            </BotonEnlace>
+          </>
         }
       />
       {guardada && (
@@ -88,10 +125,22 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
           <Aviso>{error}</Aviso>
         </div>
       )}
+      {o.estado === 'vencida' && (
+        <div className="mb-4">
+          <Aviso>
+            Venció el {o.vence ? horaDe(o.vence) : ''} sin informe del técnico. Reprogramala o cerrala como no cumplida.
+          </Aviso>
+        </div>
+      )}
+      {o.estado === 'informe' && cargar && (
+        <div className="mb-4">
+          <Aviso tono="info">El técnico mandó el informe: revisalo abajo y cerrá la orden.</Aviso>
+        </div>
+      )}
 
       <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel className="p-4">
-          <h2 className="mb-2 text-sm font-semibold">Pedido del {o.fecha}</h2>
+          <h2 className="mb-2 text-sm font-semibold">Pedido del {o.fecha.split('-').reverse().join('/')}</h2>
           <p className="text-sm whitespace-pre-line">{o.falla}</p>
           <dl className="mt-4 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
             <div>
@@ -127,36 +176,71 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
               </div>
             )}
           </dl>
+          {o.plantilla && o.plantilla.instrucciones.some((c) => c.tipo !== 'equipo') && (
+            <div className="mt-4 border-t border-borde pt-3">
+              <h3 className="mb-2 text-xs font-semibold tracking-wide text-texto-2 uppercase">Instrucciones</h3>
+              <VistaRespuestas
+                campos={o.plantilla.instrucciones.filter((c) => c.tipo !== 'equipo')}
+                valores={o.instrucciones}
+                equipos={nombresEquipos}
+              />
+            </div>
+          )}
           {cargar && o.estado !== 'cancelada' && !o.comprobanteId && (
             <details className="mt-4 border-t border-borde pt-3">
               <summary className="cursor-pointer text-sm text-acento">Corregir los datos de la orden</summary>
               <div className="mt-3">
-                <FormularioOrden id={o.id} inicial={{ ...o, cliente: o.cliente.razonSocial }} tecnicos={tecnicos} />
+                <FormularioOrden id={o.id} inicial={{ ...o, cliente: o.cliente.razonSocial }} tecnicos={tecnicos} tipos={tipos} />
               </div>
             </details>
           )}
         </Panel>
 
         <Panel className="p-4">
-          <h2 className="mb-2 text-sm font-semibold">Técnico</h2>
+          <h2 className="mb-2 text-sm font-semibold">Visita</h2>
           <p className="text-sm">
-            {o.tecnico?.nombre ?? <span className="text-texto-3">Sin asignar</span>}
+            {o.tecnico?.nombre ?? <span className="text-texto-3">Sin técnico</span>}
             {o.tecnico?.telefono && <span className="block text-xs text-texto-3">{o.tecnico.telefono}</span>}
           </p>
-          {o.programada && abierta && (
-            <p className={`mt-1 text-sm ${o.programada < hoy ? 'text-error' : 'text-texto-2'}`}>
-              Visita programada: {o.programada === hoy ? 'hoy' : o.programada}
-            </p>
+          <p className="mt-1 text-sm text-texto-2">
+            {o.programada
+              ? `${o.programada.split('-').reverse().join('/')}${o.hora ? ` a las ${o.hora}` : ''} · ${o.duracion} min`
+              : 'Sin día de visita'}
+          </p>
+          {(o.llegada || o.salida) && (
+            <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-borde pt-3 text-sm">
+              <div>
+                <dt className="text-xs text-texto-3">Llegó</dt>
+                <dd>
+                  {o.llegada ? horaDe(o.llegada) : '—'}
+                  {o.llegadaLat && o.llegadaLng && (
+                    <a
+                      href={`https://www.google.com/maps?q=${o.llegadaLat},${o.llegadaLng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ml-1 inline-flex items-center text-acento"
+                      title="Dónde marcó la llegada"
+                    >
+                      <MapPin aria-hidden className="size-3.5" />
+                    </a>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-texto-3">Informó</dt>
+                <dd>{o.informada ? horaDe(o.informada) : '—'}</dd>
+              </div>
+            </dl>
           )}
           {abierta && cargar && (
             <div className="mt-3 border-t border-borde pt-3">
               {tecnicos.length ? (
-                <Asignar
-                  key={`${o.tecnicoId}|${o.programada}`}
+                <Programar
+                  key={`${o.tecnicoId}|${o.programada}|${o.hora}|${o.duracion}`}
                   id={o.id}
                   tecnicos={tecnicos}
-                  tecnicoId={o.tecnicoId}
-                  programada={o.programada}
+                  hoy={hoy}
+                  inicial={{ tecnicoId: o.tecnicoId, programada: o.programada, hora: o.hora, duracion: o.duracion }}
                 />
               ) : (
                 <p className="text-xs text-texto-2">
@@ -172,6 +256,23 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
         </Panel>
       </div>
 
+      {(o.resultados || o.estado === 'informe' || o.solucion) && (
+        <Panel className="mb-4 p-4">
+          <h2 className="mb-3 flex flex-wrap items-center gap-2 text-sm font-semibold">
+            Informe del técnico
+            {o.cierreTecnico && (
+              <Chip tono={o.cierreTecnico === 'ok' ? 'ok' : o.cierreTecnico === 'desvio' ? 'aviso' : 'error'}>
+                Propuso: {CIERRES[o.cierreTecnico as keyof typeof CIERRES]}
+              </Chip>
+            )}
+          </h2>
+          {o.solucion && <p className="mb-3 text-sm whitespace-pre-line">{o.solucion}</p>}
+          {o.plantilla && (
+            <VistaRespuestas campos={o.plantilla.devolucion} valores={o.resultados} equipos={nombresEquipos} vacio="" />
+          )}
+        </Panel>
+      )}
+
       <Panel className="mb-4 overflow-x-auto">
         <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">
           Visitas
@@ -186,7 +287,7 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
             <tbody className="divide-y divide-borde">
               {o.visitas.map((v) => (
                 <tr key={v.id}>
-                  <td className="px-4 py-2 whitespace-nowrap">{v.fecha}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">{v.fecha.split('-').reverse().join('/')}</td>
                   <td className="px-4 py-2">{v.tecnico ?? '—'}</td>
                   <td className="px-4 py-2">{v.detalle}</td>
                   <td className="cifras px-4 py-2 text-right whitespace-nowrap">
@@ -197,10 +298,19 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
             </tbody>
           </table>
         )}
-        {abierta && trabajar && (
-          <div className="border-t border-borde p-4">
-            <Visita key={`${o.tecnicoId}|${o.visitas.length}`} id={o.id} tecnicos={tecnicos} tecnicoId={o.tecnicoId} hoy={hoy} />
-          </div>
+        {seTrabaja(o.estado) && cargar && (
+          <details className="border-t border-borde p-4">
+            <summary className="cursor-pointer text-sm text-acento">Cargar una visita a mano</summary>
+            <div className="mt-3">
+              <Visita
+                key={`${o.tecnicoId}|${o.visitas.length}`}
+                id={o.id}
+                tecnicos={tecnicos}
+                tecnicoId={o.tecnicoId}
+                hoy={hoy}
+              />
+            </div>
+          </details>
         )}
       </Panel>
 
@@ -217,7 +327,7 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
                 <th className="px-4 py-2 text-right font-medium">Cantidad</th>
                 <th className="px-4 py-2 text-right font-medium">Precio</th>
                 <th className="px-4 py-2 text-right font-medium">Subtotal</th>
-                {abierta && trabajar && <th className="px-4 py-2" />}
+                {seTrabaja(o.estado) && cargar && <th className="px-4 py-2" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-borde">
@@ -239,7 +349,7 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
                   <td className="cifras px-4 py-2 text-right">
                     {Number(i.precioUnitario) ? formatearMonto(monto(i.cantidad).times(i.precioUnitario)) : ''}
                   </td>
-                  {abierta && trabajar && (
+                  {seTrabaja(o.estado) && cargar && (
                     <td className="px-4 py-2 text-right">
                       <form action={quitarItemAccion.bind(null, o.id, i.id)}>
                         <BotonConfirmar
@@ -261,13 +371,13 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
                     Total sin IVA{conCargo ? '' : ' (no se factura: la orden no es con cargo)'}
                   </td>
                   <td className="cifras px-4 py-2 text-right font-medium">{formatearMonto(totalNeto)}</td>
-                  {abierta && trabajar && <td />}
+                  {seTrabaja(o.estado) && cargar && <td />}
                 </tr>
               </tfoot>
             )}
           </table>
         )}
-        {abierta && trabajar && (
+        {seTrabaja(o.estado) && cargar && (
           <div className="border-t border-borde p-4">
             <Item
               id={o.id}
@@ -279,10 +389,26 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
         )}
       </Panel>
 
-      {o.estado === 'resuelta' && (
+      {(abierta || o.estado === 'informe') && cargar && (
         <Panel className="mb-4 p-4">
-          <h2 className="mb-2 text-sm font-semibold">Resuelta el {o.fechaResolucion}</h2>
-          <p className="text-sm whitespace-pre-line">{o.solucion}</p>
+          <h2 className="mb-3 text-sm font-semibold">
+            {o.estado === 'informe' ? 'Revisar y cerrar' : 'Cerrar desde la oficina'}
+          </h2>
+          <Cerrar id={o.id} hoy={hoy} conEquipo={!!o.equipoId} sugerido={o.cierreTecnico} informada={o.estado === 'informe'} />
+          {o.estado === 'informe' && (
+            <form action={reabrirAccion.bind(null, o.id)} className="mt-3 border-t border-borde pt-3">
+              <BotonConfirmar pregunta="¿Devolverle la orden al técnico? Vuelve a quedar asignada para que la complete.">
+                Devolver al técnico
+              </BotonConfirmar>
+            </form>
+          )}
+        </Panel>
+      )}
+
+      {o.fechaResolucion && o.estado.startsWith('cerrada') && (
+        <Panel className="mb-4 p-4">
+          <h2 className="mb-2 text-sm font-semibold">Cerrada el {o.fechaResolucion.split('-').reverse().join('/')}</h2>
+          {o.notaCierre && <p className="text-sm whitespace-pre-line">{o.notaCierre}</p>}
           {o.contador !== null && (
             <p className="mt-1 text-sm text-texto-2">
               Contador: <span className="cifras">{o.contador.toLocaleString('es-AR')}</span>
@@ -299,27 +425,20 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
             </p>
           ) : (
             <div className="mt-3 flex flex-col gap-3 border-t border-borde pt-3">
-              {conCargo && puede('servicio.facturar') && (
+              {conCargo && estaHecha(o.estado) && puede('servicio.facturar') && (
                 <Facturar
                   id={o.id}
                   puntos={puntos.map((p) => ({ valor: p.numero, texto: `${String(p.numero).padStart(5, '0')} · ${p.nombre}` }))}
                   hoy={hoy}
                 />
               )}
-              {trabajar && (
+              {cargar && (
                 <form action={reabrirAccion.bind(null, o.id)}>
-                  <BotonConfirmar pregunta="¿Reabrir la orden? Vuelve a quedar pendiente de resolver.">Reabrir</BotonConfirmar>
+                  <BotonConfirmar pregunta="¿Reabrir la orden? Vuelve a quedar como estaba programada.">Reabrir</BotonConfirmar>
                 </form>
               )}
             </div>
           )}
-        </Panel>
-      )}
-
-      {abierta && trabajar && (
-        <Panel className="mb-4 p-4">
-          <h2 className="mb-3 text-sm font-semibold">Resolver</h2>
-          <Resolver id={o.id} hoy={hoy} conEquipo={!!o.equipoId} />
         </Panel>
       )}
 

@@ -3,10 +3,13 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   date,
   foreignKey,
   index,
   integer,
+  jsonb,
+  numeric,
   pgTable,
   smallint,
   text,
@@ -36,7 +39,17 @@ import { usuarios } from './plataforma'
  * - La factura de la orden se guarda en `comprobante_id`. Esa clave foránea
  *   está en la migración de seguridad, con ON DELETE SET NULL: si se borra
  *   el borrador, la orden queda otra vez sin facturar.
+ *
+ * Funciona como Persat (ver docs/04-servicio-tecnico.md): cada tipo de orden
+ * tiene un formulario de instrucciones y uno de devolución, versionados; la
+ * orden pasa por pendiente → proyectada → asignada → informe → cerrada (OK,
+ * con desvío o no cumplida), o vencida si el técnico no informa a tiempo.
  */
+
+const bytea = customType<{ data: Buffer; driverData: Buffer | Uint8Array }>({
+  dataType: () => 'bytea',
+  fromDriver: (v) => Buffer.from(v),
+})
 
 const deLaEmpresa = (
   nombre: string,
@@ -53,12 +66,124 @@ export const tecnicos = pgTable(
     codigo: text('codigo').notNull(),
     nombre: text('nombre').notNull(),
     telefono: text('telefono'),
+    /** Con este email entra al sistema y ve su agenda (Mi agenda). */
     email: text('email'),
     usuarioId: uuid('usuario_id').references(() => usuarios.id),
+    /** Su camioneta: de acá salen los materiales que carga en la devolución. */
+    depositoId: uuid('deposito_id'),
+    /** Jornada para el asistente de huecos: "HH:MM", y días que trabaja (1 = lunes … 7 = domingo). */
+    jornadaDesde: text('jornada_desde').notNull().default('08:00'),
+    jornadaHasta: text('jornada_hasta').notNull().default('17:00'),
+    dias: text('dias').notNull().default('12345'),
+    /** Desde dónde sale (domicilio), como el punto de partida de Persat. */
+    partida: text('partida'),
     activo: boolean('activo').notNull().default(true),
     ...marcasDeTiempo(),
   },
-  (t) => [uniqueIndex().on(t.empresaId, t.codigo), unique('tecnicos_empresa_id').on(t.empresaId, t.id)],
+  (t) => [
+    uniqueIndex().on(t.empresaId, t.codigo),
+    unique('tecnicos_empresa_id').on(t.empresaId, t.id),
+    check(
+      'tecnicos_jornada',
+      sql`${t.jornadaDesde} ~ '^[0-2][0-9]:[0-5][0-9]$' and ${t.jornadaHasta} ~ '^[0-2][0-9]:[0-5][0-9]$'`,
+    ),
+    check('tecnicos_dias', sql`${t.dias} ~ '^[1-7]{1,7}$'`),
+    deLaEmpresa('tecnicos_deposito_fk', t.empresaId, t.depositoId, depositos),
+  ],
+)
+
+/** Tipo de orden: correctivo de fotocopiadora, preventivo, instalación… Cada uno con sus formularios. */
+export const tiposOrden = pgTable(
+  'tipos_orden',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    codigo: text('codigo').notNull(),
+    nombre: text('nombre').notNull(),
+    /** correctivo | preventivo | instalacion | retiro | insumos (para agrupar e informar) */
+    clase: text('clase').notNull().default('correctivo'),
+    color: text('color').notNull().default('#2563eb'),
+    /** Duración estimada de la visita, en minutos. */
+    duracion: integer('duracion').notNull().default(60),
+    /** Horas que tiene el técnico para informar desde la hora programada; después la orden vence. */
+    plazoHoras: integer('plazo_horas').notNull().default(48),
+    /** Versión vigente de los formularios (la última de plantillas_orden). */
+    version: integer('version').notNull().default(1),
+    activo: boolean('activo').notNull().default(true),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex().on(t.empresaId, t.codigo),
+    unique('tipos_orden_empresa_id').on(t.empresaId, t.id),
+    check('tipos_orden_clase', sql`${t.clase} in ('correctivo', 'preventivo', 'instalacion', 'retiro', 'insumos')`),
+    check('tipos_orden_tiempos', sql`${t.duracion} between 5 and 1440 and ${t.plazoHoras} between 1 and 720`),
+  ],
+)
+
+/**
+ * Formularios de un tipo de orden, versionados: cambiar un formulario crea
+ * una versión nueva y las órdenes viejas siguen con la suya. Una versión no
+ * se modifica ni se borra (lo impide la base).
+ */
+export const plantillasOrden = pgTable(
+  'plantillas_orden',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    tipoId: uuid('tipo_id').notNull(),
+    version: integer('version').notNull(),
+    /** Campos que completa la oficina (ver src/modulos/servicio/formularios.ts). */
+    instrucciones: jsonb('instrucciones').notNull(),
+    /** Campos que completa el técnico. */
+    devolucion: jsonb('devolucion').notNull(),
+    usuarioId: uuid('usuario_id'),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex().on(t.empresaId, t.tipoId, t.version),
+    unique('plantillas_orden_empresa_id').on(t.empresaId, t.id),
+    deLaEmpresa('plantillas_orden_tipo_fk', t.empresaId, t.tipoId, tiposOrden),
+  ],
+)
+
+/**
+ * Mantenimiento preventivo: genera órdenes solas cada N semanas o meses, o
+ * cada N copias del equipo (con las lecturas del contrato).
+ */
+export const reglasPreventivo = pgTable(
+  'reglas_preventivo',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    terceroId: uuid('tercero_id').notNull(),
+    equipoId: uuid('equipo_id'),
+    tipoOrdenId: uuid('tipo_orden_id').notNull(),
+    /** semanal | mensual | copias */
+    frecuencia: text('frecuencia').notNull(),
+    /** Cada cuántas semanas, meses o copias. */
+    cada: integer('cada').notNull(),
+    desde: date('desde').notNull(),
+    hora: text('hora'),
+    tecnicoId: uuid('tecnico_id'),
+    /** Última fecha generada (semanal y mensual). */
+    ultimaFecha: date('ultima_fecha'),
+    /** Contador desde el que se cuentan las copias (por copias). */
+    contadorBase: bigint('contador_base', { mode: 'number' }),
+    activa: boolean('activa').notNull().default(true),
+    observaciones: text('observaciones'),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    index().on(t.empresaId, t.terceroId),
+    unique('reglas_preventivo_empresa_id').on(t.empresaId, t.id),
+    check('reglas_preventivo_frecuencia', sql`${t.frecuencia} in ('semanal', 'mensual', 'copias')`),
+    check('reglas_preventivo_cada', sql`${t.cada} > 0`),
+    check('reglas_preventivo_copias_con_equipo', sql`${t.frecuencia} <> 'copias' or ${t.equipoId} is not null`),
+    deLaEmpresa('reglas_preventivo_tercero_fk', t.empresaId, t.terceroId, terceros),
+    deLaEmpresa('reglas_preventivo_equipo_fk', t.empresaId, t.equipoId, equipos),
+    deLaEmpresa('reglas_preventivo_tipo_fk', t.empresaId, t.tipoOrdenId, tiposOrden),
+    deLaEmpresa('reglas_preventivo_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos),
+  ],
 )
 
 export const ordenesServicio = pgTable(
@@ -72,8 +197,14 @@ export const ordenesServicio = pgTable(
     equipoId: uuid('equipo_id'),
     /** Contrato del equipo al abrir la orden. */
     contratoId: uuid('contrato_id'),
-    /** correctivo | preventivo | instalacion | retiro | insumos */
+    /** Clase: correctivo | preventivo | instalacion | retiro | insumos (la del tipo, si tiene). */
     tipo: text('tipo').notNull().default('correctivo'),
+    tipoOrdenId: uuid('tipo_orden_id'),
+    /** Versión de los formularios con la que se abrió. */
+    plantillaId: uuid('plantilla_id'),
+    /** Respuestas del formulario de instrucciones y del de devolución. */
+    instrucciones: jsonb('instrucciones').notNull().default({}),
+    resultados: jsonb('resultados'),
     /** normal | urgente */
     prioridad: text('prioridad').notNull().default('normal'),
     /** Lo que pide o reporta el cliente. */
@@ -82,9 +213,17 @@ export const ordenesServicio = pgTable(
     telefono: text('telefono'),
     domicilio: text('domicilio'),
     tecnicoId: uuid('tecnico_id'),
-    /** Día de visita acordado. */
+    /** Día y hora de la visita ("HH:MM") y duración estimada en minutos. */
     programada: date('programada'),
-    /** pendiente | asignada | resuelta | cancelada */
+    hora: text('hora'),
+    duracion: integer('duracion').notNull().default(60),
+    /** Pasado este momento sin informe, la orden vence. */
+    vence: timestamp('vence', { withTimezone: true }),
+    /**
+     * pendiente (sin fecha) | proyectada (con fecha, sin técnico) | asignada |
+     * informe (el técnico la completó; falta revisarla) | vencida |
+     * cerrada_ok | cerrada_desvio | cerrada_no_cumplida | cancelada
+     */
     estado: text('estado').notNull().default('pendiente'),
     /** contrato | garantia | cargo */
     cobertura: text('cobertura').notNull().default('cargo'),
@@ -93,6 +232,20 @@ export const ordenesServicio = pgTable(
     /** Contador que tomó el técnico al resolver (también queda como lectura del equipo). */
     contador: bigint('contador', { mode: 'number' }),
     motivoCancelacion: text('motivo_cancelacion'),
+    /** Llegada y salida del técnico, con la ubicación del celular. */
+    llegada: timestamp('llegada', { withTimezone: true }),
+    llegadaLat: numeric('llegada_lat', { precision: 9, scale: 6 }),
+    llegadaLng: numeric('llegada_lng', { precision: 9, scale: 6 }),
+    salida: timestamp('salida', { withTimezone: true }),
+    informada: timestamp('informada', { withTimezone: true }),
+    /** Cierre que propone el técnico y el que pone el supervisor: ok | desvio | no_cumplida */
+    cierreTecnico: text('cierre_tecnico'),
+    notaCierre: text('nota_cierre'),
+    cerrada: timestamp('cerrada', { withTimezone: true }),
+    cerradaPor: uuid('cerrada_por'),
+    /** Regla de preventivo que la generó, y para qué fecha (o contador). */
+    preventivoId: uuid('preventivo_id'),
+    origenPreventivo: text('origen_preventivo'),
     comprobanteId: uuid('comprobante_id'),
     observaciones: text('observaciones'),
     usuarioId: uuid('usuario_id'),
@@ -107,12 +260,22 @@ export const ordenesServicio = pgTable(
     unique('ordenes_servicio_empresa_id').on(t.empresaId, t.id),
     check('ordenes_servicio_tipo', sql`${t.tipo} in ('correctivo', 'preventivo', 'instalacion', 'retiro', 'insumos')`),
     check('ordenes_servicio_prioridad', sql`${t.prioridad} in ('normal', 'urgente')`),
-    check('ordenes_servicio_estado', sql`${t.estado} in ('pendiente', 'asignada', 'resuelta', 'cancelada')`),
-    check('ordenes_servicio_cobertura', sql`${t.cobertura} in ('contrato', 'garantia', 'cargo')`),
     check(
-      'ordenes_servicio_resuelta',
-      sql`(${t.estado} = 'resuelta') = (${t.fechaResolucion} is not null) and (${t.estado} <> 'resuelta' or ${t.solucion} is not null)`,
+      'ordenes_servicio_estado',
+      sql`${t.estado} in ('pendiente', 'proyectada', 'asignada', 'informe', 'vencida', 'cerrada_ok', 'cerrada_desvio', 'cerrada_no_cumplida', 'cancelada')`,
     ),
+    check('ordenes_servicio_cobertura', sql`${t.cobertura} in ('contrato', 'garantia', 'cargo')`),
+    check('ordenes_servicio_cierre_tecnico', sql`${t.cierreTecnico} in ('ok', 'desvio', 'no_cumplida')`),
+    check(
+      'ordenes_servicio_cerrada',
+      sql`(${t.estado} like 'cerrada%') = (${t.fechaResolucion} is not null and ${t.cerrada} is not null)`,
+    ),
+    check('ordenes_servicio_hora', sql`${t.hora} ~ '^[0-2][0-9]:[0-5][0-9]$'`),
+    check('ordenes_servicio_duracion', sql`${t.duracion} between 5 and 1440`),
+    uniqueIndex('ordenes_servicio_preventivo').on(t.empresaId, t.preventivoId, t.origenPreventivo),
+    deLaEmpresa('ordenes_servicio_tipo_orden_fk', t.empresaId, t.tipoOrdenId, tiposOrden),
+    deLaEmpresa('ordenes_servicio_plantilla_fk', t.empresaId, t.plantillaId, plantillasOrden),
+    deLaEmpresa('ordenes_servicio_preventivo_fk', t.empresaId, t.preventivoId, reglasPreventivo),
     deLaEmpresa('ordenes_servicio_tercero_fk', t.empresaId, t.terceroId, terceros),
     deLaEmpresa('ordenes_servicio_equipo_fk', t.empresaId, t.equipoId, equipos),
     deLaEmpresa('ordenes_servicio_contrato_fk', t.empresaId, t.contratoId, contratos),
@@ -172,5 +335,29 @@ export const ordenesServicioItems = pgTable(
     deLaEmpresa('ordenes_servicio_items_orden_fk', t.empresaId, t.ordenId, ordenesServicio),
     deLaEmpresa('ordenes_servicio_items_articulo_fk', t.empresaId, t.articuloId, articulos),
     deLaEmpresa('ordenes_servicio_items_deposito_fk', t.empresaId, t.depositoId, depositos),
+  ],
+)
+
+/** Fotos y firmas de las órdenes (reducidas en el celular antes de subir). */
+export const archivosServicio = pgTable(
+  'archivos_servicio',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    ordenId: uuid('orden_id').notNull(),
+    /** foto | firma */
+    clase: text('clase').notNull(),
+    tipoMime: text('tipo_mime').notNull(),
+    tamano: integer('tamano').notNull(),
+    datos: bytea('datos').notNull(),
+    usuarioId: uuid('usuario_id'),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index().on(t.empresaId, t.ordenId),
+    check('archivos_servicio_clase', sql`${t.clase} in ('foto', 'firma')`),
+    check('archivos_servicio_tipo', sql`${t.tipoMime} in ('image/jpeg', 'image/png', 'image/webp')`),
+    check('archivos_servicio_tamano', sql`${t.tamano} between 1 and 3000000`),
+    deLaEmpresa('archivos_servicio_orden_fk', t.empresaId, t.ordenId, ordenesServicio),
   ],
 )

@@ -58,6 +58,9 @@ export type DefinicionCatalogo = {
   duplicado?: { indice: string; mensaje: string }
 }
 
+const hora = (v: unknown) =>
+  /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v ?? '')) ? null : 'Hora con formato HH:MM, por ejemplo 08:30.'
+
 const numeroPositivo = (v: unknown) =>
   v === null || v === undefined || v === '' || Number(v) >= 0 ? null : 'Tiene que ser cero o más.'
 
@@ -240,7 +243,32 @@ export const CATALOGOS: DefinicionCatalogo[] = [
       { nombre: 'codigo', etiqueta: 'Código', tipo: 'texto', requerido: true, enListado: true },
       { nombre: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, enListado: true },
       { nombre: 'telefono', etiqueta: 'Teléfono', tipo: 'texto', enListado: true },
-      { nombre: 'email', etiqueta: 'Email', tipo: 'texto', enListado: true },
+      {
+        nombre: 'email',
+        etiqueta: 'Email',
+        tipo: 'texto',
+        enListado: true,
+        ayuda: 'Con el usuario de este email el técnico entra a Mi agenda.',
+      },
+      {
+        nombre: 'depositoId',
+        etiqueta: 'Camioneta (depósito)',
+        tipo: 'seleccion',
+        ayuda: 'De acá salen los materiales que carga en el celular.',
+        opciones: (tx) => opcionesDe(tx, depositos, depositos.id, depositos.nombre),
+      },
+      { nombre: 'jornadaDesde', etiqueta: 'Jornada desde (HH:MM)', tipo: 'texto', requerido: true, validar: hora },
+      { nombre: 'jornadaHasta', etiqueta: 'Jornada hasta (HH:MM)', tipo: 'texto', requerido: true, validar: hora },
+      {
+        nombre: 'dias',
+        etiqueta: 'Días que trabaja',
+        tipo: 'texto',
+        requerido: true,
+        ayuda: '1 = lunes … 7 = domingo. De lunes a viernes: 12345.',
+        validar: (v) =>
+          /^[1-7]{1,7}$/.test(String(v ?? '')) ? null : 'Números del 1 (lunes) al 7 (domingo), por ejemplo 12345.',
+      },
+      { nombre: 'partida', etiqueta: 'Sale desde (domicilio)', tipo: 'texto' },
     ],
   },
   {

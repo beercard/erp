@@ -82,9 +82,10 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     titulo: 'Servicio técnico',
     permisos: {
       'servicio.ver': 'Ver las órdenes de servicio',
-      'servicio.cargar': 'Abrir, asignar y cancelar órdenes de servicio',
-      'servicio.trabajar': 'Cargar visitas, insumos usados y resolver órdenes',
+      'servicio.cargar': 'Abrir, programar, revisar, cerrar y cancelar órdenes (coordinación)',
+      'servicio.trabajar': 'Completar las órdenes asignadas desde el celular (técnico)',
       'servicio.facturar': 'Facturar las órdenes con cargo al cliente',
+      'servicio.configurar': 'Tipos de orden y sus formularios',
     },
   },
   {

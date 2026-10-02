@@ -18,6 +18,7 @@ import { BotonImprimir } from './BotonImprimir'
 import { HojaOrdenCompra, HojaPago, HojaRetencion } from './HojasCompras'
 import { HojaFactura } from './HojaFactura'
 import { HojaRecibo } from './HojaRecibo'
+import { HojaServicio } from './HojaServicio'
 
 export const metadata: Metadata = { title: 'Imprimir' }
 
@@ -57,6 +58,7 @@ export default async function Imprimir({ params }: PageProps<'/imprimir/[tipo]/[
   if (tipo === 'pago') return <HojaPago id={id} />
   if (tipo === 'retencion') return <HojaRetencion id={id} />
   if (tipo === 'orden-compra') return <HojaOrdenCompra id={id} />
+  if (tipo === 'servicio') return <HojaServicio id={id} />
   if (!TIPOS.includes(tipo as Tipo)) notFound()
   const sesion = await requerirEmpresa()
   const empresa = await datosEmpresa(sesion.empresa.id)
