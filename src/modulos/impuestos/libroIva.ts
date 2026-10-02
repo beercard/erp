@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
@@ -433,4 +435,11 @@ export async function libroIva(tx: Transaccion, periodo: string) {
       { nombre: nombres.comprasAlicuotas, datos: archivoTxt(comprasLibro.lineas.alicuotas) },
     ],
   }
+}
+
+/** Huella del contenido de los archivos (para saber si cambió algo desde que se bajó). */
+export const huella = (archivos: { nombre: string; datos: Uint8Array }[]) => {
+  const h = createHash('sha256')
+  for (const a of archivos) h.update(a.nombre).update(a.datos)
+  return h.digest('hex')
 }

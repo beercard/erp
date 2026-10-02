@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
+import { guardarSaldosIniciales } from '@/modulos/impuestos/posicionIva'
 import { marcarPresentada, reabrirPeriodo } from '@/modulos/impuestos/presentaciones'
 
 export type Estado = { error?: string; ok?: string } | undefined
@@ -32,4 +33,22 @@ export async function reabrirAccion(id: string, _: Estado, fd: FormData): Promis
   )
   revalidatePath('/impuestos', 'layout')
   return r.ok ? { ok: 'Período reabierto. La próxima descarga es la rectificativa.' } : { error: r.error }
+}
+
+const importe = (v: FormDataEntryValue | null) => {
+  const s = String(v ?? '').trim()
+  if (!s) return 0
+  // "1.234,56" o "1234.56"
+  const n = Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s)
+  return Number.isFinite(n) ? n : NaN
+}
+
+export async function saldosInicialesAccion(periodo: string, _: Estado, fd: FormData): Promise<Estado> {
+  const r = await intentar(() =>
+    enLaEmpresa('impuestos.libros', (tx, s) =>
+      guardarSaldosIniciales(tx, s.usuario.id, periodo, importe(fd.get('tecnico')), importe(fd.get('libre'))),
+    ),
+  )
+  revalidatePath('/impuestos/iva')
+  return r.ok ? { ok: 'Saldos guardados.' } : { error: r.error }
 }

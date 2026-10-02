@@ -4,8 +4,9 @@ import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
 import { comprobantes, comprobantesIva, comprobantesTributos, empresas, terceros } from '../../db/schema'
 import { anularCompra, registrarCompra } from '../compras/compras'
-import { importe, LARGOS, libroIva, limitesPeriodo, texto, tipoCambio } from './libroIva'
-import { guardarGenerada, marcarPresentada, periodoCerrado, reabrirPeriodo } from './presentaciones'
+import { huella, importe, LARGOS, libroIva, limitesPeriodo, texto, tipoCambio } from './libroIva'
+import { guardarSaldosIniciales, posicionIva } from './posicionIva'
+import { guardarGenerada, listarPresentaciones, marcarPresentada, periodoCerrado, reabrirPeriodo } from './presentaciones'
 
 const U = '00000000-0000-4000-8000-000000000001'
 
@@ -299,5 +300,52 @@ describe('Libro IVA Digital', () => {
       }),
     )
     expect(r.secuencia).toBe(1)
+  })
+
+  it('arrastra los saldos a favor al mes siguiente, y no deja presentar un archivo viejo', async () => {
+    // Octubre: crédito fiscal (2100) mayor que el débito (262,5) y una percepción de IVA (300).
+    const oct = await en((tx) => posicionIva(tx, '2026-10'))
+    expect(oct).toMatchObject({ saldoTecnico: -1837.5, saldoTecnicoAFavor: 1837.5, aPagar: 0, libreDisponibilidad: 300 })
+    // La rectificativa que quedó generada se presenta: guarda la posición.
+    const [gen] = (await en((tx) => listarPresentaciones(tx, 'iva_digital', '2026-10'))).filter((x) => x.estado === 'generada')
+    expect(await en((tx) => marcarPresentada(tx, U, gen.id, {}))).toEqual({ ok: true })
+    const nov = await en((tx) => posicionIva(tx, '2026-11'))
+    expect(nov.anterior).toEqual({ tecnico: 1837.5, libre: 300, origen: 'presentacion' })
+
+    // Noviembre: se baja el libro y después se carga una compra: ya no coincide.
+    const l = await en((tx) => libroIva(tx, '2026-11'))
+    const g = await en((tx) =>
+      guardarGenerada(tx, U, {
+        impuesto: 'iva_digital',
+        periodo: '2026-11',
+        archivo: l.archivos[0].datos,
+        nombreArchivo: 'n.zip',
+        resumen: { contenido: huella(l.archivos) },
+      }),
+    )
+    const c = await en((tx) =>
+      registrarCompra(tx, U, {
+        terceroId: proveedor,
+        clase: 'factura',
+        letra: 'A',
+        puntoVenta: 3,
+        numero: 200,
+        fecha: '2026-11-02',
+        periodoIva: '2026-11',
+        items: [],
+        iva: [{ alicuotaIva: 5, base: '100', importe: '21' }],
+      }),
+    )
+    expect(c.ok).toBe(true)
+    expect(await en((tx) => marcarPresentada(tx, U, g.id, {}))).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('bajalo de nuevo'),
+    })
+
+    // Saldos cargados a mano cuando el mes anterior no se presentó desde el sistema.
+    expect((await en((tx) => posicionIva(tx, '2027-03'))).anterior.origen).toBe('ninguno')
+    expect(await en((tx) => guardarSaldosIniciales(tx, U, '2027-03', 500, 0))).toEqual({ ok: true })
+    expect((await en((tx) => posicionIva(tx, '2027-03'))).anterior).toEqual({ tecnico: 500, libre: 0, origen: 'manual' })
+    expect(await en((tx) => guardarSaldosIniciales(tx, U, '2027-03', -1, 0))).toMatchObject({ ok: false })
   })
 })

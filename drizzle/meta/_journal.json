@@ -211,6 +211,20 @@
       "when": 1790965394918,
       "tag": "0029_impuestos_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790966732385,
+      "tag": "0030_saldos_iva",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790966733916,
+      "tag": "0031_saldos_iva_seguridad",
+      "breakpoints": true
     }
   ]
 }

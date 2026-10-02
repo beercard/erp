@@ -6,6 +6,8 @@ import * as z from 'zod'
 import type { Transaccion } from '../../db/conexion'
 import { presentaciones } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { huella, libroIva } from './libroIva'
+import { posicionIva } from './posicionIva'
 
 /**
  * Presentaciones: cada libro o declaración que se genera queda guardado con
@@ -103,10 +105,23 @@ export async function marcarPresentada(tx: Transaccion, usuarioId: string, id: s
   if (g.estado !== 'generada') return { ok: false as const, error: 'Ya se marcó o se reabrió.' }
   const ya = await periodoCerrado(tx, g.impuesto as Impuesto, g.periodo)
   if (ya) return { ok: false as const, error: 'El período ya tiene una presentación: reabrilo para presentar una rectificativa.' }
-  // Las demás generadas del mismo período quedan descartadas (se presentó esta).
+  // Libro IVA: tiene que coincidir con lo de hoy, y se guarda la posición (sus saldos pasan al mes siguiente).
+  let resumen = g.resumen as Record<string, unknown>
+  if (g.impuesto === 'iva_digital') {
+    const l = await libroIva(tx, g.periodo)
+    if (resumen.contenido && resumen.contenido !== huella(l.archivos))
+      return {
+        ok: false as const,
+        error: 'Cambiaron comprobantes del mes desde que bajaste este archivo: bajalo de nuevo y presentá ese.',
+      }
+    const { ventas, compras, ...posicion } = await posicionIva(tx, g.periodo)
+    void ventas
+    void compras
+    resumen = { ...resumen, posicion }
+  }
   await tx
     .update(presentaciones)
-    .set({ estado: 'presentada', presentada: new Date(), transaccion: p.data.transaccion })
+    .set({ estado: 'presentada', presentada: new Date(), transaccion: p.data.transaccion, resumen })
     .where(eq(presentaciones.id, id))
   await auditar(tx, {
     usuarioId,

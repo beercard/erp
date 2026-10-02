@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { check, customType, index, jsonb, pgTable, smallint, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 
-import { empresaId, id, marcasDeTiempo } from './comunes'
+import { empresaId, id, importe, marcasDeTiempo } from './comunes'
 
 /**
  * Etapa 6 (función "Informes e impuestos" del plan): libros y declaraciones
@@ -55,5 +55,31 @@ export const presentaciones = pgTable(
     check('presentaciones_impuesto', sql`${t.impuesto} in ('iva_digital', 'sicore', 'iibb')`),
     check('presentaciones_estado', sql`${t.estado} in ('generada', 'presentada', 'reabierta')`),
     check('presentaciones_periodo', sql`${t.periodo} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
+  ],
+)
+
+/**
+ * Saldos de IVA a favor con los que arranca un período cuando el mes
+ * anterior no se presentó desde el sistema (por ejemplo, al empezar a usarlo).
+ * Si el mes anterior está presentado acá, el saldo sale de esa presentación.
+ */
+export const saldosIva = pgTable(
+  'saldos_iva',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    /** Período al que se trae el saldo ("AAAA-MM"). */
+    periodo: text('periodo').notNull(),
+    /** Saldo técnico a favor (crédito fiscal que sobró). */
+    tecnico: importe('tecnico').notNull().default('0'),
+    /** Saldo de libre disponibilidad (pagos a cuenta que sobraron). */
+    libre: importe('libre').notNull().default('0'),
+    usuarioId: uuid('usuario_id'),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('saldos_iva_periodo').on(t.empresaId, t.periodo),
+    check('saldos_iva_periodo_valido', sql`${t.periodo} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
+    check('saldos_iva_positivos', sql`${t.tecnico} >= 0 and ${t.libre} >= 0`),
   ],
 )

@@ -1,6 +1,6 @@
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
 import { escribirZip } from '@/lib/zip'
-import { libroIva } from '@/modulos/impuestos/libroIva'
+import { huella, libroIva } from '@/modulos/impuestos/libroIva'
 import { guardarGenerada, periodoCerrado, PERIODO } from '@/modulos/impuestos/presentaciones'
 
 /** Los cuatro archivos del Libro IVA Digital en un .zip. Queda guardado como presentación "generada". */
@@ -22,6 +22,7 @@ export async function GET(request: Request) {
           ventas: l.ventas.resumen,
           compras: l.compras.resumen,
           advertencias: l.ventas.advertencias.length + l.compras.advertencias.length,
+          contenido: huella(l.archivos),
         },
       })
       return { zip, nombreArchivo }
