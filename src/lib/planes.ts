@@ -29,7 +29,10 @@ export const FUNCIONES: Record<Funcion, { nombre: string; detalle: string }> = {
     detalle: 'Comprobantes desde Mis Comprobantes de ARCA, órdenes de compra y de pago, retenciones de Ganancias.',
   },
   tesoreria: { nombre: 'Tesorería', detalle: 'Cajas, bancos, cheques y ECHEQ, arqueos y conciliación bancaria.' },
-  informes: { nombre: 'Informes e impuestos', detalle: 'Informes de gestión, libros de IVA y presentaciones.' },
+  informes: {
+    nombre: 'Informes, impuestos y contabilidad',
+    detalle: 'Informes de gestión, libros de IVA y presentaciones, y contabilidad con asientos automáticos.',
+  },
   roles: { nombre: 'Roles a medida', detalle: 'Permisos definidos por la empresa, además de los roles de sistema.' },
   api: { nombre: 'API e integraciones', detalle: 'Acceso por API para conectar una tienda u otros sistemas.' },
   contratos: {
@@ -166,6 +169,7 @@ const FUNCION_DE_MODULO: Record<string, Funcion> = {
   tesoreria: 'tesoreria',
   informes: 'informes',
   impuestos: 'informes',
+  contabilidad: 'informes',
   contratos: 'contratos',
   servicio: 'contratos',
 }

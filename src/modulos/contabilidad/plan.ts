@@ -96,6 +96,11 @@ const MODELO: [string, string, string?][] = [
 
 export const CLAVES = MODELO.filter((m) => m[2]).map((m) => m[2]!)
 
+/** Para qué se usa cada cuenta clave (el nombre de su cuenta en el plan modelo). */
+export const NOMBRES_CLAVES: Record<string, string> = Object.fromEntries(
+  MODELO.filter((m) => m[2]).map(([, nombre, clave]) => [clave!, nombre]),
+)
+
 const tipoDe = (codigo: string): TipoCuenta =>
   (({ '1': 'activo', '2': 'pasivo', '3': 'patrimonio', '4': 'ingreso', '5': 'egreso' }) as const)[codigo.split('.')[0] as '1'] ??
   'egreso'

@@ -337,3 +337,34 @@ export async function hojasLibros(tx: Transaccion, desde: string, hasta: string)
     },
   ]
 }
+
+// ---------------------------------------------------------------- Listado
+
+export async function listarAsientos(
+  tx: Transaccion,
+  f: { desde: string; hasta: string; origen?: string | null; q?: string | null },
+) {
+  const q = f.q?.trim()
+  return filasDe<{
+    id: string
+    numero: number
+    fecha: string
+    concepto: string
+    origen: string
+    automatico: boolean
+    revierteId: string | null
+    revertido: boolean
+    total: string
+  }>(
+    await tx.execute(sql`
+      select a.id, a.numero, a.fecha::text as fecha, a.concepto, a.origen, a.automatico, a.revierte_id as "revierteId",
+        exists (select 1 from asientos b where b.revierte_id = a.id) as revertido,
+        (select sum(l.debe) from asientos_lineas l where l.asiento_id = a.id)::text as total
+      from asientos a
+      where a.estado = 'registrado' and a.fecha >= ${f.desde} and a.fecha <= ${f.hasta}
+        ${f.origen ? sql`and a.origen = ${f.origen}` : sql``}
+        ${q ? sql`and (a.concepto ilike ${`%${q}%`} or a.numero::text = ${q})` : sql``}
+      order by a.fecha desc, a.numero desc
+      limit 500`),
+  ).map((a) => ({ ...a, total: Number(a.total) }))
+}

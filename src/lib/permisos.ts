@@ -97,6 +97,15 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     },
   },
   {
+    modulo: 'contabilidad',
+    titulo: 'Contabilidad',
+    permisos: {
+      'contabilidad.ver': 'Ver el plan de cuentas, los asientos y los libros contables',
+      'contabilidad.asientos': 'Contabilizar, cargar asientos manuales y reclasificar',
+      'contabilidad.configurar': 'Poner en marcha la contabilidad, editar el plan de cuentas y cerrar ejercicios',
+    },
+  },
+  {
     modulo: 'empresa',
     titulo: 'Empresa',
     permisos: {

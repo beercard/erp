@@ -112,4 +112,6 @@ Convenciones:
 | Tabla | Para qué |
 |---|---|
 | `presentaciones` | Libros y declaraciones generados (Libro IVA Digital, SICORE), con el archivo exacto, el estado (generada, presentada, reabierta), el número de transacción y la secuencia de rectificativa. Presentada, cierra el período para ese impuesto. Ver [05-impuestos-e-informes.md](05-impuestos-e-informes.md) |
-| `plan_cuentas`, `asientos`, `asientos_lineas` | Contabilidad opcional: asientos automáticos desde cada operación |
+| `configuracion_contable`, `ejercicios` | Puesta en marcha (desde qué fecha se contabiliza), fecha hasta la que no se aceptan asientos y ejercicios abiertos o cerrados |
+| `cuentas_contables`, `imputaciones_contables` | Plan de cuentas (código con puntos, imputable o de agrupación) y cuentas clave: a qué cuenta va cada cosa en los asientos automáticos (también por proveedor, caja o concepto) |
+| `asientos`, `asientos_lineas` | Asientos automáticos (uno vigente por operación) y manuales; se anulan con contraasiento. Partida doble controlada en la base. Ver [06-contabilidad.md](06-contabilidad.md) |

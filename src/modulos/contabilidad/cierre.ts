@@ -290,19 +290,22 @@ export async function controlesContables(tx: Transaccion, hasta = hoyArgentina()
       diferencia: r2(cd - Number(dif?.t ?? 0)),
     })
 
-  // Períodos de IVA presentados sin liquidación.
-  const sinLiquidar = filasDe<{ periodo: string }>(
+  // Períodos de IVA presentados sin liquidación (los que no tuvieron movimiento no llevan asiento).
+  const sinLiquidar = filasDe<{ periodo: string; resumen: { posicion?: Record<string, unknown> } }>(
     await tx.execute(sql`
-      select p.periodo from presentaciones p
+      select p.periodo, p.resumen from presentaciones p
       where p.impuesto = 'iva_digital' and p.estado = 'presentada' and p.periodo >= ${config.inicio.slice(0, 7)}
         and not exists (select 1 from asientos a where a.origen = 'liquidacion_iva' and a.origen_id = p.id and a.revierte_id is null)
       order by p.periodo`),
-  )
+  ).filter((p) => {
+    const x = p.resumen?.posicion as { debito?: number; credito?: number; aPagar?: number; pagosACuenta?: number } | undefined
+    return !x || [x.debito, x.credito, x.aPagar, x.pagosACuenta].some((v) => Number(v ?? 0) !== 0)
+  })
   for (const p of sinLiquidar)
     out.push({
       gravedad: 'aviso',
       tema: 'Liquidación de IVA',
-      detalle: `El período ${p.periodo} está presentado pero sin asiento de liquidación.`,
+      detalle: `El período ${p.periodo} está presentado pero sin asiento de liquidación: tocá "Contabilizar ahora".`,
     })
 
   // Cuentas "a imputar" con saldo: el contador las tiene que reclasificar.
@@ -407,4 +410,25 @@ export async function reclasificarProveedor(tx: Transaccion, usuarioId: string, 
 /** Ejercicios con su estado (para la pantalla de cierre). */
 export async function listarEjercicios(tx: Transaccion) {
   return tx.select().from(ejercicios).orderBy(asc(ejercicios.inicio))
+}
+
+/** Liquidaciones de IVA de períodos presentados que todavía no tienen asiento (presentados antes de la puesta en marcha o con un error). */
+export async function liquidarPendientes(tx: Transaccion, usuarioId: string | null) {
+  const config = await configuracionContableDe(tx)
+  if (!config) return { liquidados: 0, errores: [] as string[] }
+  const pendientes = filasDe<{ id: string; periodo: string }>(
+    await tx.execute(sql`
+      select p.id, p.periodo from presentaciones p
+      where p.impuesto = 'iva_digital' and p.estado = 'presentada' and p.periodo >= ${config.inicio.slice(0, 7)}
+        and not exists (select 1 from asientos a where a.origen = 'liquidacion_iva' and a.origen_id = p.id and a.revierte_id is null)
+      order by p.periodo`),
+  )
+  let liquidados = 0
+  const errores: string[] = []
+  for (const p of pendientes) {
+    const r = await liquidarIva(tx, usuarioId, p.id)
+    if (r.ok && 'numero' in r) liquidados++
+    else if (!r.ok) errores.push(`Liquidación de IVA ${p.periodo}: ${r.error}`)
+  }
+  return { liquidados, errores }
 }

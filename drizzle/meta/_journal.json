@@ -253,6 +253,13 @@
       "when": 1790968197439,
       "tag": "0035_contabilidad_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790969132377,
+      "tag": "0036_contador_contabilidad",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,8 @@ import { comoPlataforma, conEmpresa } from '@/db/empresa'
 import { empresas } from '@/db/schema'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
 import { entregarPendientes } from '@/modulos/integraciones/webhooks'
+import { contabilizar } from '@/modulos/contabilidad/automaticos'
+import { liquidarPendientes } from '@/modulos/contabilidad/cierre'
 import { avisarVencimientos } from '@/modulos/impuestos/vencimientos'
 import { ponerAlDia } from '@/modulos/servicio/avisos'
 
@@ -14,7 +16,8 @@ import { ponerAlDia } from '@/modulos/servicio/avisos'
  * el programador del servidor, con Authorization: Bearer CRON_SECRET): pone al
  * día vencimientos, preventivos, avisos, alertas de SLA y recordatorios de
  * todas las empresas, avisa los vencimientos impositivos que se acercan o
- * se pasaron, y manda los correos y los webhooks. Sin CRON_SECRET no hace nada.
+ * se pasaron, asienta las operaciones nuevas (si la contabilidad está en
+ * marcha) y manda los correos y los webhooks. Sin CRON_SECRET no hace nada.
  */
 export async function POST(request: Request) {
   const secreto = process.env.CRON_SECRET
@@ -29,6 +32,7 @@ export async function POST(request: Request) {
     preventivos: 0,
     avisos: 0,
     vencimientosImpuestos: 0,
+    asientos: 0,
     enviados: 0,
     webhooks: 0,
     errores: 0,
@@ -40,6 +44,10 @@ export async function POST(request: Request) {
       resultado.preventivos += r.preventivos
       resultado.avisos += r.avisos
       resultado.vencimientosImpuestos += (await conEmpresa(e.id, (tx) => avisarVencimientos(tx, e.id))).avisos
+      resultado.asientos += await conEmpresa(e.id, async (tx) => {
+        const c = await contabilizar(tx, null)
+        return c.generados + (await liquidarPendientes(tx, null)).liquidados
+      })
       resultado.enviados += (await enviarPendientes(e.id, 100)).enviados
       resultado.webhooks += (await entregarPendientes(e.id, 200)).entregados
     } catch {
