@@ -10,6 +10,7 @@ import { tienePermiso } from '@/lib/permisos'
 import { obtenerEnvio } from '@/modulos/servicio/sueltos'
 
 import { paginaContratos } from '../../../contratos/modulo'
+import { ChipEstadoEnvio } from '../TablaBandeja'
 import { CambiarEstado } from './CambiarEstado'
 
 export const metadata: Metadata = { title: 'Formulario recibido' }
@@ -73,6 +74,22 @@ export default async function Envio({ params, searchParams }: PageProps<'/servic
           <Panel className="p-4">
             <CambiarEstado id={e.id} estadoId={e.estadoId} nota={e.nota} estados={e.estados} />
           </Panel>
+          {e.historial.length > 0 && (
+            <Panel className="p-4">
+              <h2 className="mb-2 text-sm font-semibold">Historial</h2>
+              <ol className="flex flex-col gap-2 text-sm">
+                {e.historial.map((h) => (
+                  <li key={h.id}>
+                    <ChipEstadoEnvio estado={{ nombre: h.estado, color: h.color }} />
+                    <span className="block text-xs text-texto-2">
+                      {h.autor} · {hora(h.momento)}
+                    </span>
+                    {h.nota && <span className="block text-xs whitespace-pre-line text-texto-3">{h.nota}</span>}
+                  </li>
+                ))}
+              </ol>
+            </Panel>
+          )}
           {e.cliente && tienePermiso(sesion.permisos, 'servicio.cargar') && (
             <Link
               href={e.equipo ? `/servicio/nueva?equipo=${e.equipo.id}` : `/servicio/nueva?cliente=${e.cliente.id}`}

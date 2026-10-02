@@ -21,7 +21,9 @@ import {
   bandeja,
   borradorDe,
   borrarEstado,
+  cambiarEstadoEnLote,
   cambiarEstadoEnvio,
+  historialDeEnvio,
   crearModelosSueltos,
   empezarEnvio,
   enviarFormulario,
@@ -178,6 +180,29 @@ describe('formularios sueltos y bandeja', () => {
     expect(n.ok).toBe(true)
     const despues = (await en((tx) => bandeja(tx))).estados
     expect(despues.filter((e) => e.inicial).map((e) => e.nombre)).toEqual(['Recibido'])
+
+    // Historial: quién y cuándo, desde que llegó.
+    const h = await en((tx) => historialDeEnvio(tx, envios[0].id))
+    expect(h.map((x) => [x.estado, x.autor, x.nota])).toEqual([
+      [expect.any(String), 'Recibido del portal', null],
+      ['Resuelto', 'Oficina', 'Le mandamos la cotización'],
+    ])
+
+    // Cambio en lote: los que ya estaban en ese estado no suman historial.
+    const r = await en((tx) =>
+      cambiarEstadoEnLote(
+        tx,
+        U,
+        envios.map((e) => e.id),
+        resuelto.id,
+        'Ana',
+      ),
+    )
+    expect(r).toEqual({ ok: true, cambiados: 1, iguales: 1 })
+    expect(await en((tx) => pendientesBandeja(tx))).toBe(0)
+    expect((await en((tx) => historialDeEnvio(tx, envios[1].id))).at(-1)).toMatchObject({ estado: 'Resuelto', autor: 'Ana' })
+    expect(await en((tx) => historialDeEnvio(tx, envios[0].id))).toHaveLength(2)
+    expect(await en((tx) => cambiarEstadoEnLote(tx, U, [], resuelto.id))).toMatchObject({ ok: false })
   })
 
   it('reporte en Excel del formulario, una columna por campo', async () => {

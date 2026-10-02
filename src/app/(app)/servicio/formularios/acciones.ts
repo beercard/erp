@@ -11,6 +11,7 @@ import { entregarPendientes } from '@/modulos/integraciones/webhooks'
 import { guardarArchivoEnvio, quitarArchivoEnvio } from '@/modulos/servicio/archivos'
 import { tecnicoDeUsuario } from '@/modulos/servicio/servicio'
 import {
+  cambiarEstadoEnLote,
   borrarEstado,
   cambiarEstadoEnvio,
   crearModelosSueltos,
@@ -220,11 +221,20 @@ export async function descartarAccion(id: string) {
 export async function cambiarEstadoAccion(id: string, _: Estado, fd: FormData): Promise<Estado> {
   const r = await intentar(() =>
     enLaEmpresa('servicio.cargar', (tx, s) =>
-      cambiarEstadoEnvio(tx, s.usuario.id, id, { estadoId: valor(fd, 'estadoId'), nota: valor(fd, 'nota') }),
+      cambiarEstadoEnvio(tx, s.usuario.id, id, { estadoId: valor(fd, 'estadoId'), nota: valor(fd, 'nota') }, s.usuario.nombre),
     ),
   )
   if (!r.ok) return { error: r.error }
   revalidar()
   revalidatePath(`/servicio/bandeja/${id}`)
   return { ok: 'Guardado.' }
+}
+
+/** Pasa varios formularios de la bandeja a un estado. */
+export async function estadoEnLoteAccion(ids: string[], estadoId: string) {
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.cargar', (tx, s) => cambiarEstadoEnLote(tx, s.usuario.id, ids, estadoId, s.usuario.nombre)),
+  )
+  revalidar()
+  return r
 }

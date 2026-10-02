@@ -788,3 +788,28 @@ export const excepcionesJornada = pgTable(
     deLaEmpresa('excepciones_jornada_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
   ],
 )
+
+/**
+ * Historial de estados de un formulario de la bandeja: quién lo pasó a qué
+ * estado y cuándo (como en Persat). Guarda el nombre y el color del estado
+ * de ese momento, así sigue legible aunque el estado cambie o se borre.
+ */
+export const historialEnvios = pgTable(
+  'historial_envios',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    envioId: uuid('envio_id').notNull(),
+    estado: text('estado').notNull(),
+    color: text('color').notNull(),
+    nota: text('nota'),
+    /** Nombre de quien lo cambió (o de dónde vino, al recibirlo). */
+    autor: text('autor').notNull(),
+    usuarioId: uuid('usuario_id'),
+    momento: timestamp('momento', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index().on(t.empresaId, t.envioId, t.momento),
+    deLaEmpresa('historial_envios_envio_fk', t.empresaId, t.envioId, enviosFormulario).onDelete('cascade'),
+  ],
+)

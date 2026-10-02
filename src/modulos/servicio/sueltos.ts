@@ -7,6 +7,7 @@ import {
   enviosFormulario,
   equipos,
   estadosBandeja,
+  historialEnvios,
   formularios,
   modelosEquipo,
   tecnicos,
@@ -414,6 +415,20 @@ export async function enviarFormulario(tx: Transaccion, id: string, autor: Autor
       lng: lat === null || lng === null ? null : lng.toFixed(6),
     })
     .where(eq(enviosFormulario.id, id))
+  if (inicial)
+    await tx.insert(historialEnvios).values({
+      envioId: id,
+      estado: inicial.nombre,
+      color: inicial.color,
+      autor:
+        autor.quien === 'portal'
+          ? 'Recibido del portal'
+          : autor.quien === 'tecnico'
+            ? 'Recibido del técnico'
+            : 'Cargado en la oficina',
+      usuarioId: autor.quien === 'portal' ? null : autor.usuarioId,
+      momento: enviado,
+    })
   await auditar(tx, {
     usuarioId: autor.quien === 'portal' ? autor.usuarioPortalId : autor.usuarioId,
     accion: 'alta',
@@ -578,6 +593,7 @@ export async function obtenerEnvio(tx: Transaccion, id: string) {
     portal: r.portal?.email ? r.portal : null,
     estado: estados.find((e) => e.id === r.e.estadoId) ?? null,
     estados,
+    historial: await historialDeEnvio(tx, id),
   }
 }
 
@@ -592,7 +608,7 @@ const EsquemaCambio = z.object({
 })
 
 /** Mueve el envío de estado en la bandeja (y guarda la nota interna). */
-export async function cambiarEstadoEnvio(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
+export async function cambiarEstadoEnvio(tx: Transaccion, usuarioId: string, id: string, entrada: unknown, autor = 'Oficina') {
   const p = EsquemaCambio.safeParse(entrada)
   if (!p.success) return mal(primerError(p.error))
   const [estado] = await tx.select().from(estadosBandeja).where(eq(estadosBandeja.id, p.data.estadoId))
@@ -603,6 +619,10 @@ export async function cambiarEstadoEnvio(tx: Transaccion, usuarioId: string, id:
     .where(and(eq(enviosFormulario.id, id), isNotNull(enviosFormulario.enviado)))
   if (!antes) return mal('Ese envío no existe.')
   await tx.update(enviosFormulario).set({ estadoId: estado.id, nota: p.data.nota }).where(eq(enviosFormulario.id, id))
+  if (antes.estadoId !== estado.id)
+    await tx
+      .insert(historialEnvios)
+      .values({ envioId: id, estado: estado.nombre, color: estado.color, nota: p.data.nota, autor, usuarioId })
   await auditar(tx, {
     usuarioId,
     accion: 'modificacion',
@@ -612,6 +632,51 @@ export async function cambiarEstadoEnvio(tx: Transaccion, usuarioId: string, id:
     despues: { estadoId: estado.id, nota: p.data.nota },
   })
   return ok({})
+}
+
+/** Pasa varios envíos a un estado (la nota de cada uno queda como estaba). */
+export async function cambiarEstadoEnLote(
+  tx: Transaccion,
+  usuarioId: string,
+  ids: string[],
+  estadoId: string,
+  autor = 'Oficina',
+) {
+  const [estado] = await tx.select().from(estadosBandeja).where(eq(estadosBandeja.id, estadoId))
+  if (!estado) return mal('Ese estado no existe.')
+  const unicos = [...new Set(ids.filter((x) => /^[0-9a-f-]{36}$/i.test(x)))].slice(0, 500)
+  if (!unicos.length) return mal('Elegí al menos un formulario.')
+  const filas = await tx
+    .select({ id: enviosFormulario.id, estadoId: enviosFormulario.estadoId })
+    .from(enviosFormulario)
+    .where(and(inArray(enviosFormulario.id, unicos), isNotNull(enviosFormulario.enviado)))
+  const cambian = filas.filter((f) => f.estadoId !== estado.id)
+  if (cambian.length) {
+    await tx
+      .update(enviosFormulario)
+      .set({ estadoId: estado.id })
+      .where(
+        inArray(
+          enviosFormulario.id,
+          cambian.map((f) => f.id),
+        ),
+      )
+    await tx
+      .insert(historialEnvios)
+      .values(cambian.map((f) => ({ envioId: f.id, estado: estado.nombre, color: estado.color, autor, usuarioId })))
+    await auditar(tx, {
+      usuarioId,
+      accion: 'modificacion',
+      entidad: 'envio_formulario',
+      despues: { estadoId: estado.id, envios: cambian.map((f) => f.id) },
+    })
+  }
+  return ok({ cambiados: cambian.length, iguales: filas.length - cambian.length })
+}
+
+/** Quién pasó el formulario a cada estado y cuándo. */
+export async function historialDeEnvio(tx: Transaccion, id: string) {
+  return tx.select().from(historialEnvios).where(eq(historialEnvios.envioId, id)).orderBy(asc(historialEnvios.momento))
 }
 
 /** Lo que mandó un cliente desde el portal (para mostrarle el estado). */

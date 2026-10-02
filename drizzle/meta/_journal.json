@@ -302,6 +302,20 @@
       "when": 1790980660905,
       "tag": "0042_excepciones_jornada_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790981010238,
+      "tag": "0043_historial_envios",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1790981011881,
+      "tag": "0044_historial_envios_seguridad",
+      "breakpoints": true
     }
   ]
 }

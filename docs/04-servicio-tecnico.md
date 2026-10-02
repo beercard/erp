@@ -145,7 +145,7 @@ Por prioridad:
 2. ~~Enlace público de seguimiento~~ (hecho).
 3. ~~Etiquetas de colores en las órdenes~~ (hecho).
 4. ~~Varios técnicos por orden~~ (hecho).
-5. **Historial de estados de los formularios** (quién y cuándo) y **cambio de estado masivo** en la bandeja.
+5. ~~Historial de estados de los formularios y cambio de estado masivo~~ (hecho).
 6. **Grupos de clientes que limitan qué ve cada usuario.**
 7. ~~Horario laboral por día~~ (hecho: Servicio técnico › Licencias y feriados).
 8. **Zonas de trabajo por técnico** con alertas de salida de zona, y **visitas detectadas por GPS** a cualquier cliente (no solo a las órdenes del día).
@@ -212,3 +212,7 @@ Al migrar el historial de Persat quedan muchas órdenes que nunca se cerraron (e
 ## 9. Licencias y feriados
 
 Servicio técnico › Licencias y feriados: días en que un técnico no trabaja (vacaciones, médico) o trabaja en otro horario (guardia, capacitación), por un día o un rango. Sin técnico es un feriado para todos. Lo cargado para el técnico manda sobre el feriado general, y un horario especial lo hace trabajar aunque sea fin de semana. El asistente de huecos no ofrece esos días (o usa el horario especial) y el calendario los marca con el motivo. La regla está en `src/modulos/servicio/jornadaDia.ts` (sin base, la usa también el navegador).
+
+## 10. Bandeja: historial y cambio en lote
+
+Cada formulario de la bandeja guarda su historial de estados: con qué estado llegó (y de dónde: oficina, técnico o portal), quién lo pasó a cada estado, cuándo y con qué nota (`historial_envios`, con el nombre y el color del estado de ese momento). Se ve en el detalle del formulario. En la bandeja se marcan varios y se pasan juntos a un estado (la nota de cada uno queda como estaba).
