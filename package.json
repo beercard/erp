@@ -12,6 +12,7 @@
     "db:generar": "drizzle-kit generate",
     "db:migrar": "tsx scripts/migrar.ts",
     "db:semilla": "tsx scripts/semilla.ts",
+    "persat:relevar": "NODE_USE_ENV_PROXY=1 tsx scripts/persat-relevar.ts",
     "formato": "prettier --write src scripts docs"
   },
   "dependencies": {
