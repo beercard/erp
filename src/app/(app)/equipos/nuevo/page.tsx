@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: 'Nuevo equipo' }
 export default async function NuevoEquipo({ searchParams }: PageProps<'/equipos/nuevo'>) {
   const sesion = await paginaContratos('contratos.editar')
   const { contrato } = (await searchParams) as { contrato?: string }
-  const opciones = await conEmpresa(sesion.empresa.id, opcionesEquipo)
+  const opciones = await conEmpresa(sesion, opcionesEquipo)
   return (
     <>
       <EncabezadoPagina

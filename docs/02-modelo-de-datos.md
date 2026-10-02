@@ -38,6 +38,8 @@ Convenciones:
 |---|---|
 | `terceros` | **Clientes y proveedores en una sola tabla**, con marcas `es_cliente` y `es_proveedor`. Guarda datos fiscales, contacto, domicilio y condiciones comerciales (lista, vendedor, condición de pago, límite de crédito, descuento) |
 | `terceros_contactos` | Personas de contacto de cada tercero (nombre, cargo, email, teléfono) |
+| `grupos_clientes` | Grupos de clientes; cada cliente puede estar en uno (`terceros.grupo_cliente_id`) |
+| `usuarios_grupos_clientes` | Grupos que ve cada usuario en la empresa; sin ninguno ve todos los clientes |
 | `rubros` | Árbol de rubros y subrubros (`padre_id`) |
 | `marcas` | Marcas de artículos |
 | `articulos` | Productos y servicios: código, nombre, rubro, marca, unidad, alícuota de IVA, si lleva stock, si lleva número de serie, costo y moneda del costo |

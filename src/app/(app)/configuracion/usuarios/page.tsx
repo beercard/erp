@@ -130,9 +130,14 @@ export default async function Usuarios({ searchParams }: PageProps<'/configuraci
       <Panel>
         <div className="flex items-center justify-between border-b border-borde px-4 py-3">
           <h2 className="text-sm font-semibold">Roles</h2>
-          <BotonEnlace href="/configuracion/usuarios/roles/nuevo" className="h-8">
-            <Plus aria-hidden className="size-4" /> Nuevo rol
-          </BotonEnlace>
+          <span className="flex items-center gap-2">
+            <BotonEnlace href="/configuracion/usuarios/grupos" className="h-8">
+              Grupos de clientes
+            </BotonEnlace>
+            <BotonEnlace href="/configuracion/usuarios/roles/nuevo" className="h-8">
+              <Plus aria-hidden className="size-4" /> Nuevo rol
+            </BotonEnlace>
+          </span>
         </div>
         <ul className="divide-y divide-borde">
           {roles.map((r) => (

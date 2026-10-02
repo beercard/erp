@@ -27,7 +27,7 @@ const hora = (d: Date) =>
 export default async function Configuracion({ searchParams }: PageProps<'/servicio/configuracion'>) {
   const sesion = await paginaContratos('servicio.configurar')
   const { enviados, fallidos, error } = (await searchParams) as { enviados?: string; fallidos?: string; error?: string }
-  const { config, bandeja, usuarios, etiquetas } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { config, bandeja, usuarios, etiquetas } = await conEmpresa(sesion, async (tx) => ({
     config: await obtenerConfiguracion(tx),
     etiquetas: await listarEtiquetas(tx, true),
     bandeja: await tx.select().from(correos).orderBy(desc(correos.creado)).limit(50),

@@ -20,7 +20,7 @@ const IMPUESTO: Record<string, string> = { ganancias: 'Ganancias', iibb: 'Ingres
 export default async function Retenciones({ searchParams }: PageProps<'/impuestos/retenciones'>) {
   const sesion = await exigirPermiso('impuestos.libros')
   const periodo = periodoPedido(((await searchParams) as { periodo?: string }).periodo)
-  const d = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const d = await conEmpresa(sesion, async (tx) => ({
     practicadas: await retencionesPracticadas(tx, periodo),
     sufridas: await retencionesSufridas(tx, periodo),
     percepciones: (await percepcionesSufridas(tx, periodo)).filter((p) => p.tipo !== 'percepcion_iibb'),

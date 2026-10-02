@@ -20,7 +20,7 @@ export default async function Licencias() {
   const sesion = await paginaContratos('servicio.ver')
   const editar = tienePermiso(sesion.permisos, 'servicio.cargar')
   const hoy = hoyArgentina()
-  const { lista, tecnicos } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { lista, tecnicos } = await conEmpresa(sesion, async (tx) => ({
     lista: await listarExcepciones(tx, sumarDias(hoy, -30)),
     tecnicos: await listarTecnicos(tx),
   }))

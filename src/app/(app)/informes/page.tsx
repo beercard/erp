@@ -54,7 +54,7 @@ function Barras({ filas, total }: { filas: { nombre: string; neto: number; detal
 export default async function Informes({ searchParams }: PageProps<'/informes'>) {
   const sesion = await exigirPermiso('informes.ver')
   const r = rango((await searchParams) as { desde?: string; hasta?: string })
-  const d = await conEmpresa(sesion.empresa.id, (tx) => informeGestion(tx, r))
+  const d = await conEmpresa(sesion, (tx) => informeGestion(tx, r))
   const maxMes = Math.max(...d.meses.map((m) => m.neto), 1)
   const control = 'h-9 rounded-md border border-borde bg-superficie px-2 text-sm'
   const tiles = [

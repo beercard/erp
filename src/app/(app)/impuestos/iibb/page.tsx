@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: 'Ingresos Brutos' }
 export default async function Iibb({ searchParams }: PageProps<'/impuestos/iibb'>) {
   const sesion = await exigirPermiso('impuestos.libros')
   const periodo = periodoPedido(((await searchParams) as { periodo?: string }).periodo)
-  const d = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const d = await conEmpresa(sesion, async (tx) => ({
     base: await baseIibb(tx, periodo),
     percepciones: await percepcionesPracticadas(tx, periodo),
     sufridas: (await percepcionesSufridas(tx, periodo)).filter((p) => p.tipo === 'percepcion_iibb'),

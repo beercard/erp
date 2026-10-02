@@ -330,6 +330,20 @@
       "when": 1790981281943,
       "tag": "0046_zonas_trabajo_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1790981762768,
+      "tag": "0047_grupos_clientes",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1790981786484,
+      "tag": "0048_grupos_clientes_seguridad",
+      "breakpoints": true
     }
   ]
 }

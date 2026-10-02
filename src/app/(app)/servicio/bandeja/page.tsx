@@ -16,7 +16,7 @@ export default async function Bandeja({ searchParams }: PageProps<'/servicio/ban
   const sesion = await paginaContratos('servicio.cargar')
   const { estado = 'pendientes', formulario, q } = (await searchParams) as { estado?: string; formulario?: string; q?: string }
   const valido = (v?: string) => (v && /^[0-9a-f-]{36}$/i.test(v) ? v : undefined)
-  const { datos, formularios } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { datos, formularios } = await conEmpresa(sesion, async (tx) => ({
     datos: await bandeja(tx, {
       estado: estado === 'todos' || estado === 'pendientes' ? estado : valido(estado),
       formulario: valido(formulario),

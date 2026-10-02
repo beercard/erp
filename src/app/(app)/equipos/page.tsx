@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: 'Equipos' }
 export default async function Equipos({ searchParams }: PageProps<'/equipos'>) {
   const sesion = await paginaContratos('contratos.ver')
   const { q, estado } = (await searchParams) as { q?: string; estado?: string }
-  const lista = await conEmpresa(sesion.empresa.id, (tx) =>
+  const lista = await conEmpresa(sesion, (tx) =>
     equiposConLectura(tx, { q, estado: estado === 'todos' ? undefined : (estado ?? 'instalado') }),
   )
   return (

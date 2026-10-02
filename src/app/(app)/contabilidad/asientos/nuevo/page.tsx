@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Asiento manual' }
 /** Amortizaciones, sueldos, ajustes, apertura con los saldos del último balance… */
 export default async function NuevoAsiento() {
   const sesion = await exigirPermiso('contabilidad.asientos')
-  const cuentas = await conEmpresa(sesion.empresa.id, async (tx) =>
+  const cuentas = await conEmpresa(sesion, async (tx) =>
     (await configuracionContableDe(tx)) ? (await planDeCuentas(tx)).filter((c) => c.activa) : null,
   )
   if (!cuentas) redirect('/contabilidad')

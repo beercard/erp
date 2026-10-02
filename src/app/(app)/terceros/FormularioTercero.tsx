@@ -18,6 +18,7 @@ export type OpcionesFormulario = {
   zonas: Opcion[]
   transportes: Opcion[]
   regimenes: Opcion[]
+  grupos: Opcion[]
 }
 
 export type ValoresTercero = Record<string, string | boolean | null | undefined>
@@ -246,6 +247,16 @@ export function FormularioTercero({
             opciones={opciones.zonas}
             defaultValue={v('zonaId')}
           />
+          {opciones.grupos.length > 0 && (
+            <Selector
+              id="grupoClienteId"
+              name="grupoClienteId"
+              etiqueta="Grupo de clientes"
+              vacio="Sin grupo"
+              opciones={opciones.grupos}
+              defaultValue={v('grupoClienteId')}
+            />
+          )}
           <Selector
             id="transporteId"
             name="transporteId"

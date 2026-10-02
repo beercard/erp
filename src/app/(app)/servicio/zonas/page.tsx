@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Zonas de trabajo' }
 /** Zonas de trabajo y a qué técnicos se asignan: si en jornada salen de todas, queda una alerta. */
 export default async function Zonas() {
   const sesion = await paginaContratos('servicio.configurar')
-  const { zonas, tecnicos, config } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { zonas, tecnicos, config } = await conEmpresa(sesion, async (tx) => ({
     zonas: await listarZonas(tx),
     tecnicos: await listarTecnicos(tx),
     config: await obtenerConfiguracion(tx),

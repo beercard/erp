@@ -18,7 +18,7 @@ export default async function Formularios({ searchParams }: PageProps<'/servicio
   const sesion = await paginaContratos('servicio.cargar')
   const { error } = (await searchParams) as { error?: string }
   const configura = tienePermiso(sesion.permisos, 'servicio.configurar')
-  const { lista, estados } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { lista, estados } = await conEmpresa(sesion, async (tx) => ({
     lista: await listarFormularios(tx),
     estados: await estadosDeBandeja(tx),
   }))

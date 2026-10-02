@@ -22,7 +22,7 @@ function periodoSugerido(hoy: string) {
 export default async function FacturarContratos() {
   const sesion = await paginaContratos('contratos.facturar')
   const hoy = hoyArgentina()
-  const { puntos, dolar } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { puntos, dolar } = await conEmpresa(sesion, async (tx) => ({
     puntos: await tx
       .select({ numero: puntosVenta.numero, nombre: puntosVenta.nombre })
       .from(puntosVenta)

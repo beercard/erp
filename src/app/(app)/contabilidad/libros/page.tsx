@@ -33,7 +33,7 @@ export default async function Libros({ searchParams }: PageProps<'/contabilidad/
   const p = (await searchParams) as { vista?: string; desde?: string; hasta?: string; cuenta?: string }
   const vista: Vista = p.vista && p.vista in VISTAS ? (p.vista as Vista) : 'balance'
   const hoy = hoyArgentina()
-  const d = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const d = await conEmpresa(sesion, async (tx) => {
     const config = await configuracionContableDe(tx)
     if (!config) return null
     // Por defecto, del inicio del año (o de la contabilidad) a hoy.

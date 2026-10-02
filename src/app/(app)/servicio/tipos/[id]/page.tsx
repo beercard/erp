@@ -17,7 +17,7 @@ export default async function TipoOrden({ params }: PageProps<'/servicio/tipos/[
   const sesion = await paginaContratos('servicio.ver')
   const { id } = await params
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
-  const t = await conEmpresa(sesion.empresa.id, (tx) => obtenerTipo(tx, id))
+  const t = await conEmpresa(sesion, (tx) => obtenerTipo(tx, id))
   if (!t || !t.plantilla) notFound()
   const editar = tienePermiso(sesion.permisos, 'servicio.configurar')
   return (

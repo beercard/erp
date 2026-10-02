@@ -146,7 +146,7 @@ Por prioridad:
 3. ~~Etiquetas de colores en las órdenes~~ (hecho).
 4. ~~Varios técnicos por orden~~ (hecho).
 5. ~~Historial de estados de los formularios y cambio de estado masivo~~ (hecho).
-6. **Grupos de clientes que limitan qué ve cada usuario.**
+6. ~~Grupos de clientes que limitan qué ve cada usuario~~ (hecho: ver la sección 12).
 7. ~~Horario laboral por día~~ (hecho: Servicio técnico › Licencias y feriados).
 8. ~~Zonas de trabajo por técnico y visitas detectadas por GPS~~ (hecho: ver la sección 11).
 9. ~~Recerrar una orden cerrada~~ (hecho: "Cambiar el tipo de cierre" en la orden; una facturada no puede pasar a no cumplida).
@@ -222,3 +222,7 @@ Cada formulario de la bandeja guarda su historial de estados: con qué estado ll
 Servicio técnico › Zonas de trabajo: cada zona es un centro (dirección o latitud y longitud) y un radio en km, y se asigna a uno o más técnicos. Con cada posición durante la jornada fichada, si el técnico sale de todas sus zonas queda una alerta de salida (una sola, aunque siga afuera) y se avisa por email a coordinación; al volver, una de entrada. Sin zonas asignadas o fuera de jornada no se controla.
 
 En `/servicio/jornadas` cada fecha abre el día del técnico: km, alertas de zona y visitas detectadas, es decir, estadías de 5 minutos o más a menos de 150 m de un equipo instalado de cualquier cliente o del lugar de una orden (un hueco de más de 20 minutos sin posiciones corta la estadía). Cada visita muestra si hubo orden ese día para ese cliente; las que no tienen orden se marcan. La lógica está en `src/modulos/servicio/zonas.ts`.
+
+## 12. Grupos de clientes
+
+Configuración › Usuarios y roles › Grupos de clientes: se crean grupos (por región, por cuenta, por sucursal) y se eligen los que ve cada usuario; el grupo de cada cliente se elige en su ficha. Un usuario con grupos solo ve los clientes de esos grupos y, de ellos, órdenes de servicio, contratos, equipos y formularios; sin grupos ve todo. Los proveedores se ven siempre. Si carga un cliente sin grupo, queda en el primero de los suyos. No lo filtra la pantalla sino Postgres (políticas restrictivas sobre `app.usuario_id`), así que ninguna consulta se lo puede saltear. Los comprobantes (facturas, cobranzas) no se filtran por grupo: a quien no deba verlos no se le da ese permiso.

@@ -27,7 +27,7 @@ const ENDPOINTS = [
 
 export default async function Integraciones() {
   const sesion = await exigirPermiso('empresa.integraciones')
-  const { claves, webhooks } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { claves, webhooks } = await conEmpresa(sesion, async (tx) => ({
     claves: await listarClaves(tx),
     webhooks: await listarWebhooks(tx),
   }))

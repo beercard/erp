@@ -79,7 +79,7 @@ export default async function Tablero({ searchParams }: PageProps<'/servicio/tab
     porTipo,
     reincidentes,
     materiales,
-  } = await conEmpresa(sesion.empresa.id, (tx) => indicadores(tx, desde, hasta))
+  } = await conEmpresa(sesion, (tx) => indicadores(tx, desde, hasta))
   const valorNps = nps(r.encuestas)
   const slaResp = pct(r.slaRespuesta.cumplidas, r.slaRespuesta.total)
   const slaResol = pct(r.slaResolucion.cumplidas, r.slaResolucion.total)

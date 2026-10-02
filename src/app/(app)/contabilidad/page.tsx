@@ -21,7 +21,7 @@ export default async function Contabilidad() {
   const sesion = await exigirPermiso('contabilidad.ver')
   const puede = (p: string) => tienePermiso(sesion.permisos, p)
   const hoy = hoyArgentina()
-  const d = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const d = await conEmpresa(sesion, async (tx) => {
     const config = await configuracionContableDe(tx)
     if (!config) return null
     return {

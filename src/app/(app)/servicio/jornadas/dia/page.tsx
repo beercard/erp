@@ -21,7 +21,7 @@ export default async function DiaTecnico({ searchParams }: PageProps<'/servicio/
   const q = (await searchParams) as { tecnico?: string; fecha?: string }
   if (!q.tecnico || !/^[0-9a-f-]{36}$/i.test(q.tecnico) || !q.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(q.fecha)) notFound()
   const { tecnico, fecha } = { tecnico: q.tecnico, fecha: q.fecha }
-  const d = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const d = await conEmpresa(sesion, async (tx) => {
     const [t] = await tx.select({ nombre: tecnicos.nombre }).from(tecnicos).where(eq(tecnicos.id, tecnico))
     return t ? { nombre: t.nombre, ...(await diaDelTecnico(tx, tecnico, fecha)) } : null
   })

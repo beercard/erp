@@ -3,6 +3,7 @@ import * as z from 'zod'
 
 import type { Transaccion } from '../../db/conexion'
 import {
+  gruposClientes,
   condicionesIva,
   condicionesPago,
   listasPrecios,
@@ -17,6 +18,7 @@ import {
 import { auditar } from '../../lib/auditoria'
 import { normalizarNumero } from '../../lib/dinero'
 import { soloDigitos, validarCuit } from '../../lib/cuit'
+import { gruposDeQuienConsulta } from './grupos'
 
 /**
  * Clientes y proveedores ("terceros"). Toda función recibe la transacción de
@@ -75,7 +77,7 @@ export async function obtenerTercero(tx: Transaccion, id: string) {
 
 /** Opciones para los desplegables del formulario. */
 export async function opcionesTercero(tx: Transaccion) {
-  const [ivas, documentos, provs, listas, vends, condiciones, zns, transps, regs] = await Promise.all([
+  const [ivas, documentos, provs, listas, vends, condiciones, zns, transps, regs, grupos, propios] = await Promise.all([
     tx.select().from(condicionesIva).orderBy(asc(condicionesIva.codigo)),
     tx.select().from(tiposDocumento).orderBy(asc(tiposDocumento.codigo)),
     tx.select().from(provincias).orderBy(asc(provincias.nombre)),
@@ -105,6 +107,8 @@ export async function opcionesTercero(tx: Transaccion) {
       .from(regimenesGanancias)
       .where(eq(regimenesGanancias.activo, true))
       .orderBy(asc(regimenesGanancias.codigo)),
+    tx.select({ id: gruposClientes.id, nombre: gruposClientes.nombre }).from(gruposClientes).orderBy(asc(gruposClientes.nombre)),
+    gruposDeQuienConsulta(tx),
   ])
   return {
     ivas,
@@ -116,6 +120,8 @@ export async function opcionesTercero(tx: Transaccion) {
     zonas: zns,
     transportes: transps,
     regimenes: regs,
+    // Quien solo ve algunos grupos elige entre los suyos.
+    grupos: propios.length ? propios : grupos,
   }
 }
 
@@ -170,6 +176,7 @@ export const EsquemaTercero = z
     condicionPagoId: uuidOpcional,
     zonaId: uuidOpcional,
     transporteId: uuidOpcional,
+    grupoClienteId: uuidOpcional,
     descuento: numeroOpcional,
     limiteCredito: numeroOpcional,
     percepcionIibb: numeroOpcional,
@@ -238,6 +245,11 @@ export async function guardarTercero(
     return { ok: false, errores }
   }
   const datos = { ...parseo.data, codigo: parseo.data.codigo ?? (id ? undefined : await proximoCodigo(tx)) }
+  // Quien solo ve algunos grupos no puede dejar un cliente fuera de ellos: va al primero.
+  if (datos.esCliente && !datos.esProveedor && !datos.grupoClienteId) {
+    const [g] = await gruposDeQuienConsulta(tx)
+    if (g) datos.grupoClienteId = g.id
+  }
 
   // Mismo documento en otro tercero de la empresa: casi seguro es un duplicado.
   if (datos.numeroDocumento) {

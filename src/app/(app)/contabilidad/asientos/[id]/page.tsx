@@ -21,7 +21,7 @@ export default async function Asiento({ params }: PageProps<'/contabilidad/asien
   const sesion = await exigirPermiso('contabilidad.ver')
   const { id } = await params
   if (!UUID.test(id)) notFound()
-  const a = await conEmpresa(sesion.empresa.id, (tx) => obtenerAsiento(tx, id))
+  const a = await conEmpresa(sesion, (tx) => obtenerAsiento(tx, id))
   if (!a) notFound()
   const debe = a.lineas.reduce((s, l) => s + Number(l.debe), 0)
   const haber = a.lineas.reduce((s, l) => s + Number(l.haber), 0)

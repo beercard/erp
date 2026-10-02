@@ -31,7 +31,7 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
     tecnico?: string
     etiqueta?: string
   }
-  const { lista, resumen, tecnicos, etiquetas, deOrdenes } = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const { lista, resumen, tecnicos, etiquetas, deOrdenes } = await conEmpresa(sesion, async (tx) => {
     // Al entrar se ponen al día los vencimientos y los preventivos (no hay procesos aparte).
     if (tienePermiso(sesion.permisos, 'servicio.cargar')) await ponerAlDia(tx, sesion.usuario.id)
     else await marcarVencidas(tx)

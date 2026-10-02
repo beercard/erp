@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: 'Nueva orden de servicio' }
 export default async function NuevaOrden({ searchParams }: PageProps<'/servicio/nueva'>) {
   const sesion = await paginaContratos('servicio.cargar')
   const { equipo, cliente } = (await searchParams) as { equipo?: string; cliente?: string }
-  const { tecnicos, tipos, desde } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { tecnicos, tipos, desde } = await conEmpresa(sesion, async (tx) => ({
     tecnicos: await listarTecnicos(tx),
     tipos: await tiposParaOrden(tx),
     desde:

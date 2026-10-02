@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: 'Formularios' }
 export default async function FormulariosTecnico({ searchParams }: PageProps<'/tecnico/formularios'>) {
   const sesion = await paginaContratos('servicio.trabajar')
   const { enviado, error } = (await searchParams) as { enviado?: string; error?: string }
-  const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const datos = await conEmpresa(sesion, async (tx) => {
     const t = await tecnicoDeUsuario(tx, sesion.usuario)
     if (!t) return null
     return {

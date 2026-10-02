@@ -15,7 +15,7 @@ export default async function EditarFormulario({ params, searchParams }: PagePro
   const { id } = await params
   const { creado } = (await searchParams) as { creado?: string }
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
-  const f = await conEmpresa(sesion.empresa.id, (tx) => obtenerFormulario(tx, id))
+  const f = await conEmpresa(sesion, (tx) => obtenerFormulario(tx, id))
   if (!f) notFound()
   return (
     <>

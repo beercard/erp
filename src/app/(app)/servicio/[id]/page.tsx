@@ -37,7 +37,7 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
   const { id } = await params
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const { guardada, error } = (await searchParams) as { guardada?: string; error?: string }
-  const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const datos = await conEmpresa(sesion, async (tx) => {
     await marcarVencidas(tx)
     const o = await obtenerOrden(tx, id)
     if (!o) return null

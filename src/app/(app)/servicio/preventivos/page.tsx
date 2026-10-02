@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: 'Mantenimiento preventivo' }
 export default async function Preventivos({ searchParams }: PageProps<'/servicio/preventivos'>) {
   const sesion = await paginaContratos('servicio.ver')
   const { generadas, error } = (await searchParams) as { generadas?: string; error?: string }
-  const { reglas, tipos, tecnicos } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { reglas, tipos, tecnicos } = await conEmpresa(sesion, async (tx) => ({
     reglas: await listarReglas(tx),
     tipos: await listarTipos(tx, true),
     tecnicos: await listarTecnicos(tx),

@@ -17,7 +17,7 @@ export default async function Recordatorios({ searchParams }: PageProps<'/servic
   const sesion = await paginaContratos('servicio.ver')
   const { ver } = (await searchParams) as { ver?: string }
   const hechos = ver === 'hechos'
-  const lista = await conEmpresa(sesion.empresa.id, (tx) => listarRecordatorios(tx, { estado: hechos ? 'hechos' : 'pendientes' }))
+  const lista = await conEmpresa(sesion, (tx) => listarRecordatorios(tx, { estado: hechos ? 'hechos' : 'pendientes' }))
   const cargar = tienePermiso(sesion.permisos, 'servicio.cargar')
   const hoy = hoyArgentina()
   const fecha = (d: string) => d.split('-').reverse().join('/')

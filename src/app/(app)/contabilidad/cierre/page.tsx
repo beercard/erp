@@ -21,7 +21,7 @@ export default async function Cierre() {
   const sesion = await exigirPermiso('contabilidad.ver')
   const puede = tienePermiso(sesion.permisos, 'contabilidad.configurar')
   const hoy = hoyArgentina()
-  const d = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const d = await conEmpresa(sesion, async (tx) => {
     const config = await configuracionContableDe(tx)
     return config ? { config, ejercicios: await listarEjercicios(tx) } : null
   })

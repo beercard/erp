@@ -31,7 +31,7 @@ export default async function Equipo({ params, searchParams }: PageProps<'/equip
   const sesion = await paginaContratos('contratos.ver')
   const { id } = await params
   const { guardado } = (await searchParams) as { guardado?: string }
-  const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const datos = await conEmpresa(sesion, async (tx) => {
     const e = await obtenerEquipo(tx, id)
     if (!e) return null
     const [opciones, ordenes] = await Promise.all([

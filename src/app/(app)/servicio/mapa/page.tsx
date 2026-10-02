@@ -25,7 +25,7 @@ export default async function MapaServicio({ searchParams }: PageProps<'/servici
   const { fecha: pedida } = (await searchParams) as { fecha?: string }
   const hoy = hoyArgentina()
   const fecha = pedida && /^\d{4}-\d{2}-\d{2}$/.test(pedida) ? pedida : hoy
-  const datos = await conEmpresa(sesion.empresa.id, (tx) => datosMapa(tx, fecha))
+  const datos = await conEmpresa(sesion, (tx) => datosMapa(tx, fecha))
   const flecha = 'flex size-9 items-center justify-center rounded-md border border-borde hover:bg-superficie-2'
   return (
     <>

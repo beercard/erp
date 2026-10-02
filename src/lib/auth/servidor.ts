@@ -104,7 +104,7 @@ export async function enLaEmpresa<T>(
 ): Promise<T> {
   const sesion = await requerirEmpresa()
   if (!tienePermiso(sesion.permisos, permiso)) throw new SinPermiso(permiso, sesion)
-  return conEmpresa(sesion.empresa.id, (tx) => trabajo(tx, sesion))
+  return conEmpresa(sesion, (tx) => trabajo(tx, sesion))
 }
 
 /**

@@ -37,7 +37,7 @@ export default async function CalendarioServicio({ searchParams }: PageProps<'/s
   const lunes = lunesDe(semana && /^\d{4}-\d{2}-\d{2}$/.test(semana) ? semana : hoy)
   const dias = Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i))
   const mover = tienePermiso(sesion.permisos, 'servicio.cargar')
-  const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const datos = await conEmpresa(sesion, async (tx) => {
     if (mover) await ponerAlDia(tx, sesion.usuario.id)
     else await marcarVencidas(tx)
     return calendario(tx, dias[0], dias[6])

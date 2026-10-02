@@ -23,7 +23,7 @@ export default async function Asientos({ searchParams }: PageProps<'/contabilida
   const p = (await searchParams) as { desde?: string; hasta?: string; origen?: string; q?: string }
   const { desde, hasta } = rangoPedido(p, hoyArgentina())
   const origen = p.origen && ORIGENES[p.origen] ? p.origen : null
-  const lista = await conEmpresa(sesion.empresa.id, async (tx) =>
+  const lista = await conEmpresa(sesion, async (tx) =>
     (await configuracionContableDe(tx)) ? listarAsientos(tx, { desde, hasta, origen, q: p.q }) : null,
   )
   if (!lista) redirect('/contabilidad')

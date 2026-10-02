@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: 'Tipos de orden' }
 export default async function TiposOrden({ searchParams }: PageProps<'/servicio/tipos'>) {
   const sesion = await paginaContratos('servicio.ver')
   const { creados, error } = (await searchParams) as { creados?: string; error?: string }
-  const tipos = await conEmpresa(sesion.empresa.id, (tx) => listarTipos(tx))
+  const tipos = await conEmpresa(sesion, (tx) => listarTipos(tx))
   const editar = tienePermiso(sesion.permisos, 'servicio.configurar')
   const faltan = MODELOS.filter((m) => !tipos.some((t) => t.codigo === m.codigo))
 

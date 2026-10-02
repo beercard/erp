@@ -19,7 +19,7 @@ export default async function Contratos({ searchParams }: PageProps<'/contratos'
   const sesion = await paginaContratos('contratos.ver')
   const { q, estado } = (await searchParams) as { q?: string; estado?: string }
   const filtroEstado = estado === 'todos' ? undefined : (estado ?? 'activo')
-  const lista = await conEmpresa(sesion.empresa.id, (tx) => listarContratos(tx, { q, estado: filtroEstado }))
+  const lista = await conEmpresa(sesion, (tx) => listarContratos(tx, { q, estado: filtroEstado }))
   const editar = tienePermiso(sesion.permisos, 'contratos.editar')
 
   return (

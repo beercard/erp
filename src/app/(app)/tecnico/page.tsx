@@ -27,7 +27,7 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
   const { tecnico: elegido, enviada } = (await searchParams) as { tecnico?: string; enviada?: string }
   const coordina = tienePermiso(sesion.permisos, 'servicio.cargar')
   const hoy = hoyArgentina()
-  const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const datos = await conEmpresa(sesion, async (tx) => {
     await marcarVencidas(tx)
     const propio = await tecnicoDeUsuario(tx, sesion.usuario)
     const tecnicos = coordina ? await listarTecnicos(tx) : []

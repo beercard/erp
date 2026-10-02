@@ -23,7 +23,7 @@ export default async function Envio({ params, searchParams }: PageProps<'/servic
   const { id } = await params
   const { enviado } = (await searchParams) as { enviado?: string }
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
-  const e = await conEmpresa(sesion.empresa.id, (tx) => obtenerEnvio(tx, id))
+  const e = await conEmpresa(sesion, (tx) => obtenerEnvio(tx, id))
   if (!e) notFound()
   const equipos = e.equipo ? { [e.equipo.id]: `${e.equipo.modelo ? `${e.equipo.modelo} · ` : ''}${e.equipo.serie}` } : {}
   const de =

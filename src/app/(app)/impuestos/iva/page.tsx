@@ -27,7 +27,7 @@ const ALICUOTAS = ['27', '21', '10,5', '5', '2,5', '0']
 export default async function Iva({ searchParams }: PageProps<'/impuestos/iva'>) {
   const sesion = await exigirPermiso('impuestos.libros')
   const periodo = periodoPedido(((await searchParams) as { periodo?: string }).periodo)
-  const { p, lista, cerrado, controles, envios, cfg } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { p, lista, cerrado, controles, envios, cfg } = await conEmpresa(sesion, async (tx) => ({
     p: await posicionIva(tx, periodo),
     lista: await listarPresentaciones(tx, 'iva_digital', periodo),
     cerrado: await periodoCerrado(tx, 'iva_digital', periodo),

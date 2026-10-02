@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'Lecturas' }
 
 export default async function Lecturas() {
   const sesion = await paginaContratos('contratos.lecturas')
-  const equipos = await conEmpresa(sesion.empresa.id, (tx) =>
+  const equipos = await conEmpresa(sesion, (tx) =>
     equiposConLectura(tx, { estado: 'instalado', enContrato: true, limite: 5000 }),
   )
   const hoy = hoyArgentina()

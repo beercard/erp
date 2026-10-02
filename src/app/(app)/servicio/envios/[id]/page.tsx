@@ -28,7 +28,7 @@ export default async function CompletarFormulario({ params }: PageProps<'/servic
   const sesion = await paginaContratos('servicio.ver')
   const { id } = await params
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
-  const b = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const b = await conEmpresa(sesion, async (tx) => {
     const [e] = await tx.select({ origen: enviosFormulario.origen }).from(enviosFormulario).where(eq(enviosFormulario.id, id))
     if (!e) return null
     let autor: Autor | null = null

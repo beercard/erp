@@ -28,7 +28,7 @@ export const metadata: Metadata = { title: 'Inicio' }
 
 export default async function Inicio() {
   const sesion = await requerirEmpresa()
-  const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const datos = await conEmpresa(sesion, async (tx) => {
     const [clientes] = await tx
       .select({ n: count() })
       .from(terceros)

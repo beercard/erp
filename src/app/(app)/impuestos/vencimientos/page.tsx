@@ -24,7 +24,7 @@ const RUTA: Record<string, string> = { iva_digital: '/impuestos/iva', sicore: '/
 export default async function Vencimientos() {
   const sesion = await exigirPermiso('impuestos.libros')
   const hoy = hoyArgentina()
-  const d = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const d = await conEmpresa(sesion, async (tx) => {
     await generarVencimientos(tx, sesion.empresa.id, hoy)
     const cfg = await configuracion(tx)
     const desde = new Date(`${hoy}T12:00:00Z`)

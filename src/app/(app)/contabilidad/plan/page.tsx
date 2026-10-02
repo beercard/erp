@@ -24,7 +24,7 @@ const TIPO: Record<string, string> = {
 export default async function Plan() {
   const sesion = await exigirPermiso('contabilidad.ver')
   const editar = tienePermiso(sesion.permisos, 'contabilidad.configurar')
-  const d = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const d = await conEmpresa(sesion, async (tx) => {
     if (!(await configuracionContableDe(tx))) return null
     const [plan, proveedores, cajas] = await Promise.all([
       planDeCuentas(tx),
