@@ -124,6 +124,7 @@ export async function importarPymexis(
     clientes: leer(carpeta, 'clientes'),
     clientesIibb: leer(carpeta, 'clientes_iibb'),
     categoriasGanancias: leerOpcional(carpeta, 'categorias_ganancias'),
+    cuentasBancarias: leerOpcional(carpeta, 'cuentas_bancarias'),
     saldosProveedores: opciones.saldos ? leer(carpeta, 'saldos_proveedores') : [],
     saldosClientes: opciones.saldos ? leer(carpeta, 'saldos_clientes') : [],
     proveedores: leer(carpeta, 'proveedores'),
@@ -599,6 +600,47 @@ export async function importarPymexis(
       for (let i = 0; i < contactos.length; i += 500) await tx.insert(t.tercerosContactos).values(contactos.slice(i, i + 500))
     }
     cantidades.contactos = contactos.length
+
+    // ------------------------------------------------ Cuentas de tesorería
+    // Solo las que faltan: las existentes no se tocan (el usuario les asigna medios y saldos).
+    // Los saldos no se migran: en PYMEXIS no se concilian; salen de los extractos.
+    if (archivos.cuentasBancarias.length) {
+      const haceUnAnio = `${Number(hoy.slice(0, 4)) - 1}${hoy.slice(4)}`
+      const filasCuentas = archivos.cuentasBancarias.map((b) => {
+        const nombre = limpio(b.Nombre) || `Banco ${limpio(b.IdBanco)}`
+        const n = nombre.toUpperCase()
+        const tipo =
+          n.includes('TARJETA') || n.includes('AMERICAN EXPRESS')
+            ? 'tarjeta'
+            : n.includes('MERCADO PAGO')
+              ? 'billetera'
+              : /\bFCI\b|\bPF\b|BOLSA|PLAZO FIJO/.test(n)
+                ? 'inversion'
+                : 'banco'
+        const ultimo = limpio(b.ultimo_movimiento).slice(0, 10)
+        return {
+          codigo: `B${limpio(b.IdBanco)}`,
+          nombre,
+          tipo,
+          moneda: /U\$S|USD|DOLAR/.test(n) ? 'DOL' : 'PES',
+          numeroCuenta: nulo(b.Cuenta),
+          activa: !!ultimo && ultimo >= haceUnAnio,
+        }
+      })
+      const tieneCaja = (await tx.select().from(t.cuentasTesoreria).where(eq(t.cuentasTesoreria.tipo, 'caja'))).length > 0
+      if (!tieneCaja)
+        filasCuentas.push({ codigo: 'CAJA', nombre: 'Caja', tipo: 'caja', moneda: 'PES', numeroCuenta: null, activa: true })
+      const nuevas = await tx
+        .insert(t.cuentasTesoreria)
+        .values(filasCuentas)
+        .onConflictDoNothing()
+        .returning({ id: t.cuentasTesoreria.id })
+      cantidades.cuentasTesoreria = nuevas.length
+      if (nuevas.length)
+        avisos.push(
+          `Se crearon ${nuevas.length} cuentas de tesorería: asignales los medios y cargales el saldo inicial del extracto.`,
+        )
+    }
 
     // ------------------------------------------ Saldos iniciales (opcional)
     if (opciones.saldos) {

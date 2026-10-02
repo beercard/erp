@@ -9,6 +9,7 @@ import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
 import {
   articulos,
+  cuentasTesoreria,
   depositos,
   empresas,
   listasPrecios,
@@ -49,6 +50,12 @@ const ARCHIVOS: Record<string, string> = {
     'IdProveedor,nombre,domicilio,localidad,cpostal,idprovincia,telefonos,email,idcondiva,cuit,ingbrutos,Inactivo,Retieneg,Categoriag,Saldocc,saldoCCmonedaExtra,ultima_compra\n' +
     '"00010","ESTUDIO NORTE (PROV)","","","","06","","","0","20123456786","","False","True","2",0,0,""\n' +
     '"00011","DISTRIBUIDORA","","","","05","","","0","30-71999201-9","","False","True","1",710,100,""\n',
+  cuentas_bancarias:
+    'IdBanco,Nombre,Cuenta,ultimo_movimiento\n' +
+    '"010","BANCO ICBC","CTA. CTE. 0517","2026-09-30"\n' +
+    '"011","BANCO GALICIA U$S","C.E. 9750","2024-08-15"\n' +
+    '"013","MERCADO PAGO","","2026-09-25"\n' +
+    '"018","TARJETA VISA GALICIA","","2026-09-22"\n',
   categorias_ganancias:
     'IdCategoria,Nombre,Porcentaje,MinimoImponible,Regimen,MINIMORET\n' +
     '"1","Materiales",2.000,224000.00,"Enajenacion de Bienes Muebles y Bienes de Cambio",240.00\n' +
@@ -202,6 +209,22 @@ describe('importación de PYMEXIS', () => {
         .where(eq(movimientosStock.articuloId, id('TN-1'))),
     )
     expect(movs.map((m) => m.tipo).sort()).toEqual(['ajuste', 'inicial'])
+  })
+})
+
+describe('cuentas de tesorería', () => {
+  it('crea las cuentas bancarias con su tipo y moneda, y una caja', async () => {
+    const cuentas = await conEmpresa(empresa, (tx) => tx.select().from(cuentasTesoreria))
+    const de = (c: string) => cuentas.find((x) => x.codigo === c)
+    expect([
+      de('B010')?.tipo,
+      de('B011')?.moneda,
+      de('B011')?.activa,
+      de('B013')?.tipo,
+      de('B018')?.tipo,
+      de('CAJA')?.tipo,
+    ]).toEqual(['banco', 'DOL', false, 'billetera', 'tarjeta', 'caja'])
+    expect(cuentas).toHaveLength(5)
   })
 })
 
