@@ -110,6 +110,9 @@ Convenciones:
 | `ordenes_servicio_tecnicos` | Acompañantes de una orden: técnicos que van con el responsable (`ordenes_servicio.tecnico_id`); la ven en su agenda y les ocupa el horario |
 | `excepciones_jornada` | Licencias, vacaciones, feriados (sin técnico: para todos) y horarios especiales; el asistente de huecos y el calendario los respetan |
 | `historial_envios` | Historial de estados de cada formulario de la bandeja: estado (nombre y color de ese momento), quién, cuándo y nota |
+| `zonas_trabajo` | Zonas de trabajo: nombre, centro (lat, lng) y radio en km |
+| `tecnicos_zonas` | Qué zonas tiene cada técnico |
+| `alertas_zona` | Salidas y vueltas de un técnico a sus zonas durante la jornada, con el momento y la posición |
 
 ## Etapa 6 y 7: fiscal, informes y contabilidad
 

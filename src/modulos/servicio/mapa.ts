@@ -5,6 +5,7 @@ import type { Transaccion } from '../../db/conexion'
 import { equipos, modelosEquipo, ordenesServicio, posicionesTecnicos, tecnicos, terceros, tiposOrden } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { detectarGeocercas, estadoJornada, kmRecorridos, recorrido } from './jornada'
+import { controlarZona } from './zonas'
 import { aHora, aMinutos } from './tipos'
 
 /**
@@ -279,7 +280,8 @@ export async function registrarPosicion(tx: Transaccion, tecnicoId: string, entr
       ),
     )
   const geocercas = await detectarGeocercas(tx, tecnicoId, p.data, ahora)
-  return { ok: true as const, guardada: true, geocercas }
+  const zona = await controlarZona(tx, tecnicoId, p.data, ahora)
+  return { ok: true as const, guardada: true, geocercas, zona }
 }
 
 // ---------------------------------------------------------------- Mapa y hoja de ruta

@@ -813,3 +813,61 @@ export const historialEnvios = pgTable(
     deLaEmpresa('historial_envios_envio_fk', t.empresaId, t.envioId, enviosFormulario).onDelete('cascade'),
   ],
 )
+
+/**
+ * Zonas de trabajo (como las de Persat): un centro y un radio. Se asignan a
+ * los técnicos; si durante la jornada uno sale de todas sus zonas, queda una
+ * alerta y se avisa a coordinación.
+ */
+export const zonasTrabajo = pgTable(
+  'zonas_trabajo',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    nombre: text('nombre').notNull(),
+    lat: numeric('lat', { precision: 9, scale: 6 }).notNull(),
+    lng: numeric('lng', { precision: 9, scale: 6 }).notNull(),
+    radioKm: numeric('radio_km', { precision: 6, scale: 2 }).notNull(),
+    activa: boolean('activa').notNull().default(true),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('zonas_trabajo_nombre').on(t.empresaId, t.nombre),
+    unique('zonas_trabajo_empresa_id').on(t.empresaId, t.id),
+    check('zonas_trabajo_radio', sql`${t.radioKm} > 0 and ${t.radioKm} <= 500`),
+  ],
+)
+
+export const tecnicosZonas = pgTable(
+  'tecnicos_zonas',
+  {
+    empresaId: empresaId(),
+    tecnicoId: uuid('tecnico_id').notNull(),
+    zonaId: uuid('zona_id').notNull(),
+  },
+  (t) => [
+    uniqueIndex('tecnicos_zonas_pk').on(t.empresaId, t.tecnicoId, t.zonaId),
+    deLaEmpresa('tecnicos_zonas_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
+    deLaEmpresa('tecnicos_zonas_zona_fk', t.empresaId, t.zonaId, zonasTrabajo).onDelete('cascade'),
+  ],
+)
+
+/** El técnico salió de sus zonas (o volvió) durante la jornada. */
+export const alertasZona = pgTable(
+  'alertas_zona',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    tecnicoId: uuid('tecnico_id').notNull(),
+    /** salida | entrada */
+    tipo: text('tipo').notNull(),
+    momento: timestamp('momento', { withTimezone: true }).notNull(),
+    lat: numeric('lat', { precision: 9, scale: 6 }).notNull(),
+    lng: numeric('lng', { precision: 9, scale: 6 }).notNull(),
+  },
+  (t) => [
+    index().on(t.empresaId, t.tecnicoId, t.momento),
+    check('alertas_zona_tipo', sql`${t.tipo} in ('salida', 'entrada')`),
+    deLaEmpresa('alertas_zona_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
+  ],
+)

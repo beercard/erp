@@ -1,5 +1,6 @@
 import { Download } from 'lucide-react'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 import { EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
@@ -76,7 +77,14 @@ export default async function Jornadas({ searchParams }: PageProps<'/servicio/jo
             <tbody className="divide-y divide-borde">
               {filas.map((f) => (
                 <tr key={`${f.tecnicoId}${f.fecha}`}>
-                  <td className="cifras px-4 py-2 whitespace-nowrap">{f.fecha.split('-').reverse().join('/')}</td>
+                  <td className="cifras px-4 py-2 whitespace-nowrap">
+                    <Link
+                      href={`/servicio/jornadas/dia?tecnico=${f.tecnicoId}&fecha=${f.fecha}`}
+                      className="text-acento hover:underline"
+                    >
+                      {f.fecha.split('-').reverse().join('/')}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2">{f.tecnico}</td>
                   <td className="cifras px-4 py-2">{hora(f.entrada)}</td>
                   <td className="cifras px-4 py-2">
