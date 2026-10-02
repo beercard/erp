@@ -755,3 +755,36 @@ export const ordenesServicioTecnicos = pgTable(
     deLaEmpresa('ordenes_servicio_tecnicos_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
   ],
 )
+
+/**
+ * Excepciones a la jornada semanal (como el horario por día de Persat):
+ * licencias, vacaciones, feriados (sin técnico: valen para todos) y días con
+ * horario especial. Las usan el asistente de huecos y el calendario.
+ */
+export const excepcionesJornada = pgTable(
+  'excepciones_jornada',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    /** Sin técnico: para todos (un feriado). */
+    tecnicoId: uuid('tecnico_id'),
+    desde: date('desde').notNull(),
+    hasta: date('hasta').notNull(),
+    /** ausencia (no trabaja) | horario (trabaja en otro horario) */
+    tipo: text('tipo').notNull().default('ausencia'),
+    jornadaDesde: text('jornada_desde'),
+    jornadaHasta: text('jornada_hasta'),
+    motivo: text('motivo').notNull(),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    index().on(t.empresaId, t.desde, t.hasta),
+    check('excepciones_jornada_tipo', sql`${t.tipo} in ('ausencia', 'horario')`),
+    check('excepciones_jornada_fechas', sql`${t.hasta} >= ${t.desde}`),
+    check(
+      'excepciones_jornada_horario',
+      sql`${t.tipo} = 'ausencia' or (${t.jornadaDesde} ~ '^[0-2][0-9]:[0-5][0-9]$' and ${t.jornadaHasta} ~ '^[0-2][0-9]:[0-5][0-9]$' and ${t.jornadaHasta} > ${t.jornadaDesde})`,
+    ),
+    deLaEmpresa('excepciones_jornada_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
+  ],
+)

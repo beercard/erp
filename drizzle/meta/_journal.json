@@ -288,6 +288,20 @@
       "when": 1790975579116,
       "tag": "0040_importacion_persat_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790980659347,
+      "tag": "0041_excepciones_jornada",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790980660905,
+      "tag": "0042_excepciones_jornada_seguridad",
+      "breakpoints": true
     }
   ]
 }

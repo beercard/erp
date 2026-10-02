@@ -147,9 +147,9 @@ Por prioridad:
 4. ~~Varios técnicos por orden~~ (hecho).
 5. **Historial de estados de los formularios** (quién y cuándo) y **cambio de estado masivo** en la bandeja.
 6. **Grupos de clientes que limitan qué ve cada usuario.**
-7. **Horario laboral por día** (licencias, feriados, horarios especiales) además del semanal, para el asistente de huecos.
+7. ~~Horario laboral por día~~ (hecho: Servicio técnico › Licencias y feriados).
 8. **Zonas de trabajo por técnico** con alertas de salida de zona, y **visitas detectadas por GPS** a cualquier cliente (no solo a las órdenes del día).
-9. **Recerrar una orden cerrada** (cambiar el tipo de cierre sin reabrirla).
+9. ~~Recerrar una orden cerrada~~ (hecho: "Cambiar el tipo de cierre" en la orden; una facturada no puede pasar a no cumplida).
 10. **Entregas y rutas** (logística con ventanas horarias, capacidad y retrabajos): solo si la cuenta lo usa; el relevamiento lo dice.
 
 Lo que Persat no tiene y el ERP sí: lógica condicional en formularios, preventivo por contador de copias, historial por equipo, stock real de materiales, facturación y contratos, webhooks firmados (los de Persat no tienen firma documentada) y OT con prioridad y SLA.
@@ -208,3 +208,7 @@ En Servicio técnico, filtrando por "Informe para revisar" (o desde "N para revi
 - Se ven las 500 más antiguas; las que no se pudieron cerrar se listan con el motivo. Para revisar una en detalle, se abre desde su número.
 
 Al migrar el historial de Persat quedan muchas órdenes que nunca se cerraron (en la prueba con la cuenta real: 629 en informe y 1.809 vencidas desde 2018).
+
+## 9. Licencias y feriados
+
+Servicio técnico › Licencias y feriados: días en que un técnico no trabaja (vacaciones, médico) o trabaja en otro horario (guardia, capacitación), por un día o un rango. Sin técnico es un feriado para todos. Lo cargado para el técnico manda sobre el feriado general, y un horario especial lo hace trabajar aunque sea fin de semana. El asistente de huecos no ofrece esos días (o usa el horario especial) y el calendario los marca con el motivo. La regla está en `src/modulos/servicio/jornadaDia.ts` (sin base, la usa también el navegador).

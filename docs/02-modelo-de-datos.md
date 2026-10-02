@@ -108,6 +108,7 @@ Convenciones:
 | `ordenes_servicio_items` | Insumos, repuestos y mano de obra: un artículo con stock sale del depósito al cargarlo y vuelve si se quita. Lo que tiene precio se factura en borrador si la orden es con cargo |
 | `etiquetas_servicio`, `ordenes_servicio_etiquetas` | Etiquetas de colores de las órdenes (varias por orden), para filtrar y verlas en el calendario |
 | `ordenes_servicio_tecnicos` | Acompañantes de una orden: técnicos que van con el responsable (`ordenes_servicio.tecnico_id`); la ven en su agenda y les ocupa el horario |
+| `excepciones_jornada` | Licencias, vacaciones, feriados (sin técnico: para todos) y horarios especiales; el asistente de huecos y el calendario los respetan |
 
 ## Etapa 6 y 7: fiscal, informes y contabilidad
 

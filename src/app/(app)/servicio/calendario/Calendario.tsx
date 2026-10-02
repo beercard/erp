@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 
 import { Aviso } from '@/components/ui'
 import type { OrdenCalendario } from '@/modulos/servicio/agenda'
+import { jornadaDelDia, type Excepcion } from '@/modulos/servicio/jornadaDia'
 import { ESTADOS_ORDEN, type EstadoOrden } from '@/modulos/servicio/tipos'
 
 import { moverEnCalendario } from '../acciones'
@@ -87,6 +88,7 @@ export function Calendario({
   tecnicos,
   programadas,
   pendientes,
+  excepciones,
   mover,
 }: {
   dias: string[]
@@ -94,6 +96,7 @@ export function Calendario({
   tecnicos: Tecnico[]
   programadas: OrdenCalendario[]
   pendientes: OrdenCalendario[]
+  excepciones: Excepcion[]
   mover: boolean
 }) {
   const router = useRouter()
@@ -171,14 +174,17 @@ export function Calendario({
                       </span>
                     )}
                   </th>
-                  {dias.map((d, i) => {
+                  {dias.map((d) => {
                     const clave = `${f.id}|${d}`
                     const del = programadas.filter((o) => o.programada === d && (o.tecnicoId ?? null) === f.id)
                     const acompanadas = f.id
                       ? programadas.filter((o) => o.programada === d && o.acompanantes.some((t) => t.id === f.id))
                       : []
-                    const trabaja = !f.tecnico || f.tecnico.dias.includes(String(i + 1))
-                    const jornada = f.tecnico ? minutos(f.tecnico.jornadaHasta) - minutos(f.tecnico.jornadaDesde) : 0
+                    // La jornada del día: la semanal con las licencias, feriados y horarios especiales.
+                    const dia = f.tecnico ? jornadaDelDia(f.tecnico, d, excepciones) : null
+                    const trabaja = !dia || dia.trabaja
+                    const jornada = dia ? minutos(dia.hasta) - minutos(dia.desde) : 0
+                    const feriado = !f.tecnico ? excepciones.find((e) => !e.tecnicoId && e.desde <= d && e.hasta >= d) : null
                     const carga = [...del, ...acompanadas]
                       .filter((o) => o.estado !== 'cancelada')
                       .reduce((s, o) => s + o.duracion, 0)
@@ -188,6 +194,15 @@ export function Calendario({
                         {...destino(clave, { tecnicoId: f.id, programada: d })}
                         className={`h-24 border-l border-borde p-1 ${trabaja ? '' : 'bg-superficie-2/70'} ${sobre === clave ? 'ring-2 ring-acento ring-inset' : ''}`}
                       >
+                        {(dia?.motivo || feriado) && (
+                          <span
+                            className={`mb-1 block truncate text-[11px] ${dia && !dia.trabaja ? 'text-error' : 'text-texto-2'}`}
+                            title={dia?.motivo ?? feriado?.motivo}
+                          >
+                            {dia && dia.trabaja ? `${dia.desde}–${dia.hasta} · ` : ''}
+                            {dia?.motivo ?? feriado?.motivo}
+                          </span>
+                        )}
                         <div className="flex flex-col gap-1">
                           {del.map((o) => (
                             <Tarjeta key={o.id} o={o} mover={mover} />

@@ -4,6 +4,8 @@ import type { Transaccion } from '../../db/conexion'
 import { equipos, modelosEquipo, ordenesServicio, ordenesServicioTecnicos, tecnicos, terceros, tiposOrden } from '../../db/schema'
 import { hoyArgentina } from '../../lib/fechas'
 import { acompanantesDe, etiquetasDeOrdenes } from './etiquetas'
+import { excepcionesEntre } from './excepciones'
+import { jornadaDelDia } from './jornadaDia'
 import { minutosDeViaje, punto, puntosProgramados, type Punto } from './mapa'
 import { aHora, aMinutos } from './tipos'
 
@@ -127,14 +129,17 @@ export async function buscarHuecos(
       .where(and(inArray(ordenesServicioTecnicos.tecnicoId, ids), filtro)),
   ])
   const programadas = [...propias, ...acompanadas]
+  const excepciones = await excepcionesEntre(tx, desde, hasta)
   const puntos = o.destino ? await puntosProgramados(tx, [...new Set(programadas.map((p) => p.id))]) : new Map<string, Punto>()
   const viajeDesde = (p: Punto | null | undefined) => (o.destino && p ? minutosDeViaje(p, o.destino) : null)
   const huecos: Hueco[] = []
   for (let n = 0; n < dias; n++) {
     const fecha = sumarDias(desde, n)
     for (const t of lista) {
-      if (!t.dias.includes(String(diaSemana(fecha)))) continue
-      const jornada = { desde: aMinutos(t.jornadaDesde), hasta: aMinutos(t.jornadaHasta) }
+      // Licencias, feriados y horarios especiales mandan sobre la jornada semanal.
+      const dia = jornadaDelDia(t, fecha, excepciones)
+      if (!dia.trabaja) continue
+      const jornada = { desde: aMinutos(dia.desde), hasta: aMinutos(dia.hasta) }
       const delDia = programadas.filter((p) => p.tecnicoId === t.id && p.programada === fecha)
       // Una visita sin hora ocupa el principio de la jornada.
       // Con viaje: cada visita "ocupa" también el ir y volver desde la orden.
@@ -240,7 +245,12 @@ export async function calendario(tx: Transaccion, desde: string, hasta: string) 
     etiquetas: etiquetas.get(o.id) ?? [],
     acompanantes: acompanantes.get(o.id) ?? [],
   })
-  return { programadas: programadas.map(con), pendientes: pendientes.map(con), tecnicos: lista }
+  return {
+    programadas: programadas.map(con),
+    pendientes: pendientes.map(con),
+    tecnicos: lista,
+    excepciones: await excepcionesEntre(tx, desde, hasta),
+  }
 }
 
 export type OrdenCalendario = Awaited<ReturnType<typeof calendario>>['programadas'][number]
