@@ -85,48 +85,42 @@ describe('IIBB y retenciones', () => {
           total: '3720',
         })
         .returning()
-      await tx
-        .insert(comprobantesTributos)
-        .values({
-          comprobanteId: f1.id,
-          tributo: 7,
-          descripcion: 'IIBB',
-          base: '3000',
-          alicuota: '3',
-          importe: '90',
-          percepcionId: perc.id,
-        })
-      await tx
-        .insert(comprobantes)
-        .values({
-          clase: 'factura',
-          letra: 'A',
-          tipo: 1,
-          puntoVenta: 1,
-          numero: 2,
-          fecha: '2026-10-06',
-          estado: 'autorizado',
-          cae: '2',
-          terceroId: cordoba.id,
-          neto: '1000',
-          iva: '210',
-          total: '1210',
-        })
+      await tx.insert(comprobantesTributos).values({
+        comprobanteId: f1.id,
+        tributo: 7,
+        descripcion: 'IIBB',
+        base: '3000',
+        alicuota: '3',
+        importe: '90',
+        percepcionId: perc.id,
+      })
+      await tx.insert(comprobantes).values({
+        clase: 'factura',
+        letra: 'A',
+        tipo: 1,
+        puntoVenta: 1,
+        numero: 2,
+        fecha: '2026-10-06',
+        estado: 'autorizado',
+        cae: '2',
+        terceroId: cordoba.id,
+        neto: '1000',
+        iva: '210',
+        total: '1210',
+      })
       const [pago] = await tx
         .insert(pagos)
         .values({ numero: 25, fecha: '2026-10-10', terceroId: proveedor.id, total: '980000' })
         .returning()
-      await tx
-        .insert(retenciones)
-        .values({
-          pagoId: pago.id,
-          impuesto: 'ganancias',
-          regimen: '78',
-          numero: 12,
-          base: '756000',
-          alicuota: '2',
-          importe: '15120',
-        })
+      await tx.insert(retenciones).values({
+        pagoId: pago.id,
+        impuesto: 'ganancias',
+        regimen: '78',
+        numero: 12,
+        base: '756000',
+        alicuota: '2',
+        importe: '15120',
+      })
       const [anulado] = await tx
         .insert(pagos)
         .values({ numero: 26, fecha: '2026-10-11', terceroId: proveedor.id, total: '1', estado: 'anulado' })

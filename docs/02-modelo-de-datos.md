@@ -111,5 +111,5 @@ Convenciones:
 
 | Tabla | Para qué |
 |---|---|
-| `presentaciones` | Libros y declaraciones generados (Libro IVA Digital, IIBB, SICORE/SIRE), con el archivo y su estado |
+| `presentaciones` | Libros y declaraciones generados (Libro IVA Digital, SICORE), con el archivo exacto, el estado (generada, presentada, reabierta), el número de transacción y la secuencia de rectificativa. Presentada, cierra el período para ese impuesto. Ver [05-impuestos-e-informes.md](05-impuestos-e-informes.md) |
 | `plan_cuentas`, `asientos`, `asientos_lineas` | Contabilidad opcional: asientos automáticos desde cada operación |
