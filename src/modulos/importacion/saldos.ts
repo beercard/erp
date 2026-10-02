@@ -22,6 +22,10 @@ type Fila = Record<string, string>
 
 const limpio = (v: string | undefined) => (v ?? '').trim()
 const MONEDA: Record<string, string> = { '001': 'PES', '002': 'DOL' }
+// Tipos de PYMEXIS que son comprobantes fiscales: factura (0), notas de débito
+// (1, 2, 13), otros comprobantes (19) y notas de crédito (3, 4, 5). Los demás
+// son recibos, pagos, retenciones y "a cuenta".
+const FACTURA_O_DEBITO = new Set([0, 1, 2, 13, 19])
 const NOTA_DEBITO = new Set([1, 2, 13])
 const NOTA_CREDITO = new Set([3, 4, 5])
 
@@ -38,7 +42,8 @@ function clasificar(f: Fila, idUnico: string) {
   const letra = limpio(f.LetraComp).toUpperCase()
   const fiscal = Number(limpio(f.nTipo ?? f.ntipo) || 0) === 0 && ['A', 'B', 'C', 'M'].includes(letra)
   const clase: Clase = credito ? 'nota_credito' : NOTA_DEBITO.has(tipoPymexis) ? 'nota_debito' : 'factura'
-  const comprobante = credito ? NOTA_CREDITO.has(tipoPymexis) : tipoPymexis !== 12
+  // Un recibo o una retención con saldo positivo (pasa en registros viejos) no es una factura.
+  const comprobante = credito ? NOTA_CREDITO.has(tipoPymexis) : FACTURA_O_DEBITO.has(tipoPymexis)
   if (fiscal && comprobante) {
     return {
       clase,
@@ -90,6 +95,7 @@ export async function importarSaldosProveedores(
   if (conPagos.size) avisos.push(`${conPagos.size} saldos de proveedores migrados antes ya tienen pagos en el ERP: se dejaron.`)
 
   let cargados = 0
+  let repetidos = 0
   let sinProveedor = 0
   for (const f of filas) {
     const terceroId = terceroDe(limpio(f.IdProveedor))
@@ -124,9 +130,11 @@ export async function importarSaldosProveedores(
         usuarioId,
       })
       .onConflictDoNothing()
-    cargados++
+      .returning({ id: t.compras.id })
+      .then((r) => (r.length ? cargados++ : repetidos++))
   }
   if (sinProveedor) avisos.push(`${sinProveedor} saldos de proveedores sin proveedor o sin fecha: no se migraron.`)
+  if (repetidos) avisos.push(String(repetidos) + ' saldos repetidos (mismo comprobante dos veces en PYMEXIS): se migró uno.')
   return cargados
 }
 
@@ -148,6 +156,7 @@ export async function importarSaldosClientes(
   }
   const clientes = new Map((await tx.select().from(t.terceros)).map((x) => [x.id, x]))
   let cargados = 0
+  let repetidos = 0
   let sinCliente = 0
   for (const f of filas) {
     const terceroId = terceroDe(limpio(f.IdCliente))
@@ -188,8 +197,10 @@ export async function importarSaldosClientes(
         autorizado: new Date(),
       })
       .onConflictDoNothing()
-    cargados++
+      .returning({ id: t.comprobantes.id })
+      .then((r) => (r.length ? cargados++ : repetidos++))
   }
   if (sinCliente) avisos.push(`${sinCliente} saldos de clientes sin cliente o sin fecha: no se migraron.`)
+  if (repetidos) avisos.push(String(repetidos) + ' saldos repetidos (mismo comprobante dos veces en PYMEXIS): se migró uno.')
   return cargados
 }
