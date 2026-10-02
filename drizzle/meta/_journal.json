@@ -64,6 +64,20 @@
       "when": 1790867096607,
       "tag": "0008_facturacion_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790943591350,
+      "tag": "0009_compras",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790943601475,
+      "tag": "0010_compras_seguridad",
+      "breakpoints": true
     }
   ]
 }

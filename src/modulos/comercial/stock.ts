@@ -16,7 +16,7 @@ export type Movimiento = {
   depositoId: string
   /** Positiva entra, negativa sale. */
   cantidad: string
-  tipo: 'inicial' | 'ajuste' | 'transferencia' | 'remito' | 'anulacion_remito' | 'compra'
+  tipo: 'inicial' | 'ajuste' | 'transferencia' | 'remito' | 'anulacion_remito' | 'compra' | 'anulacion_compra'
   origenId?: string | null
   observacion?: string | null
   fecha?: Date

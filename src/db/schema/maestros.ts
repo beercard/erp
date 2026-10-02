@@ -293,6 +293,13 @@ export const terceros = pgTable(
     limiteCredito: importe('limite_credito'),
     /** Percepción de IIBB: nulo = alícuota general de la empresa; 0 = no se le percibe. */
     percepcionIibb: precio('percepcion_iibb'),
+    /**
+     * Retención de Ganancias al pagarle (proveedores): código del régimen
+     * (regimenes_ganancias.codigo, el de SICORE). Nulo = no se le retiene.
+     */
+    regimenGanancias: text('regimen_ganancias'),
+    /** Inscripto en Ganancias (si no, se le retiene con la alícuota de no inscriptos). */
+    gananciasInscripto: boolean('ganancias_inscripto').notNull().default(true),
     notas: text('notas'),
     activo: boolean('activo').notNull().default(true),
     ...marcasDeTiempo(),

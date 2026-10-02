@@ -3,7 +3,7 @@
  * de línea dentro de un campo entre comillas. Lo usan las importaciones; un
  * nombre de cliente con un Enter adentro no puede partir el registro.
  */
-export function leerCsv(texto: string): Record<string, string>[] {
+export function leerCsv(texto: string, separador = ','): Record<string, string>[] {
   const filas: string[][] = []
   let fila: string[] = []
   let campo = ''
@@ -20,7 +20,7 @@ export function leerCsv(texto: string): Record<string, string>[] {
         } else entreComillas = false
       } else campo += c
     } else if (c === '"') entreComillas = true
-    else if (c === ',') {
+    else if (c === separador) {
       fila.push(campo)
       campo = ''
     } else if (c === '\n' || c === '\r') {
