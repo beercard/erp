@@ -6,7 +6,9 @@ import {
   Boxes,
   ClipboardList,
   FileInput,
+  FileSignature,
   FileSpreadsheet,
+  Gauge,
   HandCoins,
   Scale,
   FileText,
@@ -15,6 +17,7 @@ import {
   Package,
   Printer,
   Receipt,
+  ReceiptText,
   Settings,
   Truck,
   ShoppingCart,
@@ -75,18 +78,37 @@ const SECCIONES: { titulo?: string; items: Item[] }[] = [
   },
 ]
 
-const CONTRATOS: Item = { href: '#contratos', texto: 'Contratos y equipos', icono: Printer, etapa: 'Etapa 5' }
+const CONTRATOS: { titulo: string; items: Item[] } = {
+  titulo: 'Contratos',
+  items: [
+    { href: '/contratos', texto: 'Contratos', icono: FileSignature },
+    { href: '/equipos', texto: 'Equipos', icono: Printer },
+    { href: '/contratos/lecturas', texto: 'Lecturas', icono: Gauge },
+    { href: '/contratos/facturar', texto: 'Facturar el mes', icono: ReceiptText },
+  ],
+}
+
+/** Activo: la ruta más larga del menú que coincide (así "Contratos" no se marca en "Lecturas"). */
+function rutaActiva(ruta: string, secciones: { items: Item[] }[]) {
+  return secciones
+    .flatMap((s) => s.items.map((i) => i.href))
+    .filter((h) => (h === '/' ? ruta === '/' : ruta === h || ruta.startsWith(`${h}/`)))
+    .sort((a, b) => b.length - a.length)[0]
+}
 
 export function Navegacion({ modulos }: { modulos: string[] }) {
   const ruta = usePathname()
-  const secciones = modulos.includes('contratos') ? [...SECCIONES, { titulo: 'Módulos', items: [CONTRATOS] }] : SECCIONES
+  const secciones = modulos.includes('contratos')
+    ? [...SECCIONES.slice(0, -1), CONTRATOS, SECCIONES[SECCIONES.length - 1]]
+    : SECCIONES
+  const activa = rutaActiva(ruta, secciones)
   return (
     <nav aria-label="Secciones" className="flex flex-col gap-5">
       {secciones.map((s, i) => (
         <div key={s.titulo ?? i} className="flex flex-col gap-0.5">
           {s.titulo && <p className="px-2.5 pb-1 text-[11px] font-semibold tracking-wider text-texto-3 uppercase">{s.titulo}</p>}
           {s.items.map((item) => {
-            const activo = item.href === '/' ? ruta === '/' : ruta.startsWith(item.href)
+            const activo = item.href === activa
             const Icono = item.icono
             if (item.etapa) {
               return (

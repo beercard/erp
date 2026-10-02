@@ -92,6 +92,20 @@
       "when": 1790947183035,
       "tag": "0012_tesoreria_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790949312518,
+      "tag": "0013_contratos",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790949314189,
+      "tag": "0014_contratos_seguridad",
+      "breakpoints": true
     }
   ]
 }

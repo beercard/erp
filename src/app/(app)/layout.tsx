@@ -46,7 +46,7 @@ export default async function LayoutApp({ children }: LayoutProps<'/'>) {
             {sesion.empresa.razonSocial}
           </Link>
           <div className="flex flex-1 justify-center lg:justify-start">
-            <PaletaComandos />
+            <PaletaComandos modulos={sesion.empresa.modulos} />
           </div>
           <div className="flex items-center gap-2">
             <span

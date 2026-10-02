@@ -12,6 +12,7 @@ import {
   Landmark,
   LogOut,
   Package,
+  Printer,
   Receipt,
   Scale,
   Search,
@@ -28,6 +29,20 @@ import { salir } from '@/app/ingresar/acciones'
 import type { Resultado } from '@/modulos/busqueda'
 
 import { Tecla } from '../ui'
+
+/** Atajos del módulo de contratos (solo si la empresa lo tiene). */
+const ACCIONES_CONTRATOS = [
+  { id: 'contratos', texto: 'Ir a contratos', href: '/contratos', icono: Printer, claves: 'abono copias fotocopiadora' },
+  { id: 'equipos', texto: 'Ir a equipos', href: '/equipos', icono: Printer, claves: 'parque instalado serie maquina' },
+  { id: 'lecturas', texto: 'Cargar lecturas', href: '/contratos/lecturas', icono: Printer, claves: 'contadores mps copias' },
+  {
+    id: 'facturar-contratos',
+    texto: 'Facturar contratos del mes',
+    href: '/contratos/facturar',
+    icono: Receipt,
+    claves: 'abonos copias excedentes',
+  },
+]
 
 const ACCIONES = [
   {
@@ -106,7 +121,7 @@ const ACCIONES = [
  * Búsqueda universal: Ctrl + K (o Cmd + K) desde cualquier pantalla. Busca
  * clientes, proveedores y artículos en el servidor y ofrece acciones.
  */
-export function PaletaComandos() {
+export function PaletaComandos({ modulos = [] }: { modulos?: string[] }) {
   const [abierta, setAbierta] = useState(false)
   const [texto, setTexto] = useState('')
   const [resultados, setResultados] = useState<Resultado[]>([])
@@ -140,7 +155,9 @@ export function PaletaComandos() {
   }
 
   const filtro = texto.toLowerCase()
-  const acciones = ACCIONES.filter((a) => !filtro || `${a.texto} ${a.claves}`.toLowerCase().includes(filtro))
+  const acciones = [...ACCIONES, ...(modulos.includes('contratos') ? ACCIONES_CONTRATOS : [])].filter(
+    (a) => !filtro || `${a.texto} ${a.claves}`.toLowerCase().includes(filtro),
+  )
   const mostrarSalir = !filtro || 'cerrar sesion salir'.includes(filtro)
 
   function ir(href: string) {

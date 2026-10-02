@@ -68,6 +68,16 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     },
   },
   {
+    modulo: 'contratos',
+    titulo: 'Contratos y equipos',
+    permisos: {
+      'contratos.ver': 'Ver contratos, equipos y lecturas',
+      'contratos.editar': 'Crear y modificar contratos y equipos',
+      'contratos.lecturas': 'Cargar lecturas de contadores',
+      'contratos.facturar': 'Facturar los contratos del mes',
+    },
+  },
+  {
     modulo: 'informes',
     titulo: 'Informes e impuestos',
     permisos: {
