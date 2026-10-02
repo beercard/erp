@@ -1,4 +1,4 @@
-import type { Clase } from '../facturacion/tipos'
+import { TIPO_DEBITO_INTERNO, type Clase } from '../facturacion/tipos'
 
 /**
  * Comprobantes que se reciben de proveedores, con su código de ARCA. Además
@@ -43,6 +43,7 @@ export function datosTipoCompra(tipo: number): { letra: LetraCompra; clase: Clas
 export function abreviaturaCompra(tipo: number): string {
   // 0: saldo migrado de PYMEXIS que no es un comprobante fiscal (pago, a cuenta…).
   if (tipo === 0) return 'SI'
+  if (tipo === TIPO_DEBITO_INTERNO) return 'NDI'
   const d = datosTipoCompra(tipo)
   if (!d) return String(tipo)
   const base = d.clase === 'factura' ? 'F' : d.clase === 'nota_credito' ? 'NC' : 'ND'

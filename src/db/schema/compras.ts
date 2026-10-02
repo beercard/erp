@@ -358,7 +358,7 @@ export const pagosValores = pgTable(
     id: id(),
     empresaId: empresaId(),
     pagoId: uuid('pago_id').notNull(),
-    /** efectivo | transferencia | cheque_propio | echeq_propio | cheque_tercero | otro */
+    /** efectivo | transferencia | cheque_propio | echeq_propio | cheque_tercero | tarjeta | otro */
     medio: text('medio').notNull(),
     importe: importe('importe').notNull(),
     detalle: text('detalle'),
@@ -367,13 +367,15 @@ export const pagosValores = pgTable(
     fechaPago: date('fecha_pago'),
     /** El cheque de terceros que se entrega. */
     reciboValorId: uuid('recibo_valor_id'),
+    /** Caja, banco o tarjeta de donde sale (tesorería). */
+    cuentaId: uuid('cuenta_id'),
   },
   (t) => [
     index().on(t.empresaId, t.pagoId),
     index().on(t.empresaId, t.reciboValorId),
     check(
       'pagos_valores_medio',
-      sql`${t.medio} in ('efectivo', 'transferencia', 'cheque_propio', 'echeq_propio', 'cheque_tercero', 'otro')`,
+      sql`${t.medio} in ('efectivo', 'transferencia', 'cheque_propio', 'echeq_propio', 'cheque_tercero', 'tarjeta', 'otro')`,
     ),
     check('pagos_valores_positivo', sql`${t.importe} > 0`),
     check('pagos_valores_cheque_tercero', sql`(${t.medio} = 'cheque_tercero') = (${t.reciboValorId} is not null)`),

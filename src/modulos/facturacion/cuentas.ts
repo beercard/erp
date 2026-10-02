@@ -7,6 +7,8 @@ import { auditar } from '../../lib/auditoria'
 import { aImporte, D, monto } from '../../lib/dinero'
 import { decimal, primerError } from '../comercial/documentos'
 import { siguienteNumero } from '../comercial/numeracion'
+import { resolverCuenta } from '../tesoreria/cuentas'
+import { MEDIOS_COBRO_CON_CUENTA } from '../tesoreria/medios'
 import { MEDIOS } from './medios'
 
 /**
@@ -270,6 +272,13 @@ const EsquemaValor = z
       .transform((v) => v || null)
       .pipe(z.iso.date().nullable()),
     cuitLibrador: texto,
+    /** Caja, banco o billetera donde entra; vacío: la predeterminada del medio. */
+    cuentaId: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((v) => v || null)
+      .pipe(z.uuid().nullable()),
   })
   .refine((v) => !['cheque', 'echeq'].includes(v.medio) || (v.banco && v.numeroValor && v.fechaPago), {
     error: 'Los cheques necesitan banco, número y fecha de pago.',
@@ -299,6 +308,12 @@ export async function emitirRecibo(
   const [cliente] = await tx.select().from(terceros).where(eq(terceros.id, d.terceroId))
   if (!cliente) return { ok: false, error: 'Ese cliente ya no existe.' }
   const total = d.valores.reduce((s, v) => s.plus(v.importe), new D(0))
+  const cuentas: (string | null)[] = []
+  for (const v of d.valores) {
+    const c = await resolverCuenta(tx, v, { moneda: 'PES', medios: MEDIOS_COBRO_CON_CUENTA })
+    if (!c.ok) return c
+    cuentas.push(c.cuentaId)
+  }
   const numero = await siguienteNumero(tx, 'recibo', d.puntoVenta)
   const [recibo] = await tx
     .insert(recibos)
@@ -312,7 +327,9 @@ export async function emitirRecibo(
       usuarioId,
     })
     .returning()
-  await tx.insert(recibosValores).values(d.valores.map((v) => ({ ...v, importe: aImporte(v.importe), reciboId: recibo.id })))
+  await tx
+    .insert(recibosValores)
+    .values(d.valores.map((v, n) => ({ ...v, cuentaId: cuentas[n], importe: aImporte(v.importe), reciboId: recibo.id })))
   const r = await imputar(tx, usuarioId, { reciboId: recibo.id }, d.imputaciones, d.fecha)
   // Si la imputación no cierra, se revierte todo el recibo (y el número).
   if (!r.ok) throw new ReciboInvalido(r.error)

@@ -18,6 +18,8 @@ import { decimal, primerError } from '../comercial/documentos'
 import { siguienteNumero } from '../comercial/numeracion'
 import { filasDe, pendientesCompras } from './compras'
 import { calcularRetencionGanancias, type ResultadoRetencion } from './ganancias'
+import { resolverCuenta } from '../tesoreria/cuentas'
+import { MEDIOS_PAGO_CON_CUENTA } from '../tesoreria/medios'
 import { MEDIOS_PAGO } from './medios'
 
 /**
@@ -52,6 +54,13 @@ const EsquemaValor = z
       .transform((v) => v || null)
       .pipe(z.iso.date().nullable()),
     reciboValorId: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((v) => v || null)
+      .pipe(z.uuid().nullable()),
+    /** Caja, banco o tarjeta de donde sale; vacío: la predeterminada del medio. */
+    cuentaId: z
       .string()
       .nullable()
       .optional()
@@ -232,6 +241,11 @@ export async function chequesEnCartera(tx: Transaccion, ids?: string[]) {
           select 1 from pagos_valores pv join pagos p on p.id = pv.pago_id
           where pv.recibo_valor_id = rv.id and p.estado = 'emitido'
         )
+        and not exists (
+          select 1 from movimientos_tesoreria m
+          where m.cheque_id = rv.id and m.tipo = 'deposito_cheque' and m.estado = 'vigente'
+        )
+        and not exists (select 1 from cheques_rechazados cr where cr.cheque_id = rv.id)
         ${ids ? sql`and rv.id in ${ids.length ? ids : ['00000000-0000-0000-0000-000000000000']}` : sql``}
       order by rv.fecha_pago nulls last, rv.importe
     `),
@@ -274,6 +288,14 @@ export async function emitirPago(
     }
   }
 
+  // Cuenta de tesorería de cada valor (la elegida o la predeterminada del medio).
+  const cuentas: (string | null)[] = []
+  for (const v of d.valores) {
+    const c = await resolverCuenta(tx, v, { moneda: d.moneda, medios: MEDIOS_PAGO_CON_CUENTA })
+    if (!c.ok) return c
+    cuentas.push(c.cuentaId)
+  }
+
   const numero = await siguienteNumero(tx, 'orden_pago')
   const [pago] = await tx
     .insert(pagos)
@@ -292,8 +314,9 @@ export async function emitirPago(
     .returning()
   if (d.valores.length) {
     await tx.insert(pagosValores).values(
-      d.valores.map((v) => ({
+      d.valores.map((v, n) => ({
         pagoId: pago.id,
+        cuentaId: cuentas[n],
         medio: v.medio,
         importe: aImporte(v.importe),
         detalle: v.detalle,

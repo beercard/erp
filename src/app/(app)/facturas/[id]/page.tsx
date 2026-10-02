@@ -84,7 +84,7 @@ export default async function Comprobante({ params, searchParams }: PageProps<'/
         }
         acciones={
           <>
-            {c.estado === 'autorizado' && c.origen !== 'pymexis' && (
+            {c.estado === 'autorizado' && c.origen === 'erp' && (
               <BotonEnlace href={`/imprimir/factura/${c.id}`} target="_blank">
                 <Printer aria-hidden className="size-4" /> Imprimir
               </BotonEnlace>

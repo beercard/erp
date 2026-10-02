@@ -4,6 +4,12 @@
  */
 
 export type Clase = 'factura' | 'nota_debito' | 'nota_credito'
+
+/**
+ * Nota de débito interna (sin valor fiscal): por ejemplo, el cheque rechazado
+ * que vuelve a la cuenta del cliente o del proveedor. No pasa por ARCA.
+ */
+export const TIPO_DEBITO_INTERNO = 99
 export type Letra = 'A' | 'B' | 'C'
 
 /** Código de comprobante de ARCA por letra y clase (y FCE MiPyME). */
@@ -41,6 +47,7 @@ export function datosTipo(tipo: number): { letra: Letra; clase: Clase; fce: bool
 export function nombreComprobante(tipo: number): string {
   // 0: saldo migrado de PYMEXIS que no es un comprobante fiscal (recibo, a cuenta…).
   if (tipo === 0) return 'Saldo inicial'
+  if (tipo === TIPO_DEBITO_INTERNO) return 'Nota de débito interna'
   const { letra, clase, fce } = datosTipo(tipo)
   if (!fce) return `${NOMBRE_CLASE[clase]} ${letra}`
   return clase === 'factura'
@@ -51,6 +58,7 @@ export function nombreComprobante(tipo: number): string {
 /** Abreviatura para listados: FA, NCA, NDB, FCEA… */
 export function abreviatura(tipo: number): string {
   if (tipo === 0) return 'SI'
+  if (tipo === TIPO_DEBITO_INTERNO) return 'NDI'
   const { letra, clase, fce } = datosTipo(tipo)
   const base = clase === 'factura' ? 'F' : clase === 'nota_credito' ? 'NC' : 'ND'
   return `${fce ? (clase === 'factura' ? 'FCE' : `${base}E`) : base}${letra}`

@@ -78,6 +78,20 @@
       "when": 1790943601475,
       "tag": "0010_compras_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790947181362,
+      "tag": "0011_tesoreria",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790947183035,
+      "tag": "0012_tesoreria_seguridad",
+      "breakpoints": true
     }
   ]
 }

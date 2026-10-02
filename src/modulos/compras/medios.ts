@@ -5,6 +5,7 @@ export const MEDIOS_PAGO = {
   cheque_propio: 'Cheque propio',
   echeq_propio: 'ECHEQ propio',
   cheque_tercero: 'Cheque de terceros',
+  tarjeta: 'Tarjeta de la empresa',
   otro: 'Otro',
 } as const
 

@@ -323,6 +323,8 @@ export const recibosValores = pgTable(
     numeroValor: text('numero_valor'),
     fechaPago: date('fecha_pago'),
     cuitLibrador: text('cuit_librador'),
+    /** Caja, banco o billetera donde entró (tesorería). Los cheques van a la cartera, sin cuenta. */
+    cuentaId: uuid('cuenta_id'),
   },
   (t) => [
     index().on(t.empresaId, t.reciboId),
