@@ -150,14 +150,17 @@ export async function contabilizar(
     try {
       const p = new Partida(cuenta)
       armar(p)
-      const a = await registrarAsiento(tx, usuarioId, {
-        fecha,
-        concepto: descripcion,
-        origen,
-        origenId: id,
-        automatico: true,
-        lineas: p.cerrar(),
-      })
+      // En un punto de guardado: un error en un asiento no arruina los demás.
+      const a = await tx.transaction((sp) =>
+        registrarAsiento(sp, usuarioId, {
+          fecha,
+          concepto: descripcion,
+          origen,
+          origenId: id,
+          automatico: true,
+          lineas: p.cerrar(),
+        }),
+      )
       if (a.ok) r.generados++
       else r.errores.push({ origen, id, descripcion, error: a.error })
     } catch (e) {

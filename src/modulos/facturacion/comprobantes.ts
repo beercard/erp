@@ -279,42 +279,45 @@ export async function guardarComprobante(
   }))
 
   try {
-    let comprobanteId = id
-    if (id) {
-      const [antes] = await tx.select().from(comprobantes).where(eq(comprobantes.id, id))
-      if (!antes) return { ok: false, error: 'Ese comprobante ya no existe.' }
-      if (antes.estado !== 'borrador') return { ok: false, error: 'Solo se modifica un borrador.' }
-      await tx.update(comprobantes).set(cabecera).where(eq(comprobantes.id, id))
-      for (const tabla of [comprobantesItems, comprobantesIva, comprobantesTributos, comprobantesAsociados]) {
-        await tx.delete(tabla).where(eq(tabla.comprobanteId, id))
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      let comprobanteId = id
+      if (id) {
+        const [antes] = await tx.select().from(comprobantes).where(eq(comprobantes.id, id))
+        if (!antes) return { ok: false, error: 'Ese comprobante ya no existe.' }
+        if (antes.estado !== 'borrador') return { ok: false, error: 'Solo se modifica un borrador.' }
+        await tx.update(comprobantes).set(cabecera).where(eq(comprobantes.id, id))
+        for (const tabla of [comprobantesItems, comprobantesIva, comprobantesTributos, comprobantesAsociados]) {
+          await tx.delete(tabla).where(eq(tabla.comprobanteId, id))
+        }
+      } else {
+        const [nuevo] = await tx
+          .insert(comprobantes)
+          .values({ ...cabecera, usuarioId })
+          .returning({ id: comprobantes.id })
+        comprobanteId = nuevo.id
       }
-    } else {
-      const [nuevo] = await tx
-        .insert(comprobantes)
-        .values({ ...cabecera, usuarioId })
-        .returning({ id: comprobantes.id })
-      comprobanteId = nuevo.id
-    }
-    await tx.insert(comprobantesItems).values(items.map((i) => ({ ...i, comprobanteId: comprobanteId! })))
-    if (calculo.iva.length) {
-      await tx
-        .insert(comprobantesIva)
-        .values(
-          calculo.iva.map((a) => ({ comprobanteId: comprobanteId!, alicuotaIva: a.alicuotaIva, base: a.base, importe: a.iva })),
-        )
-    }
-    if (calculo.tributos.length) {
-      await tx.insert(comprobantesTributos).values(calculo.tributos.map((x) => ({ ...x, comprobanteId: comprobanteId! })))
-    }
-    if (asociado) await tx.insert(comprobantesAsociados).values({ comprobanteId: comprobanteId!, asociadoId: asociado.id })
-    await auditar(tx, {
-      usuarioId,
-      accion: id ? 'modificacion' : 'alta',
-      entidad: 'comprobante',
-      entidadId: comprobanteId,
-      despues: { cabecera, items },
+      await tx.insert(comprobantesItems).values(items.map((i) => ({ ...i, comprobanteId: comprobanteId! })))
+      if (calculo.iva.length) {
+        await tx
+          .insert(comprobantesIva)
+          .values(
+            calculo.iva.map((a) => ({ comprobanteId: comprobanteId!, alicuotaIva: a.alicuotaIva, base: a.base, importe: a.iva })),
+          )
+      }
+      if (calculo.tributos.length) {
+        await tx.insert(comprobantesTributos).values(calculo.tributos.map((x) => ({ ...x, comprobanteId: comprobanteId! })))
+      }
+      if (asociado) await tx.insert(comprobantesAsociados).values({ comprobanteId: comprobanteId!, asociadoId: asociado.id })
+      await auditar(tx, {
+        usuarioId,
+        accion: id ? 'modificacion' : 'alta',
+        entidad: 'comprobante',
+        entidadId: comprobanteId,
+        despues: { cabecera, items },
+      })
+      return { ok: true, id: comprobanteId! }
     })
-    return { ok: true, id: comprobanteId! }
   } catch (e) {
     const m = errorDeBase(e)
     if (m) return { ok: false, error: m }

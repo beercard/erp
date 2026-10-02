@@ -6,6 +6,7 @@ import { alicuotasIva, articulos, listasPrecios, marcas, monedas, precios, rubro
 import { auditar } from '../../lib/auditoria'
 import { aImporte, aplicarPorcentaje, normalizarNumero } from '../../lib/dinero'
 import { hoyArgentina } from '../../lib/fechas'
+import { mensajeDeBase } from '../../lib/errores'
 
 /** Alta y modificación de artículos y sus precios (con historial). */
 
@@ -69,18 +70,21 @@ export async function guardarArticulo(
   // Un servicio no lleva stock ni número de serie.
   const datos = p.data.tipo === 'servicio' ? { ...p.data, llevaStock: false, llevaSerie: false } : p.data
   try {
-    if (id) {
-      const [antes] = await tx.select().from(articulos).where(eq(articulos.id, id))
-      if (!antes) return { ok: false, errores: {}, mensaje: 'Ese artículo ya no existe.' }
-      const [despues] = await tx.update(articulos).set(datos).where(eq(articulos.id, id)).returning()
-      await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'articulo', entidadId: id, antes, despues })
-      return { ok: true, id }
-    }
-    const [nuevo] = await tx.insert(articulos).values(datos).returning()
-    await auditar(tx, { usuarioId, accion: 'alta', entidad: 'articulo', entidadId: nuevo.id, despues: nuevo })
-    return { ok: true, id: nuevo.id }
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      if (id) {
+        const [antes] = await tx.select().from(articulos).where(eq(articulos.id, id))
+        if (!antes) return { ok: false, errores: {}, mensaje: 'Ese artículo ya no existe.' }
+        const [despues] = await tx.update(articulos).set(datos).where(eq(articulos.id, id)).returning()
+        await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'articulo', entidadId: id, antes, despues })
+        return { ok: true, id }
+      }
+      const [nuevo] = await tx.insert(articulos).values(datos).returning()
+      await auditar(tx, { usuarioId, accion: 'alta', entidad: 'articulo', entidadId: nuevo.id, despues: nuevo })
+      return { ok: true, id: nuevo.id }
+    })
   } catch (e) {
-    const m = (e as { cause?: { message?: string } }).cause?.message ?? ''
+    const m = mensajeDeBase(e)
     if (m.includes('articulos_empresa_id_codigo'))
       return { ok: false, errores: { codigo: 'Ese código ya lo tiene otro artículo.' } }
     throw e

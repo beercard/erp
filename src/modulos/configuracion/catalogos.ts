@@ -19,6 +19,7 @@ import {
 import { auditar } from '../../lib/auditoria'
 import { normalizarNumero } from '../../lib/dinero'
 import { validarCuit } from '../../lib/cuit'
+import { mensajeDeBase } from '../../lib/errores'
 
 /**
  * Maestros simples de la empresa, definidos como configuración: una sola
@@ -436,21 +437,24 @@ export async function guardarCatalogo(
     }
   }
   try {
-    if (id) {
-      const [antes] = await tx.select().from(def.tabla).where(eq(def.id, id))
-      if (!antes) return { ok: false, errores: {}, mensaje: 'Ese registro ya no existe.' }
-      const [despues] = (await tx.update(def.tabla).set(leido.datos).where(eq(def.id, id)).returning()) as Record<
-        string,
-        unknown
-      >[]
-      await auditar(tx, { usuarioId, accion: 'modificacion', entidad: def.clave, entidadId: id, antes, despues })
-      return { ok: true, id }
-    }
-    const [nuevo] = (await tx.insert(def.tabla).values(leido.datos).returning()) as { id: string }[]
-    await auditar(tx, { usuarioId, accion: 'alta', entidad: def.clave, entidadId: nuevo.id, despues: nuevo })
-    return { ok: true, id: nuevo.id }
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      if (id) {
+        const [antes] = await tx.select().from(def.tabla).where(eq(def.id, id))
+        if (!antes) return { ok: false, errores: {}, mensaje: 'Ese registro ya no existe.' }
+        const [despues] = (await tx.update(def.tabla).set(leido.datos).where(eq(def.id, id)).returning()) as Record<
+          string,
+          unknown
+        >[]
+        await auditar(tx, { usuarioId, accion: 'modificacion', entidad: def.clave, entidadId: id, antes, despues })
+        return { ok: true, id }
+      }
+      const [nuevo] = (await tx.insert(def.tabla).values(leido.datos).returning()) as { id: string }[]
+      await auditar(tx, { usuarioId, accion: 'alta', entidad: def.clave, entidadId: nuevo.id, despues: nuevo })
+      return { ok: true, id: nuevo.id }
+    })
   } catch (e) {
-    const mensaje = (e as { cause?: { message?: string } }).cause?.message ?? ''
+    const mensaje = mensajeDeBase(e)
     if (def.duplicado && mensaje.includes(def.duplicado.indice)) return { ok: false, errores: {}, mensaje: def.duplicado.mensaje }
     if (mensaje.includes('violates foreign key'))
       return { ok: false, errores: {}, mensaje: 'Una de las opciones elegidas ya no existe.' }

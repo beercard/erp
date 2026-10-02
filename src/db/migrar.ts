@@ -9,8 +9,12 @@ import type { BaseDeDatos } from './conexion'
  * Aplica las migraciones de drizzle/ como dueño de las tablas (sin bajar a
  * erp_app). Se usa desde scripts/migrar.ts y desde las pruebas.
  */
-export async function migrar(base: BaseDeDatos, carpeta = 'drizzle') {
-  if (process.env.DATABASE_URL) {
+export async function migrar(
+  base: BaseDeDatos,
+  carpeta = 'drizzle',
+  motor: 'postgres' | 'pglite' = process.env.DATABASE_URL ? 'postgres' : 'pglite',
+) {
+  if (motor === 'postgres') {
     await migrarPostgres(base as unknown as PostgresJsDatabase, { migrationsFolder: carpeta })
   } else {
     await migrarPglite(base as unknown as PgliteDatabase, { migrationsFolder: carpeta })

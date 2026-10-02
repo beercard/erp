@@ -19,6 +19,7 @@ import { auditar } from '../../lib/auditoria'
 import { normalizarNumero } from '../../lib/dinero'
 import { soloDigitos, validarCuit } from '../../lib/cuit'
 import { gruposDeQuienConsulta } from './grupos'
+import { mensajeDeBase } from '../../lib/errores'
 
 /**
  * Clientes y proveedores ("terceros"). Toda función recibe la transacción de
@@ -266,28 +267,31 @@ export async function guardarTercero(
   }
 
   try {
-    if (id) {
-      const anterior = await obtenerTercero(tx, id)
-      if (!anterior) return { ok: false, errores: {}, mensaje: 'Ese cliente o proveedor ya no existe.' }
-      const [actualizado] = await tx.update(terceros).set(datos).where(eq(terceros.id, id)).returning()
-      await auditar(tx, {
-        usuarioId,
-        accion: 'modificacion',
-        entidad: 'tercero',
-        entidadId: id,
-        antes: anterior,
-        despues: actualizado,
-      })
-      return { ok: true, id }
-    }
-    const [nuevo] = await tx
-      .insert(terceros)
-      .values({ ...datos, codigo: datos.codigo! })
-      .returning()
-    await auditar(tx, { usuarioId, accion: 'alta', entidad: 'tercero', entidadId: nuevo.id, despues: nuevo })
-    return { ok: true, id: nuevo.id }
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      if (id) {
+        const anterior = await obtenerTercero(tx, id)
+        if (!anterior) return { ok: false, errores: {}, mensaje: 'Ese cliente o proveedor ya no existe.' }
+        const [actualizado] = await tx.update(terceros).set(datos).where(eq(terceros.id, id)).returning()
+        await auditar(tx, {
+          usuarioId,
+          accion: 'modificacion',
+          entidad: 'tercero',
+          entidadId: id,
+          antes: anterior,
+          despues: actualizado,
+        })
+        return { ok: true, id }
+      }
+      const [nuevo] = await tx
+        .insert(terceros)
+        .values({ ...datos, codigo: datos.codigo! })
+        .returning()
+      await auditar(tx, { usuarioId, accion: 'alta', entidad: 'tercero', entidadId: nuevo.id, despues: nuevo })
+      return { ok: true, id: nuevo.id }
+    })
   } catch (e) {
-    const mensaje = (e as { cause?: { message?: string } }).cause?.message ?? ''
+    const mensaje = mensajeDeBase(e)
     if (mensaje.includes('terceros_empresa_id_codigo')) {
       return { ok: false, errores: { codigo: 'Ese código ya lo tiene otro cliente o proveedor.' } }
     }

@@ -116,8 +116,14 @@ describe('auditoría', () => {
       conEmpresa(empresaA, (tx) => tx.update(auditoria).set({ accion: 'otra' }).where(eq(auditoria.id, fila.id))),
     ).rejects.toThrow()
     await expect(conEmpresa(empresaA, (tx) => tx.delete(auditoria).where(eq(auditoria.id, fila.id)))).rejects.toThrow()
-    // Ni siquiera el dueño de las tablas puede: lo impide el trigger.
-    await expect(base.delete(auditoria).where(eq(auditoria.id, fila.id))).rejects.toThrow()
+    // Ni siquiera el dueño de las tablas puede: lo impide el trigger. (El
+    // dueño también pasa por RLS forzado, así que fija la empresa para ver la fila.)
+    await expect(
+      base.transaction(async (tx) => {
+        await tx.execute(sql`select set_config('app.empresa_id', ${empresaA}, true)`)
+        return tx.delete(auditoria).where(eq(auditoria.id, fila.id)).returning()
+      }),
+    ).rejects.toThrow()
   })
 })
 
