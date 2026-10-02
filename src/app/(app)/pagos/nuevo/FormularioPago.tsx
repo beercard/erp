@@ -11,6 +11,7 @@ import {
   pendientesProveedor,
 } from '@/app/(app)/compras/acciones'
 import { Buscador } from '@/components/comercial/Buscador'
+import { SelectorCuenta, useCuentas } from '@/components/SelectorCuenta'
 import { Aviso, Boton, BotonEnlace, Panel } from '@/components/ui'
 import { D, formatearMonto, normalizarNumero } from '@/lib/dinero'
 import { fechaCorta } from '@/lib/fechas'
@@ -32,6 +33,7 @@ type Valor = {
   numeroValor: string
   fechaPago: string
   reciboValorId: string
+  cuentaId: string
 }
 
 const SIMBOLO: Record<string, string> = { PES: '$', DOL: 'US$' }
@@ -47,6 +49,7 @@ const valorVacio = (medio: MedioPago = 'transferencia', importe = ''): Valor => 
   numeroValor: '',
   fechaPago: '',
   reciboValorId: '',
+  cuentaId: '',
 })
 
 export function FormularioPago({
@@ -69,6 +72,7 @@ export function FormularioPago({
   const [valores, setValores] = useState<Valor[]>([valorVacio()])
   const [observaciones, setObservaciones] = useState('')
   const [cartera, setCartera] = useState<Cheque[]>([])
+  const cuentas = useCuentas()
   const [liquidacion, setLiquidacion] = useState<Liquidacion | null>(null)
   const [errorLiquidacion, setErrorLiquidacion] = useState<string | null>(null)
 
@@ -166,6 +170,7 @@ export function FormularioPago({
         numeroValor: v.numeroValor,
         fechaPago: v.fechaPago,
         reciboValorId: v.medio === 'cheque_tercero' ? v.reciboValorId : null,
+        cuentaId: v.cuentaId || null,
       })),
   }
   const control = 'h-9 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento'
@@ -365,7 +370,15 @@ export function FormularioPago({
                     ))}
                 </select>
               ) : v.medio === 'cheque_propio' || v.medio === 'echeq_propio' ? (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                  <SelectorCuenta
+                    cuentas={cuentas}
+                    medio={v.medio}
+                    moneda={moneda}
+                    valor={v.cuentaId}
+                    onChange={(cuentaId) => actualizar(v.clave, { cuentaId })}
+                    etiqueta={`Cuenta de la que sale el valor ${n + 1}`}
+                  />
                   <input
                     value={v.banco}
                     onChange={(e) => actualizar(v.clave, { banco: e.target.value })}
@@ -389,13 +402,23 @@ export function FormularioPago({
                   />
                 </div>
               ) : (
-                <input
-                  value={v.detalle}
-                  onChange={(e) => actualizar(v.clave, { detalle: e.target.value })}
-                  placeholder="Detalle (opcional: banco, número de operación)"
-                  aria-label={`Detalle del valor ${n + 1}`}
-                  className={control}
-                />
+                <div className="flex gap-2">
+                  <SelectorCuenta
+                    cuentas={cuentas}
+                    medio={v.medio}
+                    moneda={moneda}
+                    valor={v.cuentaId}
+                    onChange={(cuentaId) => actualizar(v.clave, { cuentaId })}
+                    etiqueta={`Cuenta de la que sale el valor ${n + 1}`}
+                  />
+                  <input
+                    value={v.detalle}
+                    onChange={(e) => actualizar(v.clave, { detalle: e.target.value })}
+                    placeholder="Detalle (opcional: número de operación)"
+                    aria-label={`Detalle del valor ${n + 1}`}
+                    className={`${control} min-w-0 flex-1`}
+                  />
+                </div>
               )}
               <button
                 type="button"

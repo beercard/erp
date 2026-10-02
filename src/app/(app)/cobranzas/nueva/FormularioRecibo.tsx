@@ -6,6 +6,7 @@ import { useActionState, useEffect, useState } from 'react'
 import { buscarClientes } from '@/app/(app)/comercial/acciones'
 import { emitirReciboAccion, pendientesDe } from '@/app/(app)/facturacion/acciones'
 import { Buscador } from '@/components/comercial/Buscador'
+import { SelectorCuenta, useCuentas } from '@/components/SelectorCuenta'
 import { Aviso, Boton, BotonEnlace, Panel } from '@/components/ui'
 import { D, formatearMonto, normalizarNumero } from '@/lib/dinero'
 import { fechaCorta } from '@/lib/fechas'
@@ -26,6 +27,7 @@ type Valor = {
   numeroValor: string
   fechaPago: string
   cuitLibrador: string
+  cuentaId: string
 }
 
 const nuevaClave = () => Math.random().toString(36).slice(2)
@@ -38,6 +40,7 @@ const valorVacio = (medio: Valor['medio'] = 'transferencia'): Valor => ({
   numeroValor: '',
   fechaPago: '',
   cuitLibrador: '',
+  cuentaId: '',
 })
 const num = (v: string) => {
   const n = normalizarNumero(v || '0')
@@ -61,6 +64,7 @@ export function FormularioRecibo({
   const [fecha, setFecha] = useState(hoy)
   const [puntoVenta, setPuntoVenta] = useState(puntosVenta[0]?.valor ?? '1')
   const [observaciones, setObservaciones] = useState('')
+  const cuentas = useCuentas()
 
   useEffect(() => {
     if (!tercero) return
@@ -106,6 +110,7 @@ export function FormularioRecibo({
         numeroValor: v.numeroValor,
         fechaPago: v.fechaPago,
         cuitLibrador: v.cuitLibrador,
+        cuentaId: v.cuentaId || null,
       })),
     imputaciones: Object.entries(aplicar)
       .filter(([, v]) => num(v).gt(0))
@@ -222,13 +227,23 @@ export function FormularioRecibo({
                   />
                 </div>
               ) : (
-                <input
-                  value={v.detalle}
-                  onChange={(e) => actualizar(v.clave, { detalle: e.target.value })}
-                  placeholder={v.medio.startsWith('retencion') ? 'Número de certificado' : 'Detalle (opcional)'}
-                  aria-label={`Detalle del valor ${n + 1}`}
-                  className={control}
-                />
+                <div className="flex gap-2">
+                  <SelectorCuenta
+                    cuentas={cuentas}
+                    medio={v.medio}
+                    moneda="PES"
+                    valor={v.cuentaId}
+                    onChange={(cuentaId) => actualizar(v.clave, { cuentaId })}
+                    etiqueta={`Cuenta donde entra el valor ${n + 1}`}
+                  />
+                  <input
+                    value={v.detalle}
+                    onChange={(e) => actualizar(v.clave, { detalle: e.target.value })}
+                    placeholder={v.medio.startsWith('retencion') ? 'Número de certificado' : 'Detalle (opcional)'}
+                    aria-label={`Detalle del valor ${n + 1}`}
+                    className={`${control} min-w-0 flex-1`}
+                  />
+                </div>
               )}
               <button
                 type="button"

@@ -20,8 +20,8 @@ const ETAPAS = [
   { n: 1, nombre: 'Comercial', detalle: 'Presupuestos, pedidos, remitos y stock', estado: 'listo' },
   { n: 2, nombre: 'Facturación', detalle: 'Factura electrónica ARCA, cuentas corrientes y cobranzas', estado: 'en curso' },
   { n: 3, nombre: 'Compras y pagos', detalle: 'Mis Comprobantes, órdenes de pago y retenciones', estado: 'en curso' },
-  { n: 4, nombre: 'Tesorería', detalle: 'Caja, bancos, conciliación, cheques y ECHEQ', estado: 'próxima' },
-  { n: 5, nombre: 'Contratos', detalle: 'Equipos, contadores y facturación por copias', estado: 'pendiente' },
+  { n: 4, nombre: 'Tesorería', detalle: 'Caja, bancos, conciliación, cheques y ECHEQ', estado: 'en curso' },
+  { n: 5, nombre: 'Contratos', detalle: 'Equipos, contadores y facturación por copias', estado: 'próxima' },
 ] as const
 
 export default async function Inicio() {

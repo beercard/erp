@@ -1,10 +1,12 @@
 'use client'
 
 import {
+  Banknote,
   BookOpen,
   Boxes,
   ClipboardList,
   FileInput,
+  FileSpreadsheet,
   HandCoins,
   Scale,
   FileText,
@@ -61,8 +63,15 @@ const SECCIONES: { titulo?: string; items: Item[] }[] = [
     ],
   },
   {
+    titulo: 'Tesorería',
+    items: [
+      { href: '/tesoreria', texto: 'Cajas y bancos', icono: Landmark },
+      { href: '/tesoreria/cheques', texto: 'Cheques', icono: Banknote },
+    ],
+  },
+  {
     titulo: 'Próximas etapas',
-    items: [{ href: '#tesoreria', texto: 'Caja y bancos', icono: Landmark, etapa: 'Etapa 4' }],
+    items: [{ href: '#fiscal', texto: 'Libros de IVA e informes', icono: FileSpreadsheet, etapa: 'Etapa 6' }],
   },
 ]
 
