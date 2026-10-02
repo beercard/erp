@@ -186,7 +186,7 @@ describe('mapa, hoja de ruta y viaje en la agenda', () => {
 
   it('posición del técnico: una por minuto salvo que se mueva', async () => {
     const t0 = new Date('2026-10-12T12:00:00Z')
-    expect(await en((tx) => registrarPosicion(tx, tecnico, { ...OBELISCO, precision: 12 }, t0))).toEqual({
+    expect(await en((tx) => registrarPosicion(tx, tecnico, { ...OBELISCO, precision: 12 }, t0))).toMatchObject({
       ok: true,
       guardada: true,
     })
@@ -197,8 +197,8 @@ describe('mapa, hoja de ruta y viaje en la agenda', () => {
       guardada: true,
     })
     expect(await en((tx) => registrarPosicion(tx, tecnico, { lat: 200, lng: 0 }))).toMatchObject({ ok: false })
-    // Las de más de dos días se borran.
-    await en((tx) => registrarPosicion(tx, tecnico, PALERMO, new Date(t0.getTime() + 3 * 86_400_000)))
+    // Las de más de 30 días se borran.
+    await en((tx) => registrarPosicion(tx, tecnico, PALERMO, new Date(t0.getTime() + 31 * 86_400_000)))
     const quedan = await en((tx) => tx.select().from(posicionesTecnicos))
     expect(quedan).toHaveLength(1)
     expect(await en((tx) => tx.select().from(ordenesServicio))).not.toHaveLength(0)

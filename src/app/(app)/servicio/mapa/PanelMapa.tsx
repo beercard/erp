@@ -48,6 +48,7 @@ export function PanelMapa({
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [mensaje, setMensaje] = useState<{ tono: 'ok' | 'error'; texto: string } | null>(null)
   const [trabajando, iniciar] = useTransition()
+  const [verRecorridos, setVerRecorridos] = useState(true)
 
   const color = useMemo(() => new Map(tecnicos.map((t, i) => [t.id, COLORES[i % COLORES.length]])), [tecnicos])
   const delDia = ordenes.filter((o) => o.programada === fecha)
@@ -105,11 +106,19 @@ export function PanelMapa({
     }),
   ]
 
-  const lineas: Ruta[] = rutas.map((r) => ({
-    id: r.tecnico.id,
-    color: color.get(r.tecnico.id) ?? SIN_TECNICO,
-    puntos: [...(r.tecnico.punto ? [r.tecnico.punto] : []), ...r.paradas.filter((p) => p.punto).map((p) => p.punto!)],
-  }))
+  const lineas: Ruta[] = [
+    ...rutas.map((r) => ({
+      id: r.tecnico.id,
+      color: color.get(r.tecnico.id) ?? SIN_TECNICO,
+      puntos: [...(r.tecnico.punto ? [r.tecnico.punto] : []), ...r.paradas.filter((p) => p.punto).map((p) => p.punto!)],
+    })),
+    // Lo que de verdad recorrió (GPS): línea llena; el recorrido sugerido va punteado.
+    ...(verRecorridos
+      ? tecnicos
+          .filter((t) => t.recorrido.length > 1)
+          .map((t) => ({ id: `gps-${t.id}`, color: color.get(t.id)!, puntos: t.recorrido, solida: true }))
+      : []),
+  ]
 
   const marcar = (p: Punto) => {
     if (!marcando) return
@@ -159,11 +168,19 @@ export function PanelMapa({
               <span aria-hidden className="size-2.5 rounded-full" style={{ background: color.get(t.id) }} />
               {t.nombre}
               {hoy && t.posicion && <span className="text-texto-3">({haceCuanto(t.posicion.momento)})</span>}
+              {hoy && t.jornadaDesde && <span className="text-texto-3">· en jornada</span>}
+              {t.km > 0 && <span className="text-texto-3">· {t.km.toLocaleString('es-AR')} km recorridos</span>}
             </li>
           ))}
           <li className="flex items-center gap-1.5">
             <span aria-hidden className="size-2.5 rounded-full border-2" style={{ borderColor: SIN_TECNICO }} />
             Espera día o técnico
+          </li>
+          <li>
+            <label className="flex items-center gap-1.5">
+              <input type="checkbox" checked={verRecorridos} onChange={(e) => setVerRecorridos(e.target.checked)} /> Recorrido GPS
+              (línea llena; la punteada es la ruta sugerida)
+            </label>
           </li>
         </ul>
       </div>

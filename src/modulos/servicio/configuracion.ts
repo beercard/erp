@@ -23,6 +23,7 @@ export async function obtenerConfiguracion(tx: Transaccion) {
       portalOrdenes: true,
       portalContadores: true,
       portalColor: '#0f766e',
+      radioGeocerca: 150,
     }
   )
 }
@@ -57,6 +58,12 @@ const Esquema = z
       .trim()
       .regex(/^#[0-9a-f]{6}$/i, { error: 'El color del portal no es válido.' })
       .default('#0f766e'),
+    radioGeocerca: z.coerce
+      .number()
+      .int({ error: 'El radio va en metros.' })
+      .min(30, { error: 'El radio va de 30 a 2000 metros.' })
+      .max(2000, { error: 'El radio va de 30 a 2000 metros.' })
+      .default(150),
   })
   .refine((d) => d.respuestaNormal <= d.resolucionNormal && d.respuestaUrgente <= d.resolucionUrgente, {
     error: 'La resolución no puede tener menos horas que la respuesta.',

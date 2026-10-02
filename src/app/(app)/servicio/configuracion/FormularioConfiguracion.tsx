@@ -65,6 +65,14 @@ export function FormularioConfiguracion({ inicial, portal }: { inicial: Configur
         </div>
       </fieldset>
       <fieldset className="min-w-0">
+        <legend className="mb-1 text-sm font-semibold">Ubicación de los técnicos</legend>
+        <p className="mb-3 text-xs text-texto-2">
+          Con la ubicación compartida desde Mi agenda, el sistema registra cuándo el técnico entró y salió del lugar de cada orden
+          (geocerca) y su recorrido del día.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-4">{horas('radioGeocerca', 'Radio alrededor del cliente (metros)')}</div>
+      </fieldset>
+      <fieldset className="min-w-0">
         <legend className="mb-1 text-sm font-semibold">Portal de clientes</legend>
         <p className="mb-3 text-xs text-texto-2">
           Tus clientes ven sus equipos y el estado de sus órdenes, piden servicio y cargan contadores. Entran desde{' '}

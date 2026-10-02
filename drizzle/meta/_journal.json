@@ -183,6 +183,20 @@
       "when": 1790962689740,
       "tag": "0025_formularios_sueltos_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790963785386,
+      "tag": "0026_fichadas_geocercas",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790963786813,
+      "tag": "0027_fichadas_geocercas_seguridad",
+      "breakpoints": true
     }
   ]
 }

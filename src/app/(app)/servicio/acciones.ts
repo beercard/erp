@@ -16,6 +16,7 @@ import { cotizacionVigente } from '@/modulos/comercial/cotizacion'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
 import { entregarPendientes } from '@/modulos/integraciones/webhooks'
 import { buscarHuecos } from '@/modulos/servicio/agenda'
+import { fichar } from '@/modulos/servicio/jornada'
 import { puntoDeOrden, registrarPosicion, ubicar, ubicarPendientes } from '@/modulos/servicio/mapa'
 import { avisarCierre, avisarVisita, crearEncuesta } from '@/modulos/servicio/avisos'
 import { guardarConfiguracion } from '@/modulos/servicio/configuracion'
@@ -535,6 +536,7 @@ export async function guardarConfiguracionAccion(_: Estado, formData: FormData):
         portalOrdenes: formData.get('portalOrdenes') === 'on',
         portalContadores: formData.get('portalContadores') === 'on',
         portalColor: valor(formData, 'portalColor') || undefined,
+        radioGeocerca: valor(formData, 'radioGeocerca') || undefined,
       }),
     ),
   )
@@ -606,4 +608,21 @@ export async function posicionAccion(p: { lat: number; lng: number; precision?: 
       return registrarPosicion(tx, t.id, p)
     }),
   )
+}
+
+/** Empezar o terminar la jornada (fichada con la ubicación del celular). */
+export async function ficharAccion(
+  tipo: 'entrada' | 'salida',
+  u: { lat: number | null; lng: number | null; precision: number | null },
+) {
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.trabajar', async (tx, s) => {
+      const t = await tecnicoDeUsuario(tx, s.usuario)
+      if (!t) return { ok: false as const, error: 'Tu usuario no es de un técnico.' }
+      return fichar(tx, s.usuario.id, t.id, { tipo, ...u })
+    }),
+  )
+  revalidatePath('/tecnico')
+  revalidatePath('/servicio/jornadas')
+  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error }
 }

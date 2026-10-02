@@ -12,6 +12,7 @@ import { depositos, puntosVenta } from '@/db/schema'
 import { formatearMonto, monto, sumar } from '@/lib/dinero'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
+import { geocercaDeOrden } from '@/modulos/servicio/jornada'
 import { equiposDelCliente, listarTecnicos, marcarVencidas, obtenerOrden } from '@/modulos/servicio/servicio'
 import { CIERRES, COBERTURAS, estaAbierta, estaHecha, seTrabaja, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
 import { tiposParaOrden } from '@/modulos/servicio/tiposOrden'
@@ -38,7 +39,7 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
     await marcarVencidas(tx)
     const o = await obtenerOrden(tx, id)
     if (!o) return null
-    const [tecnicos, deps, puntos, tipos, equipos] = await Promise.all([
+    const [tecnicos, deps, puntos, tipos, equipos, gps] = await Promise.all([
       listarTecnicos(tx),
       tx.select().from(depositos).where(eq(depositos.activo, true)).orderBy(asc(depositos.codigo)),
       tx
@@ -48,8 +49,9 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
         .orderBy(puntosVenta.numero),
       tiposParaOrden(tx),
       equiposDelCliente(tx, o.terceroId),
+      geocercaDeOrden(tx, o.id),
     ])
-    return { o, tecnicos, deps, puntos, tipos, equipos }
+    return { o, tecnicos, deps, puntos, tipos, equipos, gps }
   })
   if (!datos) notFound()
   const { o, deps, puntos, equipos } = datos
@@ -234,6 +236,19 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
                 <dd>{o.informada ? horaDe(o.informada) : '—'}</dd>
               </div>
             </dl>
+          )}
+          {datos.gps.length > 0 && (
+            <div className="mt-3 border-t border-borde pt-3 text-sm">
+              <p className="text-xs text-texto-3">Según el GPS (geocerca)</p>
+              <ul className="mt-1 flex flex-col gap-0.5">
+                {datos.gps.map((g, i) => (
+                  <li key={i}>
+                    {g.tipo === 'entrada' ? 'Entró' : 'Salió'} {horaDe(g.momento)}
+                    {g.minutos !== null && <span className="text-texto-2"> · estuvo {g.minutos} min</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {abierta && cargar && (
             <div className="mt-3 border-t border-borde pt-3">

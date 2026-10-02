@@ -3,11 +3,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { CompartirUbicacion } from '@/components/servicio/CompartirUbicacion'
+import { Jornada } from '@/components/servicio/Jornada'
 import { Sincronizador } from '@/components/servicio/Sincronizador'
 import { Aviso, EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
+import { estadoJornada } from '@/modulos/servicio/jornada'
 import { hojaDeRuta } from '@/modulos/servicio/mapa'
 import { agendaDelTecnico, listarTecnicos, marcarVencidas, tecnicoDeUsuario } from '@/modulos/servicio/servicio'
 
@@ -38,6 +40,7 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
       tecnicos,
       ordenes: id ? await agendaDelTecnico(tx, id) : [],
       ruta: id ? await hojaDeRuta(tx, id, hoy) : null,
+      jornada: propio ? await estadoJornada(tx, propio.id) : null,
     }
   })
   const paradas = datos.ruta?.paradas ?? []
@@ -88,6 +91,7 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
           </Aviso>
         </div>
       )}
+      {datos.propio && <Jornada desde={datos.jornada?.desde ?? null} />}
       {datos.propio && <CompartirUbicacion />}
       {datos.propio && (
         <Link

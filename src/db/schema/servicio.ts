@@ -513,6 +513,8 @@ export const configuracionServicio = pgTable(
     portalContadores: boolean('portal_contadores').notNull().default(true),
     /** Color del portal (el de la marca de la empresa). */
     portalColor: text('portal_color').notNull().default('#0f766e'),
+    /** Radio (metros) alrededor del cliente para dar por llegado o ido al técnico según el GPS. */
+    radioGeocerca: integer('radio_geocerca').notNull().default(150),
     ...marcasDeTiempo(),
   },
   (t) => [
@@ -645,5 +647,54 @@ export const posicionesTecnicos = pgTable(
   (t) => [
     index().on(t.empresaId, t.tecnicoId, t.momento),
     deLaEmpresa('posiciones_tecnicos_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
+  ],
+)
+
+/** Fichada de la jornada del técnico (entrada y salida, con la ubicación del celular). */
+export const fichadas = pgTable(
+  'fichadas',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    tecnicoId: uuid('tecnico_id').notNull(),
+    /** entrada | salida */
+    tipo: text('tipo').notNull(),
+    momento: timestamp('momento', { withTimezone: true }).notNull().defaultNow(),
+    lat: numeric('lat', { precision: 9, scale: 6 }),
+    lng: numeric('lng', { precision: 9, scale: 6 }),
+    precision: integer('precision'),
+    usuarioId: uuid('usuario_id'),
+  },
+  (t) => [
+    index().on(t.empresaId, t.tecnicoId, t.momento),
+    check('fichadas_tipo', sql`${t.tipo} in ('entrada', 'salida')`),
+    deLaEmpresa('fichadas_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
+  ],
+)
+
+/**
+ * Geocercas: el GPS del técnico entró o salió del lugar de una orden del día
+ * (como las alertas de Persat). Sirve para comparar con la llegada que
+ * marcó y para medir cuánto estuvo.
+ */
+export const eventosGeocerca = pgTable(
+  'eventos_geocerca',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    tecnicoId: uuid('tecnico_id').notNull(),
+    ordenId: uuid('orden_id').notNull(),
+    /** entrada | salida */
+    tipo: text('tipo').notNull(),
+    momento: timestamp('momento', { withTimezone: true }).notNull(),
+    /** En la salida: minutos que estuvo. */
+    minutos: integer('minutos'),
+  },
+  (t) => [
+    index().on(t.empresaId, t.ordenId, t.momento),
+    index().on(t.empresaId, t.tecnicoId, t.momento),
+    check('eventos_geocerca_tipo', sql`${t.tipo} in ('entrada', 'salida')`),
+    deLaEmpresa('eventos_geocerca_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
+    deLaEmpresa('eventos_geocerca_orden_fk', t.empresaId, t.ordenId, ordenesServicio).onDelete('cascade'),
   ],
 )

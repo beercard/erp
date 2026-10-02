@@ -18,6 +18,16 @@ const suscribir = (aviso: () => void) => {
   }
 }
 
+/** Prende o apaga el compartir (lo usa también la jornada: al empezarla se comparte). */
+export function ponerCompartir(activo: boolean) {
+  try {
+    localStorage.setItem(CLAVE, activo ? '1' : '0')
+  } catch {
+    // Sin almacenamiento en el celular: no se puede recordar la elección.
+  }
+  window.dispatchEvent(new Event(EVENTO))
+}
+
 const leer = () => {
   try {
     return localStorage.getItem(CLAVE) === '1'
@@ -56,15 +66,9 @@ export function CompartirUbicacion() {
   }, [activo])
 
   const cambiar = () => {
-    const nuevo = !activo
-    try {
-      localStorage.setItem(CLAVE, nuevo ? '1' : '0')
-    } catch {
-      // Sin almacenamiento en el celular: no se puede recordar la elección.
-    }
     ultima.current = 0
     setEstado(null)
-    window.dispatchEvent(new Event(EVENTO))
+    ponerCompartir(!activo)
   }
 
   return (

@@ -4,6 +4,7 @@ import * as z from 'zod'
 import type { Transaccion } from '../../db/conexion'
 import { equipos, modelosEquipo, ordenesServicio, posicionesTecnicos, tecnicos, terceros, tiposOrden } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { detectarGeocercas, estadoJornada, kmRecorridos, recorrido } from './jornada'
 import { aHora, aMinutos } from './tipos'
 
 /**
@@ -268,16 +269,17 @@ export async function registrarPosicion(tx: Transaccion, tecnicoId: string, entr
     precision: p.data.precision === undefined ? null : Math.round(p.data.precision),
     momento: ahora,
   })
-  // Se guardan dos días de recorrido: alcanza para ver el de ayer y no crece sin fin.
+  // Se guardan 30 días de recorridos (el historial); lo más viejo se borra.
   await tx
     .delete(posicionesTecnicos)
     .where(
       and(
         eq(posicionesTecnicos.tecnicoId, tecnicoId),
-        sql`${posicionesTecnicos.momento} < ${new Date(ahora.getTime() - 2 * 86_400_000)}`,
+        sql`${posicionesTecnicos.momento} < ${new Date(ahora.getTime() - 30 * 86_400_000)}`,
       ),
     )
-  return { ok: true as const, guardada: true }
+  const geocercas = await detectarGeocercas(tx, tecnicoId, p.data, ahora)
+  return { ok: true as const, guardada: true, geocercas }
 }
 
 // ---------------------------------------------------------------- Mapa y hoja de ruta
@@ -410,6 +412,10 @@ export async function datosMapa(tx: Transaccion, fecha: string) {
         )
         .orderBy(posicionesTecnicos.tecnicoId, desc(posicionesTecnicos.momento))
     : []
+  const [recorridos, enJornada] = await Promise.all([
+    Promise.all(lista.map(async (t) => ({ tecnicoId: t.id, puntos: await recorrido(tx, t.id, fecha) }))),
+    Promise.all(lista.map(async (t) => ({ tecnicoId: t.id, ...(await estadoJornada(tx, t.id)) }))),
+  ])
   const rutas = await Promise.all(
     lista
       .filter((t) => ordenes.some((o) => o.tecnicoId === t.id && o.programada === fecha))
@@ -425,6 +431,10 @@ export async function datosMapa(tx: Transaccion, fecha: string) {
         partida: punto(t.partidaLat, t.partidaLng),
         partidaTexto: t.partida,
         posicion: p ? { ...punto(p.lat, p.lng)!, momento: p.momento, precision: p.precision } : null,
+        /** Lo que recorrió ese día según el GPS (historial). */
+        recorrido: recorridos.find((r) => r.tecnicoId === t.id)!.puntos.map(({ lat, lng }) => ({ lat, lng })),
+        km: kmRecorridos(recorridos.find((r) => r.tecnicoId === t.id)!.puntos),
+        jornadaDesde: enJornada.find((j) => j.tecnicoId === t.id)!.desde,
       }
     }),
     rutas: rutas.filter((r) => r !== null),

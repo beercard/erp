@@ -22,7 +22,8 @@ export type Marcador = {
   enlace?: { href: string; texto: string }
 }
 
-export type Ruta = { id: string; color: string; puntos: Punto[] }
+/** Punteada: la ruta sugerida; sólida: lo recorrido según el GPS. */
+export type Ruta = { id: string; color: string; puntos: Punto[]; solida?: boolean }
 
 /** Si no hay nada que mostrar: el centro de Buenos Aires. */
 const CENTRO: Punto = { lat: -34.6037, lng: -58.3816 }
@@ -94,7 +95,7 @@ export function Mapa({
       if (r.puntos.length < 2) continue
       Leaflet.polyline(
         r.puntos.map((p) => [p.lat, p.lng] as [number, number]),
-        { color: r.color, weight: 3, opacity: 0.75, dashArray: '6 6' },
+        r.solida ? { color: r.color, weight: 3, opacity: 0.55 } : { color: r.color, weight: 3, opacity: 0.75, dashArray: '6 6' },
       ).addTo(grupo)
     }
     for (const mk of marcadores) {
