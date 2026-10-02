@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { desc, eq, sql } from 'drizzle-orm'
@@ -13,6 +13,7 @@ import { leerCsv } from '../../lib/csv'
 import { aImporte, aplicarPorcentaje, D } from '../../lib/dinero'
 import { hoyArgentina } from '../../lib/fechas'
 import { registrarMovimientos, saldos, type Movimiento } from '../comercial/stock'
+import { importarSaldosClientes, importarSaldosProveedores } from './saldos'
 
 /**
  * Importa los maestros exportados de PYMEXIS (modo exportar-maestros.txt del
@@ -61,6 +62,11 @@ function leer(carpeta: string, nombre: string): Fila[] {
   return leerCsv(readFileSync(join(carpeta, `${nombre}.csv`), 'utf8'))
 }
 
+/** Archivos que agregaron versiones nuevas del agente: si no están, vacío. */
+function leerOpcional(carpeta: string, nombre: string): Fila[] {
+  return existsSync(join(carpeta, `${nombre}.csv`)) ? leer(carpeta, nombre) : []
+}
+
 /** Inserta o actualiza por (empresa, código) en tandas, y devuelve código → id. */
 async function volcar<T extends Record<string, unknown>>(
   tx: Transaccion,
@@ -98,6 +104,8 @@ export async function importarPymexis(
   empresaId: string,
   usuarioId: string,
   hoy: string = hoyArgentina(),
+  /** saldos: migra los comprobantes con saldo de proveedores y clientes (al pasar a usar el ERP). */
+  opciones: { saldos?: boolean } = {},
 ): Promise<Informe> {
   const avisos: string[] = []
   const cantidades: Record<string, number> = {}
@@ -115,6 +123,9 @@ export async function importarPymexis(
     listas: leer(carpeta, 'listas'),
     clientes: leer(carpeta, 'clientes'),
     clientesIibb: leer(carpeta, 'clientes_iibb'),
+    categoriasGanancias: leerOpcional(carpeta, 'categorias_ganancias'),
+    saldosProveedores: opciones.saldos ? leer(carpeta, 'saldos_proveedores') : [],
+    saldosClientes: opciones.saldos ? leer(carpeta, 'saldos_clientes') : [],
     proveedores: leer(carpeta, 'proveedores'),
     contactos: leer(carpeta, 'contactos'),
     articulos: leer(carpeta, 'articulos'),
@@ -515,9 +526,27 @@ export async function importarPymexis(
         limiteCredito: numero(c.LimiteCredito) ? numero(c.LimiteCredito).toFixed(2) : null,
         // La alícuota que aplica PYMEXIS; sin alícuota, no se le percibe.
         percepcionIibb: alicuotaDe.get(limpio(c.idcliente)) ?? '0',
+        regimenGanancias: null,
         activo: !verdadero(c.inactivo),
       })
     }
+    // Retención de Ganancias: la categoría de PYMEXIS dice el régimen (78 bienes, 94 servicios).
+    const regimenDeCategoria = new Map(
+      archivos.categoriasGanancias.map((c) => {
+        const r = `${limpio(c.Regimen)} ${limpio(c.Nombre)}`.toLowerCase()
+        const codigo =
+          r.includes('bienes') || r.includes('materiales') ? '78' : r.includes('servicio') || r.includes('locacion') ? '94' : null
+        return [limpio(c.IdCategoria), codigo]
+      }),
+    )
+    let sinRegimen = 0
+    const regimenDe = (p: Fila) => {
+      if (!verdadero(p.Retieneg)) return null
+      const r = regimenDeCategoria.get(limpio(p.Categoriag)) ?? null
+      if (!r) sinRegimen++
+      return r
+    }
+    const codigoProveedor = new Map<string, string>()
     let fusionados = 0
     for (const p of archivos.proveedores) {
       const cuit = p.cuit.replace(/\D/g, '')
@@ -525,9 +554,12 @@ export async function importarPymexis(
       const indice = valido ? porCuit.get(cuit) : undefined
       if (indice !== undefined) {
         filasTerceros[indice].esProveedor = true
+        filasTerceros[indice].regimenGanancias = regimenDe(p)
+        codigoProveedor.set(limpio(p.IdProveedor), filasTerceros[indice].codigo)
         fusionados++
         continue
       }
+      codigoProveedor.set(limpio(p.IdProveedor), `P${limpio(p.IdProveedor)}`)
       if (valido) porCuit.set(cuit, filasTerceros.length)
       filasTerceros.push({
         codigo: `P${limpio(p.IdProveedor)}`,
@@ -544,8 +576,12 @@ export async function importarPymexis(
         localidad: nulo(p.localidad),
         codigoPostal: nulo(p.cpostal),
         provincia: provincia.get(limpio(p.idprovincia)) ?? null,
+        regimenGanancias: regimenDe(p),
         activo: !verdadero(p.Inactivo),
       })
+    }
+    if (sinRegimen) {
+      avisos.push(`${sinRegimen} proveedores retienen Ganancias con una categoría sin régimen conocido: asignalo en su ficha.`)
     }
     const terceroDe = await volcar(tx, t.terceros, filasTerceros as Record<string, unknown>[])
     cantidades.terceros = terceroDe.size
@@ -563,6 +599,34 @@ export async function importarPymexis(
       for (let i = 0; i < contactos.length; i += 500) await tx.insert(t.tercerosContactos).values(contactos.slice(i, i + 500))
     }
     cantidades.contactos = contactos.length
+
+    // ------------------------------------------ Saldos iniciales (opcional)
+    if (opciones.saldos) {
+      cantidades.saldosProveedores = await importarSaldosProveedores(
+        tx,
+        usuarioId,
+        archivos.saldosProveedores,
+        (id) => terceroDe.get(codigoProveedor.get(id) ?? ''),
+        avisos,
+      )
+      cantidades.saldosClientes = await importarSaldosClientes(
+        tx,
+        usuarioId,
+        archivos.saldosClientes,
+        (id) => terceroDe.get(id),
+        avisos,
+      )
+      // Control: en PYMEXIS el saldo de la ficha puede no coincidir con el de los comprobantes abiertos.
+      const ficha = archivos.proveedores.reduce((s, p) => s.plus(numero(p.Saldocc)), D(0))
+      const abiertos = archivos.saldosProveedores
+        .filter((x) => limpio(x.idmoneda) !== '002')
+        .reduce((s, x) => s.plus(numero(x.Saldo)), D(0))
+      if (ficha.minus(abiertos).abs().gte(1)) {
+        avisos.push(
+          `En PYMEXIS el saldo en pesos de las fichas de proveedores (${ficha.toFixed(2)}) no coincide con el de sus comprobantes abiertos (${abiertos.toFixed(2)}): se migraron los comprobantes.`,
+        )
+      }
+    }
 
     // ----------------------------------------------------- Stock (espejo)
     // Mientras PYMEXIS sea el sistema en uso, el stock del ERP lo refleja: por

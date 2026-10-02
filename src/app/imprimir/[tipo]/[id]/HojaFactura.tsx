@@ -45,7 +45,8 @@ export async function HojaFactura({ id }: { id: string }) {
       : []
     return { c, ivas: new Map(ivas.map((i) => [i.codigo, i.nombre])), condicion }
   })
-  if (!datos || !empresa || datos.c.estado !== 'autorizado' || !datos.c.numero) notFound()
+  // Los saldos migrados de PYMEXIS no se reimprimen: el comprobante original está en PYMEXIS.
+  if (!datos || !empresa || datos.c.estado !== 'autorizado' || !datos.c.numero || datos.c.origen === 'pymexis') notFound()
   const { c, ivas, condicion } = datos
   const { letra, clase, fce } = datosTipo(c.tipo)
   const discrimina = letra === 'A'

@@ -39,6 +39,8 @@ export function datosTipo(tipo: number): { letra: Letra; clase: Clase; fce: bool
 }
 
 export function nombreComprobante(tipo: number): string {
+  // 0: saldo migrado de PYMEXIS que no es un comprobante fiscal (recibo, a cuenta…).
+  if (tipo === 0) return 'Saldo inicial'
   const { letra, clase, fce } = datosTipo(tipo)
   if (!fce) return `${NOMBRE_CLASE[clase]} ${letra}`
   return clase === 'factura'
@@ -48,6 +50,7 @@ export function nombreComprobante(tipo: number): string {
 
 /** Abreviatura para listados: FA, NCA, NDB, FCEA… */
 export function abreviatura(tipo: number): string {
+  if (tipo === 0) return 'SI'
   const { letra, clase, fce } = datosTipo(tipo)
   const base = clase === 'factura' ? 'F' : clase === 'nota_credito' ? 'NC' : 'ND'
   return `${fce ? (clase === 'factura' ? 'FCE' : `${base}E`) : base}${letra}`

@@ -18,6 +18,8 @@ import {
   tercerosContactos,
 } from '../../db/schema'
 import { saldos } from '../comercial/stock'
+import { cuentaProveedor } from '../compras/cuentas'
+import { cuentaCorriente } from '../facturacion/cuentas'
 import { preciosVigentes } from '../maestros/articulos'
 import { importarPymexis, type Informe } from './pymexis'
 
@@ -44,9 +46,23 @@ const ARCHIVOS: Record<string, string> = {
   // KOMSA percibe Corrientes: 0,75 % a los de Convenio, 1,5 % a los locales. Hay uno suelto en Chaco.
   clientes_iibb: 'IDCLIENTE,IDPROVINCIA,PORCENTAJE\n"00001","05",0.75\n"00300","05",1.50\n"00001","06",1.50\n',
   proveedores:
-    'IdProveedor,nombre,domicilio,localidad,cpostal,idprovincia,telefonos,email,idcondiva,cuit,ingbrutos,Inactivo,ultima_compra\n' +
-    '"00010","ESTUDIO NORTE (PROV)","","","","06","","","0","20123456786","","False",""\n' +
-    '"00011","DISTRIBUIDORA","","","","05","","","0","30-71999201-9","","False",""\n',
+    'IdProveedor,nombre,domicilio,localidad,cpostal,idprovincia,telefonos,email,idcondiva,cuit,ingbrutos,Inactivo,Retieneg,Categoriag,Saldocc,saldoCCmonedaExtra,ultima_compra\n' +
+    '"00010","ESTUDIO NORTE (PROV)","","","","06","","","0","20123456786","","False","True","2",0,0,""\n' +
+    '"00011","DISTRIBUIDORA","","","","05","","","0","30-71999201-9","","False","True","1",710,100,""\n',
+  categorias_ganancias:
+    'IdCategoria,Nombre,Porcentaje,MinimoImponible,Regimen,MINIMORET\n' +
+    '"1","Materiales",2.000,224000.00,"Enajenacion de Bienes Muebles y Bienes de Cambio",240.00\n' +
+    '"2","Servicios",2.000,42700.00,"Locaciones de Obra/Servicios no ejecutados en relacion de dependencia",90.00\n',
+  // Saldos abiertos: una factura en pesos, un pago a cuenta (crédito) y una factura en dólares.
+  saldos_proveedores:
+    'IdProveedor,fecha,IdTipoComp,LetraComp,Sucursal,Numero,Importe,Saldo,FechaVto,idmoneda,cotizacion,nTipo,idunico\n' +
+    '"00011","2026-09-01",0,"A",3,77,1210.00,1210.00,"2026-10-01","001",1,0,501\n' +
+    '"00011","2026-09-05",6,"X",0,12,-500.00,-500.00,,"001",1,0,502\n' +
+    '"00011","2026-09-10",0,"A",3,78,100.00,100.00,,"002",1500,0,503\n',
+  saldos_clientes:
+    'IdCliente,fecha,IdTipoComp,LetraComp,Sucursal,Numero,Importe,Saldo,FechaVto,idmoneda,cotizacion,ntipo,IdUnico\n' +
+    '"00001","2026-09-02",0,"A",4,9657,1000.00,1000.00,"2026-10-02","001",1,0,901\n' +
+    '"00001","2026-09-20",6,"X",1,55,-200.00,-200.00,,"001",1,0,902\n',
   contactos: 'idcliente,contacto,telefono\n"00001","SOFIA","0362-1"\n',
   articulos:
     'IdArticulo,IdBarra,Nombre,IdRubro,IdSubRubro,IDMARCA,UniMedi,CodIva,InHabilitado,TieneSerie,Codigobarra,COSTO,idmoneda,StockMinimo,tipoarti,FechaAlta,ultimo_movimiento\n' +
@@ -186,5 +202,33 @@ describe('importación de PYMEXIS', () => {
         .where(eq(movimientosStock.articuloId, id('TN-1'))),
     )
     expect(movs.map((m) => m.tipo).sort()).toEqual(['ajuste', 'inicial'])
+  })
+})
+
+describe('retenciones y saldos iniciales', () => {
+  it('asigna el régimen de Ganancias según la categoría de PYMEXIS', async () => {
+    const ters = await conEmpresa(empresa, (tx) => tx.select().from(terceros))
+    // El proveedor 00010 se fusionó con el cliente 00001 (mismo CUIT): el régimen queda en esa ficha.
+    expect(ters.find((x) => x.codigo === '00001')?.regimenGanancias).toBe('94')
+    expect(ters.find((x) => x.codigo === 'P00011')?.regimenGanancias).toBe('78')
+    expect(ters.find((x) => x.codigo === '00214')?.regimenGanancias).toBeNull()
+  })
+
+  it('migra los comprobantes con saldo y se puede repetir sin duplicar', async () => {
+    const correr = () => importarPymexis(carpeta, empresa, USUARIO, '2026-10-01', { saldos: true })
+    const primera = await correr()
+    expect([primera.cantidades.saldosProveedores, primera.cantidades.saldosClientes]).toEqual([3, 2])
+    const segunda = await correr()
+    expect(segunda.avisos.some((a) => a.includes('saldos de clientes ya se habían migrado'))).toBe(true)
+    const ters = await conEmpresa(empresa, (tx) => tx.select().from(terceros))
+    const prov = ters.find((x) => x.codigo === 'P00011')!.id
+    const cc = await conEmpresa(empresa, (tx) => cuentaProveedor(tx, prov))
+    expect(cc.cuentas.map((c) => [c.moneda, c.saldo])).toEqual([
+      ['DOL', '100.00'],
+      ['PES', '710.00'],
+    ])
+    const cliente = ters.find((x) => x.codigo === '00001')!.id
+    const cuenta = await conEmpresa(empresa, (tx) => cuentaCorriente(tx, cliente))
+    expect([cuenta.saldo, cuenta.pendientes.length, cuenta.aCuenta]).toEqual(['800.00', 1, '200.00'])
   })
 })

@@ -41,6 +41,8 @@ export function datosTipoCompra(tipo: number): { letra: LetraCompra; clase: Clas
 
 /** Abreviatura para listados: FA, NCA, NDM, FCEA… */
 export function abreviaturaCompra(tipo: number): string {
+  // 0: saldo migrado de PYMEXIS que no es un comprobante fiscal (pago, a cuenta…).
+  if (tipo === 0) return 'SI'
   const d = datosTipoCompra(tipo)
   if (!d) return String(tipo)
   const base = d.clase === 'factura' ? 'F' : d.clase === 'nota_credito' ? 'NC' : 'ND'

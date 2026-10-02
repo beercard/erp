@@ -4,8 +4,10 @@
  * actualiza por código.
  *
  *   npx tsx scripts/importar-pymexis.ts <carpeta> --cuit 30715974823 \
- *     --razon "KOMSA S.A." [--usuario admin@demo.local]
+ *     --razon "KOMSA S.A." [--usuario admin@demo.local] [--saldos]
  *
+ * --saldos migra además los comprobantes con saldo de proveedores y clientes
+ * (saldos iniciales): se usa al pasar a trabajar con el ERP.
  * --usuario da acceso de Dueño a ese usuario (para revisar la importación).
  * Con PGlite, correrlo con el servidor de desarrollo APAGADO.
  * Deja el informe con los avisos en <carpeta>/informe.json.
@@ -24,7 +26,7 @@ import { importarPymexis } from '../src/modulos/importacion/pymexis'
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
-  options: { cuit: { type: 'string' }, razon: { type: 'string' }, usuario: { type: 'string' } },
+  options: { cuit: { type: 'string' }, razon: { type: 'string' }, usuario: { type: 'string' }, saldos: { type: 'boolean' } },
 })
 const carpeta = positionals[0]
 const cuit = validarCuit(values.cuit ?? '')
@@ -59,7 +61,7 @@ if (values.usuario) {
 }
 
 const inicio = Date.now()
-const informe = await importarPymexis(carpeta, empresa.id, usuarioId)
+const informe = await importarPymexis(carpeta, empresa.id, usuarioId, undefined, { saldos: values.saldos })
 writeFileSync(join(carpeta, 'informe.json'), JSON.stringify(informe, null, 2))
 console.log(`Importación terminada en ${((Date.now() - inicio) / 1000).toFixed(1)} s.`)
 console.table(informe.cantidades)
