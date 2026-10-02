@@ -17,6 +17,7 @@ export type OpcionesFormulario = {
   condiciones: Opcion[]
   zonas: Opcion[]
   transportes: Opcion[]
+  regimenes: Opcion[]
 }
 
 export type ValoresTercero = Record<string, string | boolean | null | undefined>
@@ -253,6 +254,25 @@ export function FormularioTercero({
             opciones={opciones.transportes}
             defaultValue={v('transporteId')}
           />
+        </Seccion>
+
+        <Seccion titulo="Como proveedor">
+          <Selector
+            id="regimenGanancias"
+            name="regimenGanancias"
+            etiqueta="Retención de Ganancias al pagarle"
+            vacio={opciones.regimenes.length ? 'No se le retiene' : 'No se le retiene (cargá los regímenes en Configuración)'}
+            opciones={opciones.regimenes}
+            defaultValue={v('regimenGanancias')}
+          />
+          <label className="flex items-center gap-2 self-end pb-2 text-sm">
+            <input
+              type="checkbox"
+              name="gananciasInscripto"
+              defaultChecked={estado?.valores ? 'gananciasInscripto' in estado.valores : inicial.gananciasInscripto !== false}
+            />
+            Inscripto en Ganancias
+          </label>
         </Seccion>
 
         <Panel className="p-4">

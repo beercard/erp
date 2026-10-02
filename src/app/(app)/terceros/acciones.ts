@@ -11,7 +11,12 @@ export type EstadoFormulario =
 
 export async function guardar(id: string | null, _: EstadoFormulario, formData: FormData): Promise<EstadoFormulario> {
   const valores = Object.fromEntries([...formData.entries()].filter(([, v]) => typeof v === 'string') as [string, string][])
-  const entrada = { ...valores, esCliente: formData.has('esCliente'), esProveedor: formData.has('esProveedor') }
+  const entrada = {
+    ...valores,
+    esCliente: formData.has('esCliente'),
+    esProveedor: formData.has('esProveedor'),
+    gananciasInscripto: formData.has('gananciasInscripto'),
+  }
   let resultado
   try {
     resultado = await enLaEmpresa('maestros.terceros', (tx, sesion) =>

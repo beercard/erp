@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, Landmark, ShieldCheck } from 'lucide-react'
+import { Building2, ChevronRight, Landmark, Percent, ShieldCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -32,6 +32,13 @@ export default async function Configuracion() {
       titulo: 'ARCA y factura electrónica',
       texto: 'Certificado, ambiente de prueba o producción y percepción de IIBB.',
       icono: Landmark,
+      permiso: 'empresa.datos',
+    },
+    {
+      href: '/configuracion/retenciones',
+      titulo: 'Retenciones a proveedores',
+      texto: 'Retención de Ganancias (RG 830): regímenes, mínimos y escala.',
+      icono: Percent,
       permiso: 'empresa.datos',
     },
   ].filter((e) => puede(e.permiso))

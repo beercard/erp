@@ -19,8 +19,8 @@ const ETAPAS = [
   { n: 0, nombre: 'Cimientos', detalle: 'Empresas, usuarios, permisos, auditoría y maestros', estado: 'listo' },
   { n: 1, nombre: 'Comercial', detalle: 'Presupuestos, pedidos, remitos y stock', estado: 'listo' },
   { n: 2, nombre: 'Facturación', detalle: 'Factura electrónica ARCA, cuentas corrientes y cobranzas', estado: 'en curso' },
-  { n: 3, nombre: 'Compras y pagos', detalle: 'Mis Comprobantes, órdenes de pago y retenciones', estado: 'próxima' },
-  { n: 4, nombre: 'Tesorería', detalle: 'Caja, bancos, conciliación, cheques y ECHEQ', estado: 'pendiente' },
+  { n: 3, nombre: 'Compras y pagos', detalle: 'Mis Comprobantes, órdenes de pago y retenciones', estado: 'en curso' },
+  { n: 4, nombre: 'Tesorería', detalle: 'Caja, bancos, conciliación, cheques y ECHEQ', estado: 'próxima' },
   { n: 5, nombre: 'Contratos', detalle: 'Equipos, contadores y facturación por copias', estado: 'pendiente' },
 ] as const
 

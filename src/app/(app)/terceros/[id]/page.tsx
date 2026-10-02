@@ -10,6 +10,7 @@ import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
 import { tienePermiso } from '@/lib/permisos'
 import { formatearCuit } from '@/lib/cuit'
 import { formatearMonto } from '@/lib/dinero'
+import { cuentaProveedor } from '@/modulos/compras/cuentas'
 import { cuentaCorriente } from '@/modulos/facturacion/cuentas'
 import { obtenerTercero } from '@/modulos/maestros/terceros'
 
@@ -39,7 +40,8 @@ export default async function FichaTercero({ params, searchParams }: PageProps<'
       .orderBy(desc(auditoria.fecha))
       .limit(10)
     const cuenta = tercero.esCliente ? await cuentaCorriente(tx, id) : null
-    return { tercero, iva, historial, cuenta, opciones: await opcionesFormulario(tx) }
+    const proveedor = tercero.esProveedor ? await cuentaProveedor(tx, id) : null
+    return { tercero, iva, historial, cuenta, proveedor, opciones: await opcionesFormulario(tx) }
   })
   if (!datos) notFound()
 
@@ -98,6 +100,20 @@ export default async function FichaTercero({ params, searchParams }: PageProps<'
               </p>
               <Link href={`/terceros/${t.id}/cuenta`} className="mt-1 text-xs text-acento hover:underline">
                 Ver movimientos
+              </Link>
+            </Panel>
+          )}
+          {datos.proveedor && (
+            <Panel className="flex flex-col gap-1 p-4">
+              <h2 className="text-sm font-semibold">Le debemos</h2>
+              {datos.proveedor.cuentas.length === 0 && <p className="text-xs text-texto-2">Sin movimientos.</p>}
+              {datos.proveedor.cuentas.map((c) => (
+                <p key={c.moneda} className="cifras text-xl font-medium">
+                  {formatearMonto(c.saldo, c.moneda === 'DOL' ? 'US$' : '$')}
+                </p>
+              ))}
+              <Link href={`/terceros/${t.id}/proveedor`} className="mt-1 text-xs text-acento hover:underline">
+                Ver la cuenta del proveedor
               </Link>
             </Panel>
           )}

@@ -15,6 +15,7 @@ import { obtenerRemito } from '@/modulos/comercial/remitos'
 import { datosEmpresa } from '@/modulos/empresa/datos'
 
 import { BotonImprimir } from './BotonImprimir'
+import { HojaOrdenCompra, HojaPago, HojaRetencion } from './HojasCompras'
 import { HojaFactura } from './HojaFactura'
 import { HojaRecibo } from './HojaRecibo'
 
@@ -53,6 +54,9 @@ export default async function Imprimir({ params }: PageProps<'/imprimir/[tipo]/[
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   if (tipo === 'factura') return <HojaFactura id={id} />
   if (tipo === 'recibo') return <HojaRecibo id={id} />
+  if (tipo === 'pago') return <HojaPago id={id} />
+  if (tipo === 'retencion') return <HojaRetencion id={id} />
+  if (tipo === 'orden-compra') return <HojaOrdenCompra id={id} />
   if (!TIPOS.includes(tipo as Tipo)) notFound()
   const sesion = await requerirEmpresa()
   const empresa = await datosEmpresa(sesion.empresa.id)

@@ -7,6 +7,7 @@ import {
   condicionesPago,
   listasPrecios,
   provincias,
+  regimenesGanancias,
   terceros,
   tiposDocumento,
   transportes,
@@ -74,7 +75,7 @@ export async function obtenerTercero(tx: Transaccion, id: string) {
 
 /** Opciones para los desplegables del formulario. */
 export async function opcionesTercero(tx: Transaccion) {
-  const [ivas, documentos, provs, listas, vends, condiciones, zns, transps] = await Promise.all([
+  const [ivas, documentos, provs, listas, vends, condiciones, zns, transps, regs] = await Promise.all([
     tx.select().from(condicionesIva).orderBy(asc(condicionesIva.codigo)),
     tx.select().from(tiposDocumento).orderBy(asc(tiposDocumento.codigo)),
     tx.select().from(provincias).orderBy(asc(provincias.nombre)),
@@ -99,8 +100,23 @@ export async function opcionesTercero(tx: Transaccion) {
       .from(transportes)
       .where(eq(transportes.activo, true))
       .orderBy(asc(transportes.nombre)),
+    tx
+      .select({ codigo: regimenesGanancias.codigo, concepto: regimenesGanancias.concepto })
+      .from(regimenesGanancias)
+      .where(eq(regimenesGanancias.activo, true))
+      .orderBy(asc(regimenesGanancias.codigo)),
   ])
-  return { ivas, documentos, provincias: provs, listas, vendedores: vends, condiciones, zonas: zns, transportes: transps }
+  return {
+    ivas,
+    documentos,
+    provincias: provs,
+    listas,
+    vendedores: vends,
+    condiciones,
+    zonas: zns,
+    transportes: transps,
+    regimenes: regs,
+  }
 }
 
 const opcional = z
@@ -157,6 +173,8 @@ export const EsquemaTercero = z
     descuento: numeroOpcional,
     limiteCredito: numeroOpcional,
     percepcionIibb: numeroOpcional,
+    regimenGanancias: opcional,
+    gananciasInscripto: z.boolean().default(true),
     notas: opcional,
   })
   .superRefine((d, ctx) => {

@@ -1,4 +1,4 @@
-import { aImporte, D, monto, type Monto } from '../../lib/dinero'
+import { aImporte, D, formatearMonto, monto, type Monto } from '../../lib/dinero'
 
 /**
  * Retención del Impuesto a las Ganancias (RG 830). Cálculo puro: los datos
@@ -60,12 +60,12 @@ export function calcularRetencionGanancias(p: {
   const delMes = conEscala ? aplicarEscala(sujeto, p.escala) : sujeto.times(alicuota).dividedBy(100)
   const importe = D.max(0, delMes.minus(p.retenidoMes))
   const cero = importe.lt(p.regimen.minimoRetencion) || importe.lte(0)
-  const pesos = (v: Monto | string) => `$ ${aImporte(v)}`
+  const pesos = (v: Monto | string) => formatearMonto(aImporte(v), '$')
   const explicacion = [
     `Pagado en el mes ${pesos(acumulado)}`,
     minimo.gt(0) ? `menos mínimo no sujeto ${pesos(minimo)}` : null,
     `= sujeto ${pesos(sujeto)}`,
-    conEscala ? 'por escala' : `al ${monto(alicuota).toString()} %`,
+    conEscala ? 'por escala' : `al ${monto(alicuota).toString().replace('.', ',')} %`,
     `= ${pesos(delMes)}`,
     monto(p.retenidoMes).gt(0) ? `menos ya retenido ${pesos(p.retenidoMes)}` : null,
     cero && importe.gt(0) ? `: menos que el mínimo de retención (${pesos(p.regimen.minimoRetencion)}), no se retiene` : null,

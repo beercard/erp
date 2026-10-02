@@ -4,6 +4,9 @@ import {
   BookOpen,
   Boxes,
   ClipboardList,
+  FileInput,
+  HandCoins,
+  Scale,
   FileText,
   Landmark,
   LayoutDashboard,
@@ -49,11 +52,17 @@ const SECCIONES: { titulo?: string; items: Item[] }[] = [
     ],
   },
   {
-    titulo: 'Próximas etapas',
+    titulo: 'Compras',
     items: [
-      { href: '#compras', texto: 'Compras y pagos', icono: ShoppingCart, etapa: 'Etapa 3' },
-      { href: '#tesoreria', texto: 'Caja y bancos', icono: Landmark, etapa: 'Etapa 4' },
+      { href: '/ordenes-compra', texto: 'Órdenes de compra', icono: ShoppingCart },
+      { href: '/compras', texto: 'Comprobantes de compra', icono: FileInput },
+      { href: '/pagos', texto: 'Pagos a proveedores', icono: HandCoins },
+      { href: '/cuentas-proveedores', texto: 'Cuentas de proveedores', icono: Scale },
     ],
+  },
+  {
+    titulo: 'Próximas etapas',
+    items: [{ href: '#tesoreria', texto: 'Caja y bancos', icono: Landmark, etapa: 'Etapa 4' }],
   },
 ]
 
