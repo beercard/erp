@@ -99,6 +99,8 @@ Marcas: **[doc]** confirmado en la ayuda o la API; **[mkt]** solo en marketing; 
 | Reportes por formulario a Excel                                         | Sí                   | Tipos de orden y formularios, columna por campo         | Hecho                           |
 | Asistente de IA sobre los datos, WhatsApp                               | Aparte               | No                                                      | Fase C                          |
 | Enlace público de seguimiento (sin usuario)                             | Sí                   | Pasos, técnico y "en camino" con distancia y minutos    | Hecho (fase E)                  |
+| Etiquetas de colores en las órdenes                                     | Sí                   | Listado, filtro, calendario y webhooks                  | Hecho (fase E)                  |
+| Varios técnicos por orden (responsable y acompañantes)                  | Sí                   | Agenda, calendario y huecos de cada uno                 | Hecho (fase E)                  |
 
 ## 3. Decisiones de diseño
 
@@ -128,6 +130,9 @@ Marcas: **[doc]** confirmado en la ayuda o la API; **[mkt]** solo en marketing; 
 - Sin señal: la app del técnico se puede instalar (manifest y service worker). Lo visto queda guardado en el celular; la llegada, las fotos, la firma y el informe cargados sin señal quedan en una cola y se mandan solos al volver. El borrador del informe se guarda mientras se escribe.
 - Enlace de seguimiento (fase E): `/seguimiento/<empresa>.<orden>.<firma>`, sin usuario. La firma es un HMAC del id de la orden con `ERP_CLAVE_MAESTRA`: el enlace es siempre el mismo, no se guarda y no se puede adivinar ni adulterar. Muestra los pasos de la orden y, el día de la visita, si el técnico compartió su ubicación en los últimos 10 minutos y todavía no llegó, la distancia y los minutos estimados (nunca su posición). Va en el aviso de la visita (con `APP_URL` en los automáticos) y se copia desde la orden ("Enlace de seguimiento"). La página se actualiza sola cada minuto.
 
+- Etiquetas (fase E): se definen en Servicio técnico › Configuración (nombre y color; una inactiva no se ofrece pero sigue en las órdenes que la tienen). En la orden, "Agregar etiquetas"; el listado filtra por etiqueta y el calendario las muestra en cada tarjeta. Van en la API y los webhooks (`etiquetas`, con los nombres).
+- Acompañantes (fase E): al programar la visita, además del técnico responsable se marcan los que van con él. La orden aparece en Mi agenda de cada acompañante ("Acompañás a …", sin cargar el informe), en su fila del calendario (punteada, no se arrastra) y les ocupa el horario en el asistente de huecos y en la carga del día. Sin responsable no hay acompañantes; al cambiar el responsable se conservan, y el responsable no puede ser también acompañante. Van en la API y los webhooks (`acompanantes`).
+
 ## 5. Lo que falta frente a la API de Persat (relevamiento de octubre de 2026)
 
 Relevado de la documentación completa de la API (`docs.api.persat.com.ar`, 186 páginas). Para ver la configuración real de una cuenta: `npm run persat:relevar` con `PERSAT_API_KEY` (solo hace GET; deja todo en `.data/persat/`, fuera de git). La clave de Persat tiene acceso total (puede borrar clientes con su historial): no usarla para escribir.
@@ -136,8 +141,8 @@ Por prioridad:
 
 1. **Importar desde Persat** clientes (con campos propios, grupos y tipos), objetos en cliente (equipos), catálogos, técnicos y el historial de OT con sus formularios y PDF, para dejar Persat sin perder historia. Necesita la clave para validar contra datos reales.
 2. ~~Enlace público de seguimiento~~ (hecho).
-3. **Etiquetas de colores en las órdenes**, para filtrar y ver en el calendario.
-4. **Varios técnicos por orden**: responsable y acompañantes, en la agenda de cada uno.
+3. ~~Etiquetas de colores en las órdenes~~ (hecho).
+4. ~~Varios técnicos por orden~~ (hecho).
 5. **Historial de estados de los formularios** (quién y cuándo) y **cambio de estado masivo** en la bandeja.
 6. **Grupos de clientes que limitan qué ve cada usuario.**
 7. **Horario laboral por día** (licencias, feriados, horarios especiales) además del semanal, para el asistente de huecos.

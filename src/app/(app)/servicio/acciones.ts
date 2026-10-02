@@ -19,6 +19,7 @@ import { buscarHuecos } from '@/modulos/servicio/agenda'
 import { fichar } from '@/modulos/servicio/jornada'
 import { puntoDeOrden, registrarPosicion, ubicar, ubicarPendientes } from '@/modulos/servicio/mapa'
 import { avisarCierre, avisarVisita, crearEncuesta } from '@/modulos/servicio/avisos'
+import { ponerEtiquetas } from '@/modulos/servicio/etiquetas'
 import { enlaceSeguimiento } from '@/modulos/servicio/seguimiento'
 import { guardarConfiguracion } from '@/modulos/servicio/configuracion'
 import { guardarRecordatorio, marcarRecordatorio } from '@/modulos/servicio/recordatorios'
@@ -185,12 +186,20 @@ export async function programarAccion(id: string, _: Estado, formData: FormData)
         programada: valor(formData, 'programada'),
         hora: valor(formData, 'hora'),
         duracion: valor(formData, 'duracion') || undefined,
+        acompanantes: formData.has('conAcompanantes') ? formData.getAll('acompanantes').map(String) : undefined,
       }),
     ),
   )
   if (!r.ok) return { error: r.error }
   refrescar(id)
   return { ok: 'Programada.' }
+}
+
+/** Etiquetas de la orden (las elegidas reemplazan a las que tenía). */
+export async function etiquetasOrdenAccion(id: string, etiquetaIds: string[]) {
+  const r = await intentar(() => enLaEmpresa('servicio.cargar', (tx, s) => ponerEtiquetas(tx, s.usuario.id, id, etiquetaIds)))
+  refrescar(id)
+  return r
 }
 
 /** Arrastrar en el calendario: nuevo técnico y día (y hora, si se soltó en una). */

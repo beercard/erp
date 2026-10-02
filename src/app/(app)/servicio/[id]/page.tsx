@@ -12,6 +12,7 @@ import { depositos, puntosVenta } from '@/db/schema'
 import { formatearMonto, monto, sumar } from '@/lib/dinero'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
+import { listarEtiquetas } from '@/modulos/servicio/etiquetas'
 import { geocercaDeOrden } from '@/modulos/servicio/jornada'
 import { equiposDelCliente, listarTecnicos, marcarVencidas, obtenerOrden } from '@/modulos/servicio/servicio'
 import { CIERRES, COBERTURAS, estaAbierta, estaHecha, seTrabaja, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
@@ -22,6 +23,7 @@ import { alicuotas, paginaContratos } from '../../contratos/modulo'
 import { quitarItemAccion, reabrirAccion } from '../acciones'
 import { AvisosCliente } from '../AvisosCliente'
 import { ChipEstado, ChipSla } from '../ChipEstado'
+import { EtiquetasOrden } from '../EtiquetasOrden'
 import { Cancelar, Cerrar, Facturar, FormularioOrden, Item, Programar, Visita } from '../Formularios'
 
 export const metadata: Metadata = { title: 'Orden de servicio' }
@@ -39,7 +41,7 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
     await marcarVencidas(tx)
     const o = await obtenerOrden(tx, id)
     if (!o) return null
-    const [tecnicos, deps, puntos, tipos, equipos, gps] = await Promise.all([
+    const [tecnicos, deps, puntos, tipos, equipos, gps, etiquetas] = await Promise.all([
       listarTecnicos(tx),
       tx.select().from(depositos).where(eq(depositos.activo, true)).orderBy(asc(depositos.codigo)),
       tx
@@ -50,8 +52,9 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
       tiposParaOrden(tx),
       equiposDelCliente(tx, o.terceroId),
       geocercaDeOrden(tx, o.id),
+      listarEtiquetas(tx),
     ])
-    return { o, tecnicos, deps, puntos, tipos, equipos, gps }
+    return { o, tecnicos, deps, puntos, tipos, equipos, gps, etiquetas }
   })
   if (!datos) notFound()
   const { o, deps, puntos, equipos } = datos
@@ -119,6 +122,13 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
             </BotonEnlace>
           </>
         }
+      />
+      <EtiquetasOrden
+        key={o.etiquetas.map((e) => e.id).join()}
+        id={o.id}
+        actuales={o.etiquetas}
+        disponibles={datos.etiquetas}
+        editar={cargar}
       />
       {guardada && (
         <div className="mb-4">
@@ -206,6 +216,11 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
           <p className="text-sm">
             {o.tecnico?.nombre ?? <span className="text-texto-3">Sin técnico</span>}
             {o.tecnico?.telefono && <span className="block text-xs text-texto-3">{o.tecnico.telefono}</span>}
+            {o.acompanantes.length > 0 && (
+              <span className="block text-xs text-texto-2">
+                Acompaña{o.acompanantes.length > 1 ? 'n' : ''}: {o.acompanantes.map((t) => t.nombre).join(', ')}
+              </span>
+            )}
           </p>
           <p className="mt-1 text-sm text-texto-2">
             {o.programada
@@ -254,11 +269,17 @@ export default async function Orden({ params, searchParams }: PageProps<'/servic
             <div className="mt-3 border-t border-borde pt-3">
               {tecnicos.length ? (
                 <Programar
-                  key={`${o.tecnicoId}|${o.programada}|${o.hora}|${o.duracion}`}
+                  key={`${o.tecnicoId}|${o.programada}|${o.hora}|${o.duracion}|${o.acompanantes.map((t) => t.id).join()}`}
                   id={o.id}
                   tecnicos={tecnicos}
                   hoy={hoy}
-                  inicial={{ tecnicoId: o.tecnicoId, programada: o.programada, hora: o.hora, duracion: o.duracion }}
+                  inicial={{
+                    tecnicoId: o.tecnicoId,
+                    programada: o.programada,
+                    hora: o.hora,
+                    duracion: o.duracion,
+                    acompanantes: o.acompanantes.map((t) => t.id),
+                  }}
                 />
               ) : (
                 <p className="text-xs text-texto-2">

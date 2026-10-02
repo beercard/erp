@@ -1,8 +1,9 @@
 import { and, asc, eq, gte, inArray, isNull, lte, ne, sql } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
-import { equipos, modelosEquipo, ordenesServicio, tecnicos, terceros, tiposOrden } from '../../db/schema'
+import { equipos, modelosEquipo, ordenesServicio, ordenesServicioTecnicos, tecnicos, terceros, tiposOrden } from '../../db/schema'
 import { hoyArgentina } from '../../lib/fechas'
+import { acompanantesDe, etiquetasDeOrdenes } from './etiquetas'
 import { minutosDeViaje, punto, puntosProgramados, type Punto } from './mapa'
 import { aHora, aMinutos } from './tipos'
 
@@ -100,33 +101,33 @@ export async function buscarHuecos(
     .where(and(eq(tecnicos.activo, true), o.tecnicoIds?.length ? inArray(tecnicos.id, o.tecnicoIds) : undefined))
     .orderBy(asc(tecnicos.nombre))
   if (!lista.length) return []
-  const programadas = await tx
-    .select({
-      id: ordenesServicio.id,
-      tecnicoId: ordenesServicio.tecnicoId,
-      programada: ordenesServicio.programada,
-      hora: ordenesServicio.hora,
-      duracion: ordenesServicio.duracion,
-    })
-    .from(ordenesServicio)
-    .where(
-      and(
-        inArray(
-          ordenesServicio.tecnicoId,
-          lista.map((t) => t.id),
-        ),
-        gte(ordenesServicio.programada, desde),
-        lte(ordenesServicio.programada, hasta),
-        inArray(ordenesServicio.estado, ['asignada', 'vencida', 'informe']),
-        o.excluirOrdenId ? ne(ordenesServicio.id, o.excluirOrdenId) : undefined,
-      ),
-    )
-  const puntos = o.destino
-    ? await puntosProgramados(
-        tx,
-        programadas.map((p) => p.id),
-      )
-    : new Map<string, Punto>()
+  const columnas = {
+    id: ordenesServicio.id,
+    programada: ordenesServicio.programada,
+    hora: ordenesServicio.hora,
+    duracion: ordenesServicio.duracion,
+  }
+  const filtro = and(
+    gte(ordenesServicio.programada, desde),
+    lte(ordenesServicio.programada, hasta),
+    inArray(ordenesServicio.estado, ['asignada', 'vencida', 'informe']),
+    o.excluirOrdenId ? ne(ordenesServicio.id, o.excluirOrdenId) : undefined,
+  )
+  const ids = lista.map((t) => t.id)
+  // Ocupan al responsable y a los acompañantes.
+  const [propias, acompanadas] = await Promise.all([
+    tx
+      .select({ ...columnas, tecnicoId: ordenesServicio.tecnicoId })
+      .from(ordenesServicio)
+      .where(and(inArray(ordenesServicio.tecnicoId, ids), filtro)),
+    tx
+      .select({ ...columnas, tecnicoId: ordenesServicioTecnicos.tecnicoId })
+      .from(ordenesServicioTecnicos)
+      .innerJoin(ordenesServicio, eq(ordenesServicio.id, ordenesServicioTecnicos.ordenId))
+      .where(and(inArray(ordenesServicioTecnicos.tecnicoId, ids), filtro)),
+  ])
+  const programadas = [...propias, ...acompanadas]
+  const puntos = o.destino ? await puntosProgramados(tx, [...new Set(programadas.map((p) => p.id))]) : new Map<string, Punto>()
   const viajeDesde = (p: Punto | null | undefined) => (o.destino && p ? minutosDeViaje(p, o.destino) : null)
   const huecos: Hueco[] = []
   for (let n = 0; n < dias; n++) {
@@ -232,7 +233,14 @@ export async function calendario(tx: Transaccion, desde: string, hasta: string) 
       .where(eq(tecnicos.activo, true))
       .orderBy(asc(tecnicos.nombre)),
   ])
-  return { programadas, pendientes, tecnicos: lista }
+  const ids = [...programadas, ...pendientes].map((o) => o.id)
+  const [etiquetas, acompanantes] = await Promise.all([etiquetasDeOrdenes(tx, ids), acompanantesDe(tx, ids)])
+  const con = <T extends { id: string }>(o: T) => ({
+    ...o,
+    etiquetas: etiquetas.get(o.id) ?? [],
+    acompanantes: acompanantes.get(o.id) ?? [],
+  })
+  return { programadas: programadas.map(con), pendientes: pendientes.map(con), tecnicos: lista }
 }
 
 export type OrdenCalendario = Awaited<ReturnType<typeof calendario>>['programadas'][number]

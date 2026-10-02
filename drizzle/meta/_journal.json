@@ -260,6 +260,20 @@
       "when": 1790969132377,
       "tag": "0036_contador_contabilidad",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790973910054,
+      "tag": "0037_etiquetas_y_acompanantes",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790973917664,
+      "tag": "0038_etiquetas_y_acompanantes_seguridad",
+      "breakpoints": true
     }
   ]
 }

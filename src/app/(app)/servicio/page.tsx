@@ -9,11 +9,13 @@ import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
 import { ponerAlDia } from '@/modulos/servicio/avisos'
+import { etiquetasDeOrdenes, listarEtiquetas } from '@/modulos/servicio/etiquetas'
 import { listarOrdenes, listarTecnicos, marcarVencidas, resumenOrdenes } from '@/modulos/servicio/servicio'
 import { ESTADOS_ORDEN, estaAbierta, TIPOS_ORDEN } from '@/modulos/servicio/tipos'
 
 import { paginaContratos } from '../contratos/modulo'
 import { ChipEstado, ChipSla } from './ChipEstado'
+import { ChipEtiqueta } from './EtiquetasOrden'
 
 export const metadata: Metadata = { title: 'Servicio técnico' }
 
@@ -22,15 +24,32 @@ const dias = (desde: string, hasta: string) => Math.round((Date.parse(hasta) - D
 
 export default async function Servicio({ searchParams }: PageProps<'/servicio'>) {
   const sesion = await paginaContratos('servicio.ver')
-  const { q, estado, tecnico } = (await searchParams) as { q?: string; estado?: string; tecnico?: string }
-  const { lista, resumen, tecnicos } = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const { q, estado, tecnico, etiqueta } = (await searchParams) as {
+    q?: string
+    estado?: string
+    tecnico?: string
+    etiqueta?: string
+  }
+  const { lista, resumen, tecnicos, etiquetas, deOrdenes } = await conEmpresa(sesion.empresa.id, async (tx) => {
     // Al entrar se ponen al día los vencimientos y los preventivos (no hay procesos aparte).
     if (tienePermiso(sesion.permisos, 'servicio.cargar')) await ponerAlDia(tx, sesion.usuario.id)
     else await marcarVencidas(tx)
+    const lista = await listarOrdenes(tx, {
+      q,
+      estado: estado ?? 'activas',
+      tecnicoId: tecnico || undefined,
+      incluirAcompanante: true,
+      etiquetaId: etiqueta && /^[0-9a-f-]{36}$/i.test(etiqueta) ? etiqueta : undefined,
+    })
     return {
-      lista: await listarOrdenes(tx, { q, estado: estado ?? 'activas', tecnicoId: tecnico || undefined }),
+      lista,
       resumen: await resumenOrdenes(tx),
       tecnicos: await listarTecnicos(tx),
+      etiquetas: await listarEtiquetas(tx, true),
+      deOrdenes: await etiquetasDeOrdenes(
+        tx,
+        lista.map((o) => o.id),
+      ),
     }
   })
   const hoy = hoyArgentina()
@@ -119,6 +138,21 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
             ))}
           </select>
         )}
+        {etiquetas.length > 0 && (
+          <select
+            name="etiqueta"
+            defaultValue={etiqueta ?? ''}
+            aria-label="Etiqueta"
+            className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+          >
+            <option value="">Todas las etiquetas</option>
+            {etiquetas.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nombre}
+              </option>
+            ))}
+          </select>
+        )}
         <button className="h-9 rounded-md border border-borde px-3 text-sm hover:bg-superficie-2">Buscar</button>
       </form>
       {lista.length === 0 ? (
@@ -174,6 +208,13 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
                         {o.color && <span aria-hidden className="size-2 rounded-full" style={{ background: o.color }} />}
                         {o.tipoOrden ?? TIPOS_ORDEN[o.tipo as keyof typeof TIPOS_ORDEN]}
                       </span>
+                      {!!deOrdenes.get(o.id)?.length && (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {deOrdenes.get(o.id)!.map((e) => (
+                            <ChipEtiqueta key={e.id} e={e} />
+                          ))}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2">
                       {o.tecnico ?? <span className="text-texto-3">Sin técnico</span>}

@@ -10,10 +10,12 @@ import { tienePermiso } from '@/lib/permisos'
 import { correoConfigurado } from '@/modulos/comunicaciones/correo'
 import { listarUsuariosPortal } from '@/modulos/portal/portal'
 import { obtenerConfiguracion } from '@/modulos/servicio/configuracion'
+import { listarEtiquetas } from '@/modulos/servicio/etiquetas'
 
 import { paginaContratos } from '../../contratos/modulo'
 import { enviarPendientesAccion } from '../acciones'
 import { habilitarPortalAccion } from './acciones'
+import { Etiquetas } from './Etiquetas'
 import { FormularioConfiguracion } from './FormularioConfiguracion'
 import { InvitarPortal } from './InvitarPortal'
 
@@ -25,8 +27,9 @@ const hora = (d: Date) =>
 export default async function Configuracion({ searchParams }: PageProps<'/servicio/configuracion'>) {
   const sesion = await paginaContratos('servicio.configurar')
   const { enviados, fallidos, error } = (await searchParams) as { enviados?: string; fallidos?: string; error?: string }
-  const { config, bandeja, usuarios } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { config, bandeja, usuarios, etiquetas } = await conEmpresa(sesion.empresa.id, async (tx) => ({
     config: await obtenerConfiguracion(tx),
+    etiquetas: await listarEtiquetas(tx, true),
     bandeja: await tx.select().from(correos).orderBy(desc(correos.creado)).limit(50),
     usuarios: await listarUsuariosPortal(tx),
   }))
@@ -43,6 +46,14 @@ export default async function Configuracion({ searchParams }: PageProps<'/servic
       />
       <Panel className="mb-4 p-4">
         <FormularioConfiguracion inicial={config} portal={portal} />
+      </Panel>
+      <Panel className="mb-4 p-4">
+        <h2 className="text-sm font-semibold">Etiquetas de las órdenes</h2>
+        <p className="mb-1 text-xs text-texto-2">
+          Para marcar y filtrar órdenes: espera repuesto, garantía del fabricante, cliente VIP… Se ven en el listado y en el
+          calendario.
+        </p>
+        <Etiquetas etiquetas={etiquetas} />
       </Panel>
       <Panel className="mb-4 overflow-x-auto">
         <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">Usuarios del portal de clientes</h2>

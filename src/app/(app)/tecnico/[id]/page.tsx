@@ -31,10 +31,13 @@ export default async function OrdenTecnico({ params }: PageProps<'/tecnico/[id]'
     await marcarVencidas(tx)
     const o = await obtenerOrden(tx, id)
     if (!o) return null
-    // El técnico ve solo las suyas; quien coordina, todas.
+    // El técnico ve solo las suyas (y las que acompaña, sin cargar el informe); quien coordina, todas.
+    let acompana = false
     if (!tienePermiso(sesion.permisos, 'servicio.cargar')) {
       const t = await tecnicoDeUsuario(tx, sesion.usuario)
-      if (!t || t.id !== o.tecnicoId) return null
+      if (!t) return null
+      acompana = t.id !== o.tecnicoId && o.acompanantes.some((a) => a.id === t.id)
+      if (t.id !== o.tecnicoId && !acompana) return null
     }
     const [equipos, historial, [ultima]] = await Promise.all([
       equiposDelCliente(tx, o.terceroId),
@@ -48,10 +51,10 @@ export default async function OrdenTecnico({ params }: PageProps<'/tecnico/[id]'
             .limit(1)
         : Promise.resolve([]),
     ])
-    return { o, equipos, historial: historial.filter((h) => h.id !== o.id && h.fechaResolucion).slice(0, 5), ultima }
+    return { o, acompana, equipos, historial: historial.filter((h) => h.id !== o.id && h.fechaResolucion).slice(0, 5), ultima }
   })
   if (!datos) notFound()
-  const { o, equipos, historial, ultima } = datos
+  const { o, acompana, equipos, historial, ultima } = datos
   const hoy = hoyArgentina()
   const abierta = estaAbierta(o.estado)
   const nombres = Object.fromEntries(equipos.map((e) => [e.id, `${e.serie}${e.modelo ? ` · ${e.modelo}` : ''}`]))
@@ -146,7 +149,15 @@ export default async function OrdenTecnico({ params }: PageProps<'/tecnico/[id]'
         </details>
       )}
 
-      {abierta ? (
+      {o.acompanantes.length > 0 && (
+        <p className="text-sm text-texto-2">
+          {acompana
+            ? `Vas acompañando a ${o.tecnico?.nombre ?? 'otro técnico'}: el informe lo carga el responsable de la orden.`
+            : `Van con vos: ${o.acompanantes.map((t) => t.nombre).join(', ')}.`}
+        </p>
+      )}
+
+      {abierta && acompana ? null : abierta ? (
         <>
           {o.llegada ? <Aviso tono="ok">Llegaste a las {horaDe(o.llegada)}.</Aviso> : <Llegue id={o.id} />}
           <Panel className="p-4">

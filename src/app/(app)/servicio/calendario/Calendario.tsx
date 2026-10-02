@@ -34,8 +34,9 @@ const MOVIBLE: string[] = ['pendiente', 'proyectada', 'asignada', 'vencida']
 const NOMBRE_DIA = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
 const minutos = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
 
-function Tarjeta({ o, mover }: { o: OrdenCalendario; mover: boolean }) {
-  const movible = mover && MOVIBLE.includes(o.estado)
+function Tarjeta({ o, mover, acompana }: { o: OrdenCalendario; mover: boolean; acompana?: boolean }) {
+  // En la fila de un acompañante la orden se ve pero no se arrastra (se mueve desde la del responsable).
+  const movible = mover && !acompana && MOVIBLE.includes(o.estado)
   return (
     <Link
       href={`/servicio/${o.id}`}
@@ -45,7 +46,7 @@ function Tarjeta({ o, mover }: { o: OrdenCalendario; mover: boolean }) {
         e.dataTransfer.effectAllowed = 'move'
       }}
       title={`${ESTADOS_ORDEN[o.estado as EstadoOrden]} · ${o.falla}`}
-      className={`block rounded border-l-4 px-1.5 py-1 text-xs leading-tight hover:ring-1 hover:ring-acento ${FONDO[o.estado as EstadoOrden] ?? ''} ${movible ? 'cursor-grab active:cursor-grabbing' : ''} ${o.estado === 'vencida' || o.estado === 'informe' ? 'animate-pulse' : ''}`}
+      className={`block rounded border-l-4 px-1.5 py-1 text-xs leading-tight hover:ring-1 hover:ring-acento ${acompana ? 'border-dashed opacity-70' : ''} ${FONDO[o.estado as EstadoOrden] ?? ''} ${movible ? 'cursor-grab active:cursor-grabbing' : ''} ${o.estado === 'vencida' || o.estado === 'informe' ? 'animate-pulse' : ''}`}
       style={{ borderLeftColor: o.color ?? '#94a3b8' }}
     >
       <span className="flex justify-between gap-1">
@@ -58,6 +59,24 @@ function Tarjeta({ o, mover }: { o: OrdenCalendario; mover: boolean }) {
         {o.tipoOrden ?? o.falla}
         {o.serie ? ` · ${o.serie}` : ''}
       </span>
+      {acompana && <span className="block truncate text-texto-3">Acompaña</span>}
+      {!acompana && o.acompanantes.length > 0 && (
+        <span className="block truncate text-texto-3">+ {o.acompanantes.map((t) => t.nombre).join(', ')}</span>
+      )}
+      {o.etiquetas.length > 0 && (
+        <span className="mt-0.5 flex flex-wrap gap-0.5">
+          {o.etiquetas.map((e) => (
+            <span
+              key={e.id}
+              title={e.nombre}
+              className="max-w-full truncate rounded-full px-1 text-[10px] leading-4 font-medium text-white"
+              style={{ background: e.color }}
+            >
+              {e.nombre}
+            </span>
+          ))}
+        </span>
+      )}
     </Link>
   )
 }
@@ -155,9 +174,14 @@ export function Calendario({
                   {dias.map((d, i) => {
                     const clave = `${f.id}|${d}`
                     const del = programadas.filter((o) => o.programada === d && (o.tecnicoId ?? null) === f.id)
+                    const acompanadas = f.id
+                      ? programadas.filter((o) => o.programada === d && o.acompanantes.some((t) => t.id === f.id))
+                      : []
                     const trabaja = !f.tecnico || f.tecnico.dias.includes(String(i + 1))
                     const jornada = f.tecnico ? minutos(f.tecnico.jornadaHasta) - minutos(f.tecnico.jornadaDesde) : 0
-                    const carga = del.filter((o) => o.estado !== 'cancelada').reduce((s, o) => s + o.duracion, 0)
+                    const carga = [...del, ...acompanadas]
+                      .filter((o) => o.estado !== 'cancelada')
+                      .reduce((s, o) => s + o.duracion, 0)
                     return (
                       <td
                         key={d}
@@ -167,6 +191,9 @@ export function Calendario({
                         <div className="flex flex-col gap-1">
                           {del.map((o) => (
                             <Tarjeta key={o.id} o={o} mover={mover} />
+                          ))}
+                          {acompanadas.map((o) => (
+                            <Tarjeta key={`a-${o.id}`} o={o} mover={mover} acompana />
                           ))}
                         </div>
                         {f.tecnico && carga > 0 && (

@@ -327,7 +327,7 @@ export function Programar({
 }: {
   id: string
   tecnicos: Opcion[]
-  inicial: { tecnicoId: string | null; programada: string | null; hora: string | null; duracion: number }
+  inicial: { tecnicoId: string | null; programada: string | null; hora: string | null; duracion: number; acompanantes: string[] }
   hoy: string
 }) {
   const [estado, accion, enviando] = useActionState(programarAccion.bind(null, id), undefined)
@@ -361,6 +361,35 @@ export function Programar({
             ))}
           </select>
         </label>
+        {valores.tecnicoId && tecnicos.length > 1 && (
+          <fieldset className="flex flex-col gap-1 sm:col-span-2">
+            <legend className={etiqueta}>Acompañantes</legend>
+            <input type="hidden" name="conAcompanantes" value="1" />
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm">
+              {tecnicos
+                .filter((t) => t.valor !== valores.tecnicoId)
+                .map((t) => (
+                  <label key={t.valor} className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      name="acompanantes"
+                      value={t.valor}
+                      checked={valores.acompanantes.includes(t.valor)}
+                      onChange={(e) =>
+                        setValores({
+                          ...valores,
+                          acompanantes: e.target.checked
+                            ? [...valores.acompanantes, t.valor]
+                            : valores.acompanantes.filter((x) => x !== t.valor),
+                        })
+                      }
+                    />
+                    {t.texto}
+                  </label>
+                ))}
+            </div>
+          </fieldset>
+        )}
         <label className="flex flex-col gap-1">
           <span className={etiqueta}>Día</span>
           <input

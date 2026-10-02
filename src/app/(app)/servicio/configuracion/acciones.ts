@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
 import { habilitarUsuarioPortal, invitarAlPortal } from '@/modulos/portal/portal'
+import { guardarEtiqueta } from '@/modulos/servicio/etiquetas'
 
 const RUTA = '/servicio/configuracion'
 
@@ -50,4 +51,23 @@ export async function invitarPortalAccion(_: EstadoInvitacion, formData: FormDat
 export async function habilitarPortalAccion(id: string, activo: boolean) {
   await intentar(() => enLaEmpresa('servicio.configurar', (tx, s) => habilitarUsuarioPortal(tx, s.usuario.id, id, activo)))
   revalidatePath(RUTA)
+}
+
+export type EstadoEtiqueta = { ok?: string; error?: string } | undefined
+
+/** Alta o cambio de una etiqueta de órdenes. */
+export async function guardarEtiquetaAccion(id: string | null, _: EstadoEtiqueta, fd: FormData): Promise<EstadoEtiqueta> {
+  const r = await intentar(() =>
+    enLaEmpresa('servicio.configurar', (tx, s) =>
+      guardarEtiqueta(
+        tx,
+        s.usuario.id,
+        { nombre: String(fd.get('nombre') ?? ''), color: String(fd.get('color') ?? ''), activa: fd.get('activa') !== 'off' },
+        id ?? undefined,
+      ),
+    ),
+  )
+  revalidatePath(RUTA)
+  revalidatePath('/servicio', 'layout')
+  return r.ok ? { ok: 'Guardada.' } : { error: r.error }
 }

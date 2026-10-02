@@ -698,3 +698,60 @@ export const eventosGeocerca = pgTable(
     deLaEmpresa('eventos_geocerca_orden_fk', t.empresaId, t.ordenId, ordenesServicio).onDelete('cascade'),
   ],
 )
+
+/**
+ * Etiquetas de colores de las órdenes (como las de Persat): "Espera
+ * repuesto", "Garantía del fabricante", "Cliente VIP"… Una orden puede tener
+ * varias; se filtra por ellas y se ven en el listado y el calendario.
+ */
+export const etiquetasServicio = pgTable(
+  'etiquetas_servicio',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    nombre: text('nombre').notNull(),
+    color: text('color').notNull(),
+    activa: boolean('activa').notNull().default(true),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('etiquetas_servicio_nombre').on(t.empresaId, t.nombre),
+    unique('etiquetas_servicio_empresa_id').on(t.empresaId, t.id),
+    check('etiquetas_servicio_color', sql`${t.color} ~ '^#[0-9a-fA-F]{6}$'`),
+  ],
+)
+
+export const ordenesServicioEtiquetas = pgTable(
+  'ordenes_servicio_etiquetas',
+  {
+    empresaId: empresaId(),
+    ordenId: uuid('orden_id').notNull(),
+    etiquetaId: uuid('etiqueta_id').notNull(),
+  },
+  (t) => [
+    uniqueIndex('ordenes_servicio_etiquetas_pk').on(t.empresaId, t.ordenId, t.etiquetaId),
+    index().on(t.empresaId, t.etiquetaId),
+    deLaEmpresa('ordenes_servicio_etiquetas_orden_fk', t.empresaId, t.ordenId, ordenesServicio).onDelete('cascade'),
+    deLaEmpresa('ordenes_servicio_etiquetas_etiqueta_fk', t.empresaId, t.etiquetaId, etiquetasServicio).onDelete('cascade'),
+  ],
+)
+
+/**
+ * Acompañantes de una orden: técnicos que van con el responsable
+ * (`ordenes_servicio.tecnico_id`). La ven en su agenda y les ocupa el
+ * horario; el informe lo carga el responsable.
+ */
+export const ordenesServicioTecnicos = pgTable(
+  'ordenes_servicio_tecnicos',
+  {
+    empresaId: empresaId(),
+    ordenId: uuid('orden_id').notNull(),
+    tecnicoId: uuid('tecnico_id').notNull(),
+  },
+  (t) => [
+    uniqueIndex('ordenes_servicio_tecnicos_pk').on(t.empresaId, t.ordenId, t.tecnicoId),
+    index().on(t.empresaId, t.tecnicoId),
+    deLaEmpresa('ordenes_servicio_tecnicos_orden_fk', t.empresaId, t.ordenId, ordenesServicio).onDelete('cascade'),
+    deLaEmpresa('ordenes_servicio_tecnicos_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos).onDelete('cascade'),
+  ],
+)

@@ -31,6 +31,7 @@ import { cotizacionVigente } from '../comercial/cotizacion'
 import { correosDe } from '../comunicaciones/correo'
 import { emitir } from '../integraciones/webhooks'
 import { preciosVigentes } from '../maestros/articulos'
+import { acompanantesDe, etiquetasDeOrdenes, ordenesComoAcompanante, ponerAcompanantes } from './etiquetas'
 import { archivosDe, campoDe, validarValores, type Campo, type Lectura, type Material, type Valores } from './formularios'
 import {
   ABIERTAS,
@@ -282,6 +283,8 @@ const EsquemaProgramacion = z.object({
   programada: fechaOpcional,
   hora: horaOpcional,
   duracion: z.coerce.number().int().min(5).max(1440).optional(),
+  /** Técnicos que van con el responsable (si no viene, quedan los que estaban). */
+  acompanantes: z.array(z.string()).optional(),
 })
 
 /**
@@ -295,18 +298,33 @@ export async function programarOrden(tx: Transaccion, usuarioId: string, id: str
   const o = await ordenParaCambiar(tx, id)
   if (!o) return error('Esa orden de servicio ya no existe.')
   if (!estaAbierta(o.estado)) return error('Solo se programa una orden que todavía no se hizo.')
-  const d = { ...p.data, duracion: p.data.duracion ?? o.duracion }
+  const { acompanantes, ...resto } = p.data
+  const d = { ...resto, duracion: resto.duracion ?? o.duracion }
   if (d.programada && d.programada < o.fecha) return error('La visita no puede ser antes de la fecha del pedido.')
   if (d.tecnicoId) {
     const [t] = await tx.select({ activo: tecnicos.activo }).from(tecnicos).where(eq(tecnicos.id, d.tecnicoId))
     if (!t?.activo) return error('Ese técnico no está activo.')
   }
+  // Sin responsable no hay acompañantes; si no se mandan, quedan los que estaban.
+  const equipo = await ponerAcompanantes(
+    tx,
+    id,
+    d.tecnicoId ?? null,
+    !d.tecnicoId ? (acompanantes ?? []) : (acompanantes ?? (await acompanantesDe(tx, [id])).get(id)?.map((t) => t.id) ?? []),
+  )
+  if (!equipo.ok) return error(equipo.error)
   const plan = await planificacion(tx, { ...d, tipoOrdenId: o.tipoOrdenId })
   await tx
     .update(ordenesServicio)
     .set({ ...d, ...plan })
     .where(eq(ordenesServicio.id, id))
-  await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'orden_servicio', entidadId: id, despues: d })
+  await auditar(tx, {
+    usuarioId,
+    accion: 'modificacion',
+    entidad: 'orden_servicio',
+    entidadId: id,
+    despues: { ...d, acompanantes: equipo.ids },
+  })
   await emitir(tx, 'orden.programada', await datosEvento(tx, id))
   return { ok: true as const, estado: plan.estado }
 }
@@ -839,6 +857,9 @@ export type FiltroOrdenes = {
   /** activas (abiertas y en informe), un estado, cerradas, o todas */
   estado?: string
   tecnicoId?: string
+  /** Con tecnicoId: también las que acompaña. */
+  incluirAcompanante?: boolean
+  etiquetaId?: string
   equipoId?: string
   terceroId?: string
   limite?: number
@@ -900,7 +921,17 @@ export async function listarOrdenes(tx: Transaccion, filtro: FiltroOrdenes = {})
       .where(
         and(
           estado,
-          filtro.tecnicoId ? eq(ordenesServicio.tecnicoId, filtro.tecnicoId) : undefined,
+          filtro.tecnicoId
+            ? filtro.incluirAcompanante
+              ? or(
+                  eq(ordenesServicio.tecnicoId, filtro.tecnicoId),
+                  sql`exists (select 1 from ordenes_servicio_tecnicos x where x.orden_id = ${ordenesServicio.id} and x.tecnico_id = ${filtro.tecnicoId})`,
+                )
+              : eq(ordenesServicio.tecnicoId, filtro.tecnicoId)
+            : undefined,
+          filtro.etiquetaId
+            ? sql`exists (select 1 from ordenes_servicio_etiquetas x where x.orden_id = ${ordenesServicio.id} and x.etiqueta_id = ${filtro.etiquetaId})`
+            : undefined,
           filtro.equipoId ? eq(ordenesServicio.equipoId, filtro.equipoId) : undefined,
           filtro.terceroId ? eq(ordenesServicio.terceroId, filtro.terceroId) : undefined,
           q
@@ -1008,7 +1039,7 @@ export async function obtenerOrden(tx: Transaccion, id: string) {
           .where(eq(comprobantes.id, o.comprobanteId))
       : Promise.resolve([]),
   ])
-  const [tecnico, tipoOrden, plantilla, archivos, [encuesta], avisos] = await Promise.all([
+  const [tecnico, tipoOrden, plantilla, archivos, [encuesta], avisos, etiquetas, acompanantes] = await Promise.all([
     o.tecnicoId
       ? tx
           .select()
@@ -1040,9 +1071,13 @@ export async function obtenerOrden(tx: Transaccion, id: string) {
       .from(encuestas)
       .where(eq(encuestas.ordenId, id)),
     correosDe(tx, 'orden_servicio', id),
+    etiquetasDeOrdenes(tx, [id]).then((m) => m.get(id) ?? []),
+    acompanantesDe(tx, [id]).then((m) => m.get(id) ?? []),
   ])
   return {
     ...o,
+    etiquetas,
+    acompanantes,
     instrucciones: o.instrucciones as Valores,
     resultados: (o.resultados ?? null) as Valores | null,
     cliente,
@@ -1175,13 +1210,18 @@ export async function tecnicoDeUsuario(tx: Transaccion, usuario: { id: string; e
 
 /** Agenda del técnico: lo asignado y lo vencido (lo que tiene que hacer), y lo que mandó a revisar hace poco. */
 export async function agendaDelTecnico(tx: Transaccion, tecnicoId: string) {
-  const ordenes = await listarOrdenes(tx, { tecnicoId, estado: 'activas', limite: 200 })
-  return ordenes.sort(
-    (a, b) =>
-      (a.programada ?? '9999').localeCompare(b.programada ?? '9999') ||
-      (a.hora ?? '99').localeCompare(b.hora ?? '99') ||
-      a.numero - b.numero,
-  )
+  const [ordenes, acompana] = await Promise.all([
+    listarOrdenes(tx, { tecnicoId, incluirAcompanante: true, estado: 'activas', limite: 200 }),
+    ordenesComoAcompanante(tx, tecnicoId),
+  ])
+  return ordenes
+    .map((o) => ({ ...o, acompanante: o.tecnicoId !== tecnicoId && acompana.includes(o.id) }))
+    .sort(
+      (a, b) =>
+        (a.programada ?? '9999').localeCompare(b.programada ?? '9999') ||
+        (a.hora ?? '99').localeCompare(b.hora ?? '99') ||
+        a.numero - b.numero,
+    )
 }
 
 /** Datos de una orden para la API y los webhooks (sin datos internos de la empresa). */
@@ -1232,5 +1272,7 @@ export async function datosEvento(tx: Transaccion, id: string) {
     comprobanteId: o.comprobanteId,
     instrucciones: o.instrucciones,
     resultados: o.resultados,
+    acompanantes: ((await acompanantesDe(tx, [id])).get(id) ?? []).map((t) => t.nombre),
+    etiquetas: ((await etiquetasDeOrdenes(tx, [id])).get(id) ?? []).map((e) => e.nombre),
   }
 }

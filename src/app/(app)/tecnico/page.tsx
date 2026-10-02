@@ -177,6 +177,9 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
                           {o.prioridad === 'urgente' && <span className="font-semibold text-error">Urgente · </span>}
                           {o.tipoOrden ?? o.falla}
                         </span>
+                        {o.acompanante && (
+                          <span className="block text-xs text-texto-2">Acompañás a {o.tecnico ?? 'otro técnico'}</span>
+                        )}
                         {g.titulo === 'Hoy' && !!viaje.get(o.id)?.viajeMinutos && (
                           <span className="block text-xs text-texto-3">
                             {viaje.get(o.id)!.viajeMinutos} min de viaje ({viaje.get(o.id)!.viajeKm} km)

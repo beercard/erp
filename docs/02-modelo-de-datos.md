@@ -106,6 +106,8 @@ Convenciones:
 | `ordenes_servicio` | Servicio técnico: pedido del cliente sobre un equipo, técnico y día de visita, quién paga (contrato, garantía o con cargo), solución y contador al resolver. Se cancela, no se borra |
 | `ordenes_servicio_visitas` | Cada visita del técnico, con lo que hizo y las horas |
 | `ordenes_servicio_items` | Insumos, repuestos y mano de obra: un artículo con stock sale del depósito al cargarlo y vuelve si se quita. Lo que tiene precio se factura en borrador si la orden es con cargo |
+| `etiquetas_servicio`, `ordenes_servicio_etiquetas` | Etiquetas de colores de las órdenes (varias por orden), para filtrar y verlas en el calendario |
+| `ordenes_servicio_tecnicos` | Acompañantes de una orden: técnicos que van con el responsable (`ordenes_servicio.tecnico_id`); la ven en su agenda y les ocupa el horario |
 
 ## Etapa 6 y 7: fiscal, informes y contabilidad
 
