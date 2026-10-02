@@ -6,6 +6,7 @@ ERP en la nube para pymes argentinas: gestión comercial, facturación electrón
 - [Modelo de datos y etapas](docs/02-modelo-de-datos.md)
 - [Impuestos e informes (etapa 6)](docs/05-impuestos-e-informes.md)
 - [Contabilidad (etapa 7)](docs/06-contabilidad.md)
+- [Puesta en producción](docs/07-produccion.md)
 - [Diseño de la interfaz](docs/03-diseno.md)
 
 ## Desarrollo
