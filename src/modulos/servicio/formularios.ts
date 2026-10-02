@@ -71,7 +71,7 @@ export type Valores = Record<string, unknown>
 const ID = /^[a-z][a-z0-9_]{0,39}$/
 
 /** Revisa que la definición de un formulario sea usable. Devuelve el primer problema. */
-export function validarDefinicion(campos: unknown, donde: 'instrucciones' | 'devolucion'): string | null {
+export function validarDefinicion(campos: unknown, donde: 'instrucciones' | 'devolucion' | 'suelto'): string | null {
   if (!Array.isArray(campos)) return 'El formulario tiene que ser una lista de campos.'
   if (campos.length > 80) return 'El formulario no puede tener más de 80 campos.'
   const vistos = new Map<string, Campo>()
@@ -85,6 +85,9 @@ export function validarDefinicion(campos: unknown, donde: 'instrucciones' | 'dev
     if (vistos.has(c.id)) return `“${c.etiqueta}”: hay dos campos con el mismo identificador.`
     if (donde === 'instrucciones' && SOLO_DEVOLUCION.includes(c.tipo)) {
       return `“${c.etiqueta}”: ${TIPOS_CAMPO[c.tipo].toLowerCase()} va en la devolución del técnico, no en las instrucciones.`
+    }
+    if (donde === 'suelto' && (c.tipo === 'materiales' || c.tipo === 'contador')) {
+      return `“${c.etiqueta}”: ${TIPOS_CAMPO[c.tipo].toLowerCase()} solo va en la devolución de una orden.`
     }
     if (UNO_POR_FORMULARIO.includes(c.tipo) && [...vistos.values()].some((v) => v.tipo === c.tipo)) {
       return `Solo puede haber un campo de ${TIPOS_CAMPO[c.tipo].toLowerCase()} por formulario.`

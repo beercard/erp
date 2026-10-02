@@ -20,9 +20,18 @@ const control = 'h-10 w-full rounded-md border border-borde bg-superficie px-2.5
 const etiqueta = 'text-xs font-medium text-texto-2'
 type Articulo = Awaited<ReturnType<typeof buscarArticulosOrden>>[number]
 
+/** Fotos y firma de algo que no es una orden (un formulario suelto): se suben con señal, sin cola. */
+export type ArchivosExternos = {
+  subir: (clase: 'foto' | 'firma', datos: FormData) => Promise<{ ok: true; id: string } | { ok: false; error: string }>
+  quitar: (id: string) => Promise<unknown>
+  /** Ruta de donde se ven (…/{id}). */
+  ruta: string
+}
+
 export type Contexto = {
   /** Necesario para fotos, firma y materiales (se suben a la orden). */
   ordenId?: string
+  archivos?: ArchivosExternos
   equipos?: { id: string; texto: string }[]
   /** Tipos que no se dibujan (por ejemplo, el equipo, que la oficina elige arriba). */
   omitir?: Campo['tipo'][]
@@ -224,9 +233,25 @@ function CampoEditable({
     case 'materiales':
       return <Materiales campo={c} valor={(valor as Material[] | undefined) ?? []} cambiar={cambiar} ordenId={contexto.ordenId} />
     case 'fotos':
-      return <Fotos campo={c} valor={(valor as string[] | undefined) ?? []} cambiar={cambiar} ordenId={contexto.ordenId} />
+      return (
+        <Fotos
+          campo={c}
+          valor={(valor as string[] | undefined) ?? []}
+          cambiar={cambiar}
+          ordenId={contexto.ordenId}
+          externos={contexto.archivos}
+        />
+      )
     case 'firma':
-      return <CampoFirma campo={c} valor={valor as Firma | undefined} cambiar={cambiar} ordenId={contexto.ordenId} />
+      return (
+        <CampoFirma
+          campo={c}
+          valor={valor as Firma | undefined}
+          cambiar={cambiar}
+          ordenId={contexto.ordenId}
+          externos={contexto.archivos}
+        />
+      )
   }
 }
 
@@ -402,8 +427,36 @@ async function subir(
   }
 }
 
+/** Sube a la orden (con cola sin señal) o al destino externo (formulario suelto). */
+async function subirA(
+  ordenId: string | undefined,
+  externos: ArchivosExternos | undefined,
+  clase: 'foto' | 'firma',
+  blob: Blob,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  if (!externos) return subir(ordenId!, clase, blob)
+  const datos = new FormData()
+  datos.set('archivo', blob, clase === 'firma' ? 'firma.png' : 'foto.jpg')
+  try {
+    return await externos.subir(clase, datos)
+  } catch (e) {
+    if (sinConexion(e)) return { ok: false, error: 'Sin señal: probá de nuevo cuando vuelva.' }
+    throw e
+  }
+}
+
 /** Imagen de la orden: del servidor, o del celular si todavía no se subió. */
-function Imagen({ id, alt, className }: { id: string; alt: string; className: string }) {
+function Imagen({
+  id,
+  alt,
+  className,
+  ruta = '/servicio/archivo',
+}: {
+  id: string
+  alt: string
+  className: string
+  ruta?: string
+}) {
   const [local, setLocal] = useState<string | null>(null)
   useEffect(() => {
     if (!esLocal(id)) return
@@ -419,7 +472,7 @@ function Imagen({ id, alt, className }: { id: string; alt: string; className: st
       if (url) URL.revokeObjectURL(url)
     }
   }, [id])
-  const src = esLocal(id) ? local : `/servicio/archivo/${id}`
+  const src = esLocal(id) ? local : `${ruta}/${id}`
   if (!src) return <span className={`${className} grid place-items-center text-xs text-texto-3`}>…</span>
   // eslint-disable-next-line @next/next/no-img-element -- imagen privada (o guardada en el celular), servida por la ruta propia
   return <img src={src} alt={alt} className={className} />
@@ -430,24 +483,27 @@ function Fotos({
   valor,
   cambiar,
   ordenId,
+  externos,
 }: {
   campo: Campo
   valor: string[]
   cambiar: (v: unknown) => void
   ordenId?: string
+  externos?: ArchivosExternos
 }) {
+  const puede = !!(ordenId || externos)
   const [subiendo, setSubiendo] = useState(0)
   const [error, setError] = useState('')
   const maximo = c.maximo ?? 10
   async function elegir(archivos: FileList | null) {
-    if (!archivos || !ordenId) return
+    if (!archivos || !puede) return
     setError('')
     // Se suben de a una; cada una que termina se suma a las que ya estaban.
     const ids = [...valor]
     for (const archivo of [...archivos].slice(0, maximo - ids.length)) {
       setSubiendo((n) => n + 1)
       try {
-        const r = await subir(ordenId, 'foto', await achicar(archivo))
+        const r = await subirA(ordenId, externos, 'foto', await achicar(archivo))
         if (r.ok) {
           ids.push(r.id)
           cambiar([...ids])
@@ -467,13 +523,14 @@ function Fotos({
       <div className="flex flex-wrap gap-2">
         {valor.map((id) => (
           <div key={id} className="relative">
-            <Imagen id={id} alt="Foto" className="size-24 rounded-md border border-borde object-cover" />
+            <Imagen id={id} alt="Foto" ruta={externos?.ruta} className="size-24 rounded-md border border-borde object-cover" />
             <button
               type="button"
               title="Quitar la foto"
               onClick={() => {
                 cambiar(valor.filter((x) => x !== id))
                 if (esLocal(id)) void borrarArchivoLocal(id)
+                else if (externos) void externos.quitar(id).catch(() => undefined)
                 else if (ordenId) void quitarArchivoAccion(ordenId, id).catch(() => undefined)
               }}
               className="absolute top-1 right-1 grid size-7 place-items-center rounded-full bg-superficie/90 text-error"
@@ -482,7 +539,7 @@ function Fotos({
             </button>
           </div>
         ))}
-        {valor.length < maximo && ordenId && (
+        {valor.length < maximo && puede && (
           <label className="grid size-24 cursor-pointer place-items-center rounded-md border border-dashed border-borde text-texto-2 hover:bg-superficie-2">
             <span className="flex flex-col items-center gap-1 text-xs">
               <Camera aria-hidden className="size-6" />
@@ -510,11 +567,13 @@ function CampoFirma({
   valor,
   cambiar,
   ordenId,
+  externos,
 }: {
   campo: Campo
   valor: Firma | undefined
   cambiar: (v: unknown) => void
   ordenId?: string
+  externos?: ArchivosExternos
 }) {
   const lienzo = useRef<HTMLCanvasElement>(null)
   const dibujando = useRef(false)
@@ -542,11 +601,11 @@ function CampoFirma({
   }
 
   async function guardar() {
-    if (!lienzo.current || !ordenId) return
+    if (!lienzo.current || !(ordenId || externos)) return
     setGuardando(true)
     setError('')
     const blob = await new Promise<Blob | null>((ok) => lienzo.current!.toBlob(ok, 'image/png'))
-    const r = blob ? await subir(ordenId, 'firma', blob) : { ok: false as const, error: 'No se pudo leer la firma.' }
+    const r = blob ? await subirA(ordenId, externos, 'firma', blob) : { ok: false as const, error: 'No se pudo leer la firma.' }
     setGuardando(false)
     if (r.ok) cambiar({ archivoId: r.id, aclaracion })
     else setError(r.error)
@@ -559,7 +618,12 @@ function CampoFirma({
       </legend>
       {valor?.archivoId ? (
         <div className="flex items-end gap-3">
-          <Imagen id={valor.archivoId} alt="Firma" className="h-28 rounded-md border border-borde bg-white" />
+          <Imagen
+            id={valor.archivoId}
+            alt="Firma"
+            ruta={externos?.ruta}
+            className="h-28 rounded-md border border-borde bg-white"
+          />
           <Boton
             type="button"
             onClick={() => {
@@ -602,7 +666,7 @@ function CampoFirma({
             >
               <Eraser aria-hidden className="size-4" /> Borrar
             </Boton>
-            <Boton type="button" variante="primario" disabled={!trazos || guardando || !ordenId} onClick={guardar}>
+            <Boton type="button" variante="primario" disabled={!trazos || guardando || !(ordenId || externos)} onClick={guardar}>
               {guardando ? 'Guardando…' : 'Guardar la firma'}
             </Boton>
           </div>

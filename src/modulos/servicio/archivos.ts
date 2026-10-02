@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
-import { archivosServicio, ordenesServicio } from '../../db/schema'
+import { archivosServicio, enviosFormulario, ordenesServicio } from '../../db/schema'
 import { estaAbierta } from './tipos'
 
 /**
@@ -17,6 +17,48 @@ function tipoReal(datos: Buffer): 'image/jpeg' | 'image/png' | 'image/webp' | nu
   if (datos.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png'
   if (datos.subarray(0, 4).toString('ascii') === 'RIFF' && datos.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp'
   return null
+}
+
+/** Revisa tipo y tamaño mirando los bytes. */
+function controlar(datos: Buffer) {
+  if (!datos.length) return { ok: false as const, error: 'El archivo está vacío.' }
+  if (datos.length > TAMANO_MAXIMO) return { ok: false as const, error: 'La imagen es muy grande (hasta 2,5 MB).' }
+  const tipoMime = tipoReal(datos)
+  if (!tipoMime) return { ok: false as const, error: 'Solo se aceptan imágenes JPEG, PNG o WebP.' }
+  return { ok: true as const, tipoMime }
+}
+
+/** Foto o firma de un formulario suelto, mientras está en borrador. */
+export async function guardarArchivoEnvio(
+  tx: Transaccion,
+  usuarioId: string | null,
+  envioId: string,
+  clase: 'foto' | 'firma',
+  datos: Buffer,
+) {
+  const c = controlar(datos)
+  if (!c.ok) return c
+  const [e] = await tx
+    .select({ enviado: enviosFormulario.enviado })
+    .from(enviosFormulario)
+    .where(eq(enviosFormulario.id, envioId))
+  if (!e) return { ok: false as const, error: 'Ese formulario ya no existe.' }
+  if (e.enviado) return { ok: false as const, error: 'El formulario ya se envió.' }
+  const [a] = await tx
+    .insert(archivosServicio)
+    .values({ envioId, clase, tipoMime: c.tipoMime, tamano: datos.length, datos, usuarioId })
+    .returning({ id: archivosServicio.id })
+  return { ok: true as const, id: a.id }
+}
+
+export async function quitarArchivoEnvio(tx: Transaccion, envioId: string, id: string) {
+  const [e] = await tx
+    .select({ enviado: enviosFormulario.enviado })
+    .from(enviosFormulario)
+    .where(eq(enviosFormulario.id, envioId))
+  if (!e || e.enviado) return { ok: false as const, error: 'El formulario ya se envió.' }
+  await tx.delete(archivosServicio).where(and(eq(archivosServicio.id, id), eq(archivosServicio.envioId, envioId)))
+  return { ok: true as const }
 }
 
 export async function guardarArchivo(
@@ -42,7 +84,12 @@ export async function guardarArchivo(
 
 export async function leerArchivo(tx: Transaccion, id: string) {
   const [a] = await tx
-    .select({ datos: archivosServicio.datos, tipoMime: archivosServicio.tipoMime, ordenId: archivosServicio.ordenId })
+    .select({
+      datos: archivosServicio.datos,
+      tipoMime: archivosServicio.tipoMime,
+      ordenId: archivosServicio.ordenId,
+      envioId: archivosServicio.envioId,
+    })
     .from(archivosServicio)
     .where(eq(archivosServicio.id, id))
   return a ?? null

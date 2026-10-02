@@ -21,9 +21,9 @@ const control = 'h-9 rounded-md border border-borde bg-superficie px-2 text-sm f
 const etiqueta = 'text-xs font-medium text-texto-2'
 
 /** Campo en edición: los nuevos cambian su identificador con el título; los guardados lo conservan. */
-type CampoEditado = Campo & { _nuevo?: boolean }
+export type CampoEditado = Campo & { _nuevo?: boolean }
 
-const limpiar = (campos: CampoEditado[]): Campo[] =>
+export const limpiar = (campos: CampoEditado[]): Campo[] =>
   campos.map(({ _nuevo, ...c }) => {
     void _nuevo
     const x: Campo = { ...c }
@@ -146,7 +146,7 @@ export function EditorTipo({ id, inicial }: { id: string | null; inicial: DatosT
   )
 }
 
-function EditorCampos({
+export function EditorCampos({
   campos,
   cambiar,
   donde,
@@ -154,7 +154,7 @@ function EditorCampos({
 }: {
   campos: CampoEditado[]
   cambiar: (c: CampoEditado[]) => void
-  donde: 'instrucciones' | 'devolucion'
+  donde: 'instrucciones' | 'devolucion' | 'suelto'
   otros: Campo[]
 }) {
   const [nuevoTipo, setNuevoTipo] = useState<TipoCampo>('texto')
@@ -178,7 +178,9 @@ function EditorCampos({
     ;[lista[n], lista[n + d]] = [lista[n + d], lista[n]]
     cambiar(lista)
   }
-  const tipos = (Object.keys(TIPOS_CAMPO) as TipoCampo[]).filter((t) => donde === 'devolucion' || !SOLO_DEVOLUCION.includes(t))
+  const tipos = (Object.keys(TIPOS_CAMPO) as TipoCampo[]).filter((t) =>
+    donde === 'devolucion' ? true : donde === 'suelto' ? t !== 'materiales' && t !== 'contador' : !SOLO_DEVOLUCION.includes(t),
+  )
 
   return (
     <div className="flex flex-col gap-2">

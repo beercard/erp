@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronRight, MapPin, Navigation } from 'lucide-react'
+import { CheckCircle2, ChevronRight, FileText, MapPin, Navigation } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -89,6 +89,17 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
         </div>
       )}
       {datos.propio && <CompartirUbicacion />}
+      {datos.propio && (
+        <Link
+          href="/tecnico/formularios"
+          className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-borde bg-superficie px-3 py-2 text-sm hover:border-acento"
+        >
+          <span className="flex items-center gap-2">
+            <FileText aria-hidden className="size-4 text-acento" /> Formularios (checklists, relevamientos)
+          </span>
+          <ChevronRight aria-hidden className="size-4 text-texto-3" />
+        </Link>
+      )}
       {datos.ruta?.enlace && (
         <a
           href={datos.ruta.enlace}

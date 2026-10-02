@@ -65,6 +65,13 @@ const ACCIONES_CONTRATOS = [
     claves: 'agenda coordinacion asignar',
   },
   {
+    id: 'bandeja-servicio',
+    texto: 'Bandeja de entrada (formularios)',
+    href: '/servicio/bandeja',
+    icono: Wrench,
+    claves: 'formularios sueltos relevamiento checklist pedidos',
+  },
+  {
     id: 'mapa-servicio',
     texto: 'Mapa y hojas de ruta',
     href: '/servicio/mapa',

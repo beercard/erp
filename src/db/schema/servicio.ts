@@ -360,13 +360,113 @@ export const ordenesServicioItems = pgTable(
   ],
 )
 
+/**
+ * Formularios sueltos (como los de Persat): un relevamiento, un checklist de
+ * la camioneta, un pedido del cliente… que no son una orden. Cada envío cae
+ * en la bandeja de entrada con un estado de color que define la empresa.
+ */
+export const formularios = pgTable(
+  'formularios',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    codigo: text('codigo').notNull(),
+    nombre: text('nombre').notNull(),
+    descripcion: text('descripcion'),
+    /** Definición (la misma que la de los tipos de orden). Cada envío guarda la suya. */
+    campos: jsonb('campos').notNull(),
+    version: integer('version').notNull().default(1),
+    /** Pide elegir el cliente (y con eso, un equipo del cliente). */
+    pideCliente: boolean('pide_cliente').notNull().default(true),
+    /** Quién lo puede completar además de la oficina. */
+    tecnico: boolean('tecnico').notNull().default(true),
+    portal: boolean('portal').notNull().default(false),
+    color: text('color').notNull().default('#2563eb'),
+    activo: boolean('activo').notNull().default(true),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('formularios_codigo').on(t.empresaId, t.codigo),
+    unique('formularios_empresa_id').on(t.empresaId, t.id),
+    check('formularios_color', sql`${t.color} ~ '^#[0-9a-fA-F]{6}$'`),
+  ],
+)
+
+/** Estados de la bandeja de entrada (los define la empresa, con su color). */
+export const estadosBandeja = pgTable(
+  'estados_bandeja',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    nombre: text('nombre').notNull(),
+    color: text('color').notNull(),
+    orden: smallint('orden').notNull().default(0),
+    /** Un envío en un estado final ya no está pendiente. */
+    final: boolean('final').notNull().default(false),
+    /** El estado con el que entra un envío nuevo. */
+    inicial: boolean('inicial').notNull().default(false),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('estados_bandeja_nombre').on(t.empresaId, t.nombre),
+    unique('estados_bandeja_empresa_id').on(t.empresaId, t.id),
+    check('estados_bandeja_color', sql`${t.color} ~ '^#[0-9a-fA-F]{6}$'`),
+  ],
+)
+
+/** Un formulario completado. Mientras es borrador no tiene número ni estado. */
+export const enviosFormulario = pgTable(
+  'envios_formulario',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    numero: integer('numero'),
+    formularioId: uuid('formulario_id').notNull(),
+    version: integer('version').notNull(),
+    /** La definición con la que se completó (no cambia si después se edita el formulario). */
+    campos: jsonb('campos').notNull(),
+    valores: jsonb('valores').notNull().default({}),
+    terceroId: uuid('tercero_id'),
+    equipoId: uuid('equipo_id'),
+    ordenId: uuid('orden_id'),
+    /** oficina | tecnico | portal */
+    origen: text('origen').notNull().default('oficina'),
+    usuarioId: uuid('usuario_id'),
+    usuarioPortalId: uuid('usuario_portal_id'),
+    tecnicoId: uuid('tecnico_id'),
+    estadoId: uuid('estado_id'),
+    /** Nota interna de la oficina (no la ve el cliente). */
+    nota: text('nota'),
+    lat: numeric('lat', { precision: 9, scale: 6 }),
+    lng: numeric('lng', { precision: 9, scale: 6 }),
+    enviado: timestamp('enviado', { withTimezone: true }),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('envios_formulario_numero').on(t.empresaId, t.numero),
+    unique('envios_formulario_empresa_id').on(t.empresaId, t.id),
+    index().on(t.empresaId, t.estadoId),
+    index().on(t.empresaId, t.terceroId),
+    check('envios_formulario_origen', sql`${t.origen} in ('oficina', 'tecnico', 'portal')`),
+    check('envios_formulario_borrador', sql`(${t.enviado} is null) = (${t.numero} is null)`),
+    deLaEmpresa('envios_formulario_formulario_fk', t.empresaId, t.formularioId, formularios),
+    deLaEmpresa('envios_formulario_tercero_fk', t.empresaId, t.terceroId, terceros),
+    deLaEmpresa('envios_formulario_equipo_fk', t.empresaId, t.equipoId, equipos),
+    deLaEmpresa('envios_formulario_orden_fk', t.empresaId, t.ordenId, ordenesServicio),
+    deLaEmpresa('envios_formulario_tecnico_fk', t.empresaId, t.tecnicoId, tecnicos),
+    deLaEmpresa('envios_formulario_estado_fk', t.empresaId, t.estadoId, estadosBandeja),
+  ],
+)
+
 /** Fotos y firmas de las órdenes (reducidas en el celular antes de subir). */
 export const archivosServicio = pgTable(
   'archivos_servicio',
   {
     id: id(),
     empresaId: empresaId(),
-    ordenId: uuid('orden_id').notNull(),
+    /** De una orden o de un formulario suelto (uno de los dos). */
+    ordenId: uuid('orden_id'),
+    envioId: uuid('envio_id'),
     /** foto | firma */
     clase: text('clase').notNull(),
     tipoMime: text('tipo_mime').notNull(),
@@ -381,6 +481,8 @@ export const archivosServicio = pgTable(
     check('archivos_servicio_tipo', sql`${t.tipoMime} in ('image/jpeg', 'image/png', 'image/webp')`),
     check('archivos_servicio_tamano', sql`${t.tamano} between 1 and 3000000`),
     deLaEmpresa('archivos_servicio_orden_fk', t.empresaId, t.ordenId, ordenesServicio),
+    deLaEmpresa('archivos_servicio_envio_fk', t.empresaId, t.envioId, enviosFormulario).onDelete('cascade'),
+    check('archivos_servicio_de', sql`(${t.ordenId} is null) <> (${t.envioId} is null)`),
   ],
 )
 

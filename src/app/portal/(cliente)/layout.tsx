@@ -11,6 +11,7 @@ export default async function MarcoPortal({ children }: LayoutProps<'/portal'>) 
     { href: '/portal', texto: 'Inicio' },
     ...(s.ordenes ? [{ href: '/portal/pedir', texto: 'Pedir servicio' }] : []),
     ...(s.contadores ? [{ href: '/portal/contadores', texto: 'Contadores' }] : []),
+    ...(s.formularios ? [{ href: '/portal/formularios', texto: 'Formularios' }] : []),
   ]
   return (
     <div style={colores(s.color)} className="flex min-h-full flex-col">

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 
-import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, or, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
 import type { Transaccion } from '../../db/conexion'
@@ -8,7 +8,9 @@ import { comoPlataforma, conEmpresa } from '../../db/empresa'
 import {
   archivosServicio,
   empresas,
+  enviosFormulario,
   equipos,
+  formularios,
   modelosEquipo,
   ordenesServicio,
   sesionesPortal,
@@ -297,6 +299,8 @@ export type SesionPortal = {
   color: string
   ordenes: boolean
   contadores: boolean
+  /** Hay formularios habilitados para el portal. */
+  formularios: boolean
   encuesta: boolean
   usuario: { id: string; email: string; nombre: string | null }
   cliente: { id: string; razonSocial: string }
@@ -332,6 +336,14 @@ export async function leerSesionPortal(token: string | undefined): Promise<Sesio
       color: config.portalColor,
       ordenes: config.portalOrdenes,
       contadores: config.portalContadores,
+      formularios:
+        (
+          await tx
+            .select({ id: formularios.id })
+            .from(formularios)
+            .where(and(eq(formularios.portal, true), eq(formularios.activo, true)))
+            .limit(1)
+        ).length > 0,
       encuesta: config.encuesta,
       usuario: { id: s.u.id, email: s.u.email, nombre: s.u.nombre },
       cliente: { id: s.u.terceroId, razonSocial: s.cliente },
@@ -422,13 +434,22 @@ export async function ordenDelCliente(tx: Transaccion, s: SesionPortal, id: stri
   return { ...o, enlaceEncuesta: encuesta ? `/encuesta/${encuesta}` : null }
 }
 
-/** Foto o firma, solo si es de una orden del cliente. */
+/** Foto o firma, solo si es de una orden del cliente o de un formulario que mandó desde el portal. */
 export async function archivoDelCliente(tx: Transaccion, terceroId: string, id: string) {
   const [a] = await tx
     .select({ datos: archivosServicio.datos, tipoMime: archivosServicio.tipoMime })
     .from(archivosServicio)
-    .innerJoin(ordenesServicio, eq(ordenesServicio.id, archivosServicio.ordenId))
-    .where(and(eq(archivosServicio.id, id), eq(ordenesServicio.terceroId, terceroId)))
+    .leftJoin(ordenesServicio, eq(ordenesServicio.id, archivosServicio.ordenId))
+    .leftJoin(enviosFormulario, eq(enviosFormulario.id, archivosServicio.envioId))
+    .where(
+      and(
+        eq(archivosServicio.id, id),
+        or(
+          eq(ordenesServicio.terceroId, terceroId),
+          and(eq(enviosFormulario.terceroId, terceroId), eq(enviosFormulario.origen, 'portal')),
+        ),
+      ),
+    )
   return a ?? null
 }
 

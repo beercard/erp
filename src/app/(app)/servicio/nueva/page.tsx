@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -14,10 +14,10 @@ import { FormularioOrden } from '../Formularios'
 
 export const metadata: Metadata = { title: 'Nueva orden de servicio' }
 
-/** Desde la ficha de un equipo llega con ?equipo=… y queda elegido con su cliente. */
+/** Desde la ficha de un equipo llega con ?equipo=… y queda elegido con su cliente (o con ?cliente=…, desde la bandeja). */
 export default async function NuevaOrden({ searchParams }: PageProps<'/servicio/nueva'>) {
   const sesion = await paginaContratos('servicio.cargar')
-  const { equipo } = (await searchParams) as { equipo?: string }
+  const { equipo, cliente } = (await searchParams) as { equipo?: string; cliente?: string }
   const { tecnicos, tipos, desde } = await conEmpresa(sesion.empresa.id, async (tx) => ({
     tecnicos: await listarTecnicos(tx),
     tipos: await tiposParaOrden(tx),
@@ -30,7 +30,14 @@ export default async function NuevaOrden({ searchParams }: PageProps<'/servicio/
               .innerJoin(terceros, eq(terceros.id, equipos.terceroId))
               .where(eq(equipos.id, equipo))
           )[0]
-        : undefined,
+        : cliente && /^[0-9a-f-]{36}$/i.test(cliente)
+          ? (
+              await tx
+                .select({ id: sql<string | null>`null`, terceroId: terceros.id, cliente: terceros.razonSocial })
+                .from(terceros)
+                .where(eq(terceros.id, cliente))
+            )[0]
+          : undefined,
   }))
   return (
     <>

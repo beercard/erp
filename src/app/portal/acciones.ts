@@ -13,10 +13,20 @@ import {
   cargarContadores,
   cerrarSesionPortal,
   empresaDelPortal,
+  equiposDelCliente,
   ingresarAlPortal,
   pedirServicio,
   recuperarClavePortal,
 } from '@/modulos/portal/portal'
+import { guardarArchivoEnvio, quitarArchivoEnvio } from '@/modulos/servicio/archivos'
+import {
+  borradorDe,
+  descartarBorrador,
+  empezarEnvio,
+  enviarFormulario,
+  guardarBorrador,
+  type Autor,
+} from '@/modulos/servicio/sueltos'
 
 import { borrarCookiePortal, guardarCookiePortal, requerirPortal, tokenPortal } from './sesion'
 
@@ -101,4 +111,74 @@ export async function contadoresAccion(_: EstadoPortal, fd: FormData): Promise<E
   if (r.errores.length) return { error: r.errores.map((e) => `${e.serie ? `${e.serie}: ` : ''}${e.error}`).join(' ') }
   if (!r.cargadas) return { error: 'Escribí al menos un contador.' }
   return { ok: r.cargadas === 1 ? 'Contador cargado. ¡Gracias!' : `${r.cargadas} contadores cargados. ¡Gracias!` }
+}
+
+// ---------------------------------------------------------------- Formularios sueltos
+
+const autorPortal = (s: Awaited<ReturnType<typeof requerirPortal>>): Autor => ({
+  quien: 'portal',
+  usuarioPortalId: s.usuario.id,
+  terceroId: s.cliente.id,
+})
+
+export async function empezarFormularioAccion(formularioId: string) {
+  const s = await requerirPortal()
+  const r = await conEmpresa(s.empresaId, (tx) => empezarEnvio(tx, formularioId, autorPortal(s)))
+  if (!r.ok) redirect(`/portal/formularios?error=${encodeURIComponent(r.error)}`)
+  redirect(`/portal/formularios/${r.id}`)
+}
+
+export async function guardarFormularioPortalAccion(id: string, valores: unknown) {
+  const s = await requerirPortal()
+  return conEmpresa(s.empresaId, (tx) => guardarBorrador(tx, id, autorPortal(s), valores))
+}
+
+export async function subirArchivoPortalAccion(id: string, clase: 'foto' | 'firma', fd: FormData) {
+  const s = await requerirPortal()
+  const archivo = fd.get('archivo')
+  if (!(archivo instanceof File)) return { ok: false as const, error: 'Elegí la imagen.' }
+  if (clase !== 'foto' && clase !== 'firma') return { ok: false as const, error: 'Archivo inválido.' }
+  const datos = Buffer.from(await archivo.arrayBuffer())
+  return conEmpresa(s.empresaId, async (tx) =>
+    (await borradorDe(tx, id, autorPortal(s)))
+      ? guardarArchivoEnvio(tx, null, id, clase, datos)
+      : { ok: false as const, error: 'Ese formulario ya se envió.' },
+  )
+}
+
+export async function quitarArchivoPortalAccion(id: string, archivoId: string) {
+  const s = await requerirPortal()
+  return conEmpresa(s.empresaId, async (tx) =>
+    (await borradorDe(tx, id, autorPortal(s)))
+      ? quitarArchivoEnvio(tx, id, archivoId)
+      : { ok: false as const, error: 'Sin permiso.' },
+  )
+}
+
+export async function enviarFormularioPortalAccion(id: string, _: EstadoPortal, fd: FormData): Promise<EstadoPortal> {
+  const s = await requerirPortal()
+  let valores: unknown = {}
+  try {
+    valores = JSON.parse(String(fd.get('valores') || '{}'))
+  } catch {
+    return { error: 'No se pudo leer el formulario.' }
+  }
+  const r = await conEmpresa(s.empresaId, (tx) => enviarFormulario(tx, id, autorPortal(s), { valores }))
+  if (!r.ok) return { error: r.error }
+  despachar(s.empresaId)
+  redirect(`/portal/formularios?enviado=${r.numero}`)
+}
+
+export async function descartarFormularioPortalAccion(id: string) {
+  const s = await requerirPortal()
+  await conEmpresa(s.empresaId, (tx) => descartarBorrador(tx, id, autorPortal(s)))
+  redirect('/portal/formularios')
+}
+
+/** Los equipos del cliente de la sesión (el formulario no puede pedir los de otro). */
+export async function equiposPortalAccion() {
+  const s = await requerirPortal()
+  return conEmpresa(s.empresaId, async (tx) =>
+    (await equiposDelCliente(tx, s.cliente.id)).map((e) => ({ id: e.id, serie: e.serie, modelo: e.modelo, sector: e.sector })),
+  )
 }

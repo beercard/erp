@@ -7,5 +7,6 @@ export const EVENTOS = {
   'orden.cancelada': 'Se canceló una orden',
   'encuesta.respondida': 'Un cliente respondió la encuesta de satisfacción',
   'lectura.registrada': 'Se cargó un contador desde el portal o la API',
+  'formulario.enviado': 'Llegó un formulario suelto a la bandeja de entrada',
 } as const
 export type Evento = keyof typeof EVENTOS
