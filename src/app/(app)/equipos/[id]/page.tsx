@@ -2,19 +2,30 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { Aviso, Chip, EncabezadoPagina, Panel } from '@/components/ui'
+import { Wrench } from 'lucide-react'
+
+import { Aviso, BotonEnlace, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
 import { obtenerEquipo } from '@/modulos/contratos/contratos'
+import { ordenesDelEquipo } from '@/modulos/servicio/servicio'
+import { TIPOS_ORDEN } from '@/modulos/servicio/tipos'
 
 import { FormularioEquipo, FormularioLectura, RetirarEquipo } from '../../contratos/FormulariosContratos'
 import { paginaContratos } from '../../contratos/modulo'
+import { ChipEstado } from '../../servicio/ChipEstado'
 import { opcionesEquipo } from '../opciones'
 
 export const metadata: Metadata = { title: 'Equipo' }
 
-const ORIGEN: Record<string, string> = { manual: 'A mano', archivo: 'Planilla', mps: 'MPS Monitor', pymexis: 'PYMEXIS' }
+const ORIGEN: Record<string, string> = {
+  manual: 'A mano',
+  archivo: 'Planilla',
+  mps: 'MPS Monitor',
+  pymexis: 'PYMEXIS',
+  tecnico: 'Técnico',
+}
 
 export default async function Equipo({ params, searchParams }: PageProps<'/equipos/[id]'>) {
   const sesion = await paginaContratos('contratos.ver')
@@ -22,10 +33,15 @@ export default async function Equipo({ params, searchParams }: PageProps<'/equip
   const { guardado } = (await searchParams) as { guardado?: string }
   const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
     const e = await obtenerEquipo(tx, id)
-    return e ? { e, opciones: await opcionesEquipo(tx) } : null
+    if (!e) return null
+    const [opciones, ordenes] = await Promise.all([
+      opcionesEquipo(tx),
+      tienePermiso(sesion.permisos, 'servicio.ver') ? ordenesDelEquipo(tx, id) : Promise.resolve(null),
+    ])
+    return { e, opciones, ordenes }
   })
   if (!datos) notFound()
-  const { e, opciones } = datos
+  const { e, opciones, ordenes } = datos
   const editar = tienePermiso(sesion.permisos, 'contratos.editar')
   const instalado = e.estado === 'instalado'
   const hoy = hoyArgentina()
@@ -51,6 +67,14 @@ export default async function Equipo({ params, searchParams }: PageProps<'/equip
               </span>
             )}
           </>
+        }
+        acciones={
+          instalado &&
+          tienePermiso(sesion.permisos, 'servicio.cargar') && (
+            <BotonEnlace href={`/servicio/nueva?equipo=${e.id}`}>
+              <Wrench aria-hidden className="size-4" /> Orden de servicio
+            </BotonEnlace>
+          )
         }
       />
       {guardado && (
@@ -98,6 +122,38 @@ export default async function Equipo({ params, searchParams }: PageProps<'/equip
           </table>
         )}
       </Panel>
+
+      {ordenes && (
+        <Panel className="mb-4 overflow-x-auto">
+          <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">Servicio técnico</h2>
+          {ordenes.length === 0 ? (
+            <p className="p-4 text-sm text-texto-2">Sin órdenes de servicio.</p>
+          ) : (
+            <table className="w-full min-w-[620px] text-sm">
+              <tbody className="divide-y divide-borde">
+                {ordenes.map((o) => (
+                  <tr key={o.id} className="group hover:bg-superficie-2">
+                    <td className="cifras px-4 py-2">
+                      <Link href={`/servicio/${o.id}`} className="font-medium group-hover:text-acento">
+                        {o.numero}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">{o.fecha}</td>
+                    <td className="px-4 py-2">
+                      <span className="line-clamp-1">{o.falla}</span>
+                      <span className="text-xs text-texto-3">{TIPOS_ORDEN[o.tipo as keyof typeof TIPOS_ORDEN]}</span>
+                    </td>
+                    <td className="px-4 py-2">{o.tecnico ?? ''}</td>
+                    <td className="px-4 py-2">
+                      <ChipEstado estado={o.estado} cobertura={o.cobertura} facturada={!!o.comprobanteId} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      )}
 
       {editar && (
         <Panel className="mb-4 p-4">

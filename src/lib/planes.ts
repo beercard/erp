@@ -34,7 +34,7 @@ export const FUNCIONES: Record<Funcion, { nombre: string; detalle: string }> = {
   api: { nombre: 'API e integraciones', detalle: 'Acceso por API para conectar una tienda u otros sistemas.' },
   contratos: {
     nombre: 'Contratos y parque instalado',
-    detalle: 'Equipos en clientes, lecturas de contadores y facturación mensual por copias o abonos.',
+    detalle: 'Equipos en clientes, lecturas de contadores, facturación mensual por copias o abonos y servicio técnico.',
   },
   tienda: { nombre: 'Tienda online y MercadoLibre', detalle: 'Stock y precios publicados; los pedidos entran solos.' },
 }
@@ -166,6 +166,7 @@ const FUNCION_DE_MODULO: Record<string, Funcion> = {
   informes: 'informes',
   impuestos: 'informes',
   contratos: 'contratos',
+  servicio: 'contratos',
 }
 
 export function funcionDePermiso(permiso: string): Funcion | null {

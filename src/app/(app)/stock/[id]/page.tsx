@@ -21,6 +21,9 @@ const TIPOS: Record<string, string> = {
   remito: 'Remito',
   anulacion_remito: 'Anulación de remito',
   compra: 'Compra',
+  anulacion_compra: 'Anulación de compra',
+  servicio: 'Servicio técnico',
+  anulacion_servicio: 'Devuelto de servicio técnico',
 }
 
 export default async function StockArticulo({ params }: PageProps<'/stock/[id]'>) {

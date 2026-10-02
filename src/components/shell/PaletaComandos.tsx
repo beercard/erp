@@ -20,6 +20,7 @@ import {
   UserPlus,
   Users,
   Wallet,
+  Wrench,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
@@ -41,6 +42,20 @@ const ACCIONES_CONTRATOS = [
     href: '/contratos/facturar',
     icono: Receipt,
     claves: 'abonos copias excedentes',
+  },
+  {
+    id: 'servicio',
+    texto: 'Ir a servicio técnico',
+    href: '/servicio',
+    icono: Wrench,
+    claves: 'ordenes reparacion falla tecnico',
+  },
+  {
+    id: 'nueva-orden-servicio',
+    texto: 'Nueva orden de servicio',
+    href: '/servicio/nueva',
+    icono: Wrench,
+    claves: 'falla reparacion llamado tecnico',
   },
 ]
 

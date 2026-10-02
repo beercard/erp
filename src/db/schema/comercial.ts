@@ -246,7 +246,7 @@ export const movimientosStock = pgTable(
     depositoId: uuid('deposito_id').notNull(),
     /** Positiva entra, negativa sale. */
     cantidad: cantidad('cantidad').notNull(),
-    /** inicial | ajuste | transferencia | remito | anulacion_remito | compra | anulacion_compra */
+    /** inicial | ajuste | transferencia | remito | anulacion_remito | compra | anulacion_compra | servicio | anulacion_servicio */
     tipo: text('tipo').notNull(),
     origenId: uuid('origen_id'),
     observacion: text('observacion'),

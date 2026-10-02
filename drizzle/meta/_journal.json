@@ -113,6 +113,20 @@
       "when": 1790951661732,
       "tag": "0015_suscripciones",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790954020287,
+      "tag": "0016_servicio_tecnico",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790954025174,
+      "tag": "0017_servicio_tecnico_seguridad",
+      "breakpoints": true
     }
   ]
 }

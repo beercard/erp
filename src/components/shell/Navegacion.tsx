@@ -24,6 +24,7 @@ import {
   ShoppingCart,
   Users,
   Wallet,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -88,6 +89,7 @@ const CONTRATOS: { titulo: string; items: Item[] } = {
     { href: '/equipos', texto: 'Equipos', icono: Printer },
     { href: '/contratos/lecturas', texto: 'Lecturas', icono: Gauge },
     { href: '/contratos/facturar', texto: 'Facturar el mes', icono: ReceiptText },
+    { href: '/servicio', texto: 'Servicio técnico', icono: Wrench },
   ],
 }
 

@@ -174,14 +174,14 @@ export const lecturas = pgTable(
     contador: bigint('contador', { mode: 'number' }).notNull(),
     /** Copias de prueba del técnico: no se le cobran al cliente. */
     creditos: integer('creditos').notNull().default(0),
-    /** manual | archivo | mps | pymexis */
+    /** manual | archivo | mps | pymexis | tecnico */
     origen: text('origen').notNull().default('manual'),
     usuarioId: uuid('usuario_id'),
     creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex().on(t.empresaId, t.equipoId, t.fecha),
-    check('lecturas_origen', sql`${t.origen} in ('manual', 'archivo', 'mps', 'pymexis')`),
+    check('lecturas_origen', sql`${t.origen} in ('manual', 'archivo', 'mps', 'pymexis', 'tecnico')`),
     check('lecturas_positivo', sql`${t.contador} >= 0 and ${t.creditos} >= 0`),
     deLaEmpresa('lecturas_equipo_fk', t.empresaId, t.equipoId, equipos).onDelete('cascade'),
   ],

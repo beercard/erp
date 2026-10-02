@@ -78,6 +78,16 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     },
   },
   {
+    modulo: 'servicio',
+    titulo: 'Servicio técnico',
+    permisos: {
+      'servicio.ver': 'Ver las órdenes de servicio',
+      'servicio.cargar': 'Abrir, asignar y cancelar órdenes de servicio',
+      'servicio.trabajar': 'Cargar visitas, insumos usados y resolver órdenes',
+      'servicio.facturar': 'Facturar las órdenes con cargo al cliente',
+    },
+  },
+  {
     modulo: 'informes',
     titulo: 'Informes e impuestos',
     permisos: {

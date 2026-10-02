@@ -102,7 +102,10 @@ Convenciones:
 | `contratos_tarifas` | Cargo fijo, copias libres, precio por copia por tramos, color y blanco y negro, mínimo |
 | `lecturas` | Contador de cada equipo por fecha: manual, desde MPS Monitor o cargada por el técnico, más las copias de prueba que no se cobran |
 | `liquidaciones` | Cálculo mensual de cada contrato, que genera las facturas |
-| `ordenes_servicio` | Servicio técnico: pedido, asignación, visita, trabajos realizados e insumos consumidos |
+| `tecnicos` | Quienes atienden el servicio técnico (maestro simple de Configuración) |
+| `ordenes_servicio` | Servicio técnico: pedido del cliente sobre un equipo, técnico y día de visita, quién paga (contrato, garantía o con cargo), solución y contador al resolver. Se cancela, no se borra |
+| `ordenes_servicio_visitas` | Cada visita del técnico, con lo que hizo y las horas |
+| `ordenes_servicio_items` | Insumos, repuestos y mano de obra: un artículo con stock sale del depósito al cargarlo y vuelve si se quita. Lo que tiene precio se factura en borrador si la orden es con cargo |
 
 ## Etapa 6 y 7: fiscal, informes y contabilidad
 
