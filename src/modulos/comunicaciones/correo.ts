@@ -24,7 +24,15 @@ const MAXIMO_INTENTOS = 5
 
 export async function encolarCorreo(
   tx: Transaccion,
-  c: { para: string; asunto: string; texto: string; entidad?: string; entidadId?: string; usuarioId?: string | null },
+  c: {
+    para: string
+    asunto: string
+    texto: string
+    entidad?: string
+    entidadId?: string
+    usuarioId?: string | null
+    adjuntos?: { nombre: string; tipo: string; datos: Uint8Array }[]
+  },
 ) {
   const para = c.para.trim()
   if (!emailValido(para)) return null
@@ -37,6 +45,9 @@ export async function encolarCorreo(
       entidad: c.entidad ?? null,
       entidadId: c.entidadId ?? null,
       usuarioId: c.usuarioId ?? null,
+      adjuntos: c.adjuntos?.length
+        ? c.adjuntos.map((a) => ({ nombre: a.nombre, tipo: a.tipo, base64: Buffer.from(a.datos).toString('base64') }))
+        : null,
     })
     .returning({ id: correos.id })
   return fila.id
@@ -80,6 +91,11 @@ export async function enviarPendientes(empresaId: string, limite = 25) {
         to: c.para,
         subject: c.asunto,
         text: c.texto,
+        attachments: ((c.adjuntos ?? []) as { nombre: string; tipo: string; base64: string }[]).map((a) => ({
+          filename: a.nombre,
+          contentType: a.tipo,
+          content: Buffer.from(a.base64, 'base64'),
+        })),
       })
       await conEmpresa(empresaId, (tx) =>
         tx

@@ -7,10 +7,13 @@ import { conEmpresa } from '@/db/empresa'
 import { exigirPermiso } from '@/lib/auth/servidor'
 import { tienePermiso } from '@/lib/permisos'
 import { controlesIva } from '@/modulos/impuestos/controles'
+import { enviosDelPeriodo } from '@/modulos/impuestos/paquete'
+import { configuracion } from '@/modulos/impuestos/vencimientos'
 import { posicionIva } from '@/modulos/impuestos/posicionIva'
 import { listarPresentaciones, periodoCerrado } from '@/modulos/impuestos/presentaciones'
 
 import { nombrePeriodo, periodoPedido, pesos } from '../periodo'
+import { PaqueteContador } from '../Contador'
 import { CruceArca } from '../CruceArca'
 import { Presentaciones } from '../Presentaciones'
 import { SaldosIniciales } from '../SaldosIniciales'
@@ -24,11 +27,13 @@ const ALICUOTAS = ['27', '21', '10,5', '5', '2,5', '0']
 export default async function Iva({ searchParams }: PageProps<'/impuestos/iva'>) {
   const sesion = await exigirPermiso('impuestos.libros')
   const periodo = periodoPedido(((await searchParams) as { periodo?: string }).periodo)
-  const { p, lista, cerrado, controles } = await conEmpresa(sesion.empresa.id, async (tx) => ({
+  const { p, lista, cerrado, controles, envios, cfg } = await conEmpresa(sesion.empresa.id, async (tx) => ({
     p: await posicionIva(tx, periodo),
     lista: await listarPresentaciones(tx, 'iva_digital', periodo),
     cerrado: await periodoCerrado(tx, 'iva_digital', periodo),
     controles: await controlesIva(tx, periodo),
+    envios: await enviosDelPeriodo(tx, periodo),
+    cfg: await configuracion(tx),
   }))
   const errores = controles.filter((c) => c.gravedad === 'error').length
   const avisos = controles.length - errores
@@ -196,6 +201,10 @@ export default async function Iva({ searchParams }: PageProps<'/impuestos/iva'>)
           cerrado.
         </p>
         <Presentaciones lista={lista} puede={tienePermiso(sesion.permisos, 'impuestos.libros')} />
+      </Panel>
+      <Panel className="mt-4">
+        <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">Paquete para el contador</h2>
+        <PaqueteContador periodo={periodo} email={cfg.emailContador} envios={envios} />
       </Panel>
     </>
   )

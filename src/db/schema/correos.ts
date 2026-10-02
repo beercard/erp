@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { check, index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 import { empresaId, id } from './comunes'
 
@@ -17,6 +17,8 @@ export const correos = pgTable(
     para: text('para').notNull(),
     asunto: text('asunto').notNull(),
     texto: text('texto').notNull(),
+    /** Archivos adjuntos [{ nombre, tipo, base64 }] (chicos: el paquete del contador, un certificado). */
+    adjuntos: jsonb('adjuntos'),
     /** Qué lo generó (orden_servicio, recordatorio…) y su id, para mostrarlo en la ficha. */
     entidad: text('entidad'),
     entidadId: uuid('entidad_id'),

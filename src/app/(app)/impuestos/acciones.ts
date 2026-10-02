@@ -1,8 +1,19 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 
+import { presentaciones } from '@/db/schema'
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
+import { enviarPendientes } from '@/modulos/comunicaciones/correo'
+import { alPresentarIva, enviarPaquete } from '@/modulos/impuestos/paquete'
+import {
+  ajustarFecha,
+  guardarConfiguracion as guardarConfiguracionImpuestos,
+  guardarObligacion,
+  marcarCumplida,
+} from '@/modulos/impuestos/vencimientos'
 import { leerMisComprobantes, registrarFaltantes, type FilaArca } from '@/modulos/compras/misComprobantes'
 import { cruceCompras, type ResultadoCruce } from '@/modulos/impuestos/cruceArca'
 import { guardarSaldosIniciales } from '@/modulos/impuestos/posicionIva'
@@ -26,7 +37,21 @@ export async function presentadaAccion(id: string, _: Estado, fd: FormData): Pro
     ),
   )
   revalidatePath('/impuestos', 'layout')
-  return r.ok ? { ok: 'Marcada como presentada: el período quedó cerrado.' } : { error: r.error }
+  if (!r.ok) return { error: r.error }
+  // Libro IVA presentado: si está configurado, el paquete del mes sale para el contador.
+  const envio = await intentar(() =>
+    enLaEmpresa('impuestos.libros', async (tx, s) => {
+      const [p] = await tx.select().from(presentaciones).where(eq(presentaciones.id, id))
+      if (p?.impuesto !== 'iva_digital') return null
+      const r2 = await alPresentarIva(tx, s.empresa.id, s.usuario.id, p.periodo)
+      return r2?.ok ? { para: r2.para, empresaId: s.empresa.id } : null
+    }),
+  )
+  if (envio && 'para' in envio) {
+    after(() => enviarPendientes(envio.empresaId).catch(() => undefined))
+    return { ok: `Marcada como presentada: el período quedó cerrado. El paquete del mes salió para ${envio.para}.` }
+  }
+  return { ok: 'Marcada como presentada: el período quedó cerrado.' }
 }
 
 export async function reabrirAccion(id: string, _: Estado, fd: FormData): Promise<Estado> {
@@ -91,4 +116,65 @@ export async function registrarFaltantesIvaAccion(periodo: string, filas: FilaAr
   revalidatePath('/impuestos/iva')
   revalidatePath('/compras')
   return { filas, cruce: r.cruce, registrados: r.registrados, avisos: r.errores }
+}
+
+// ---------------------------------------------------------------- Vencimientos y contador
+
+export async function configuracionImpuestosAccion(_: Estado, fd: FormData): Promise<Estado> {
+  const r = await intentar(() =>
+    enLaEmpresa('impuestos.libros', (tx, s) =>
+      guardarConfiguracionImpuestos(tx, s.usuario.id, {
+        emailContador: String(fd.get('emailContador') ?? ''),
+        emailAvisos: String(fd.get('emailAvisos') ?? ''),
+        avisarDias: String(fd.get('avisarDias') ?? '3'),
+        paqueteAlPresentar: fd.get('paqueteAlPresentar') === 'on',
+      }),
+    ),
+  )
+  revalidatePath('/impuestos/vencimientos')
+  return r.ok ? { ok: 'Guardado.' } : { error: r.error }
+}
+
+export async function obligacionAccion(id: string | null, _: Estado, fd: FormData): Promise<Estado> {
+  const r = await intentar(() =>
+    enLaEmpresa('impuestos.libros', (tx, s) =>
+      guardarObligacion(
+        tx,
+        s.usuario.id,
+        {
+          nombre: String(fd.get('nombre') ?? ''),
+          impuesto: String(fd.get('impuesto') ?? 'otro'),
+          dia: String(fd.get('dia') ?? ''),
+          activa: fd.get('activa') === null ? true : fd.get('activa') === 'on',
+        },
+        id ?? undefined,
+      ),
+    ),
+  )
+  revalidatePath('/impuestos/vencimientos')
+  return r.ok ? { ok: 'Guardado.' } : { error: r.error }
+}
+
+export async function fechaVencimientoAccion(id: string, fecha: string) {
+  const r = await intentar(() => enLaEmpresa('impuestos.libros', (tx, s) => ajustarFecha(tx, s.usuario.id, id, fecha)))
+  revalidatePath('/impuestos/vencimientos')
+  return r
+}
+
+export async function cumplidaAccion(id: string, cumplida: boolean) {
+  await intentar(() => enLaEmpresa('impuestos.libros', (tx, s) => marcarCumplida(tx, s.usuario.id, id, cumplida)))
+  revalidatePath('/impuestos/vencimientos')
+}
+
+export async function enviarPaqueteAccion(periodo: string): Promise<Estado> {
+  const r = await intentar(() =>
+    enLaEmpresa('impuestos.libros', async (tx, s) => {
+      const e = await enviarPaquete(tx, s.empresa.id, s.usuario.id, periodo)
+      return e.ok ? { ...e, empresaId: s.empresa.id } : e
+    }),
+  )
+  if (!r.ok) return { error: r.error }
+  after(() => enviarPendientes(r.empresaId).catch(() => undefined))
+  revalidatePath('/impuestos/iva')
+  return { ok: `El paquete salió para ${r.para}.` }
 }

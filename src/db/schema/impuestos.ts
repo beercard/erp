@@ -1,5 +1,20 @@
 import { sql } from 'drizzle-orm'
-import { check, customType, index, jsonb, pgTable, smallint, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  check,
+  customType,
+  date,
+  foreignKey,
+  index,
+  jsonb,
+  pgTable,
+  smallint,
+  text,
+  timestamp,
+  unique,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
 
 import { empresaId, id, importe, marcasDeTiempo } from './comunes'
 
@@ -82,4 +97,96 @@ export const saldosIva = pgTable(
     check('saldos_iva_periodo_valido', sql`${t.periodo} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
     check('saldos_iva_positivos', sql`${t.tecnico} >= 0 and ${t.libre} >= 0`),
   ],
+)
+
+/** Configuración de impuestos de la empresa: a quién avisar y el contador. */
+export const configuracionImpuestos = pgTable(
+  'configuracion_impuestos',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    /** Email del estudio contable: recibe el paquete del mes. */
+    emailContador: text('email_contador'),
+    /** Quién recibe los avisos de vencimientos (si no, el contador). */
+    emailAvisos: text('email_avisos'),
+    /** Días antes del vencimiento para avisar. */
+    avisarDias: smallint('avisar_dias').notNull().default(3),
+    /** Al marcar presentado el Libro IVA, mandar el paquete del mes al contador. */
+    paqueteAlPresentar: boolean('paquete_al_presentar').notNull().default(true),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('configuracion_impuestos_empresa').on(t.empresaId),
+    check('configuracion_impuestos_dias', sql`${t.avisarDias} between 0 and 15`),
+  ],
+)
+
+/**
+ * Obligaciones fiscales con vencimiento mensual. Las de IVA y SICORE se dan
+ * por cumplidas solas cuando el período se marca presentado; las demás, a
+ * mano. El día es el del mes siguiente al período (si cae en fin de semana,
+ * se corre al lunes); cada vencimiento se puede corregir con la fecha exacta
+ * del calendario de ARCA o del fisco provincial.
+ */
+export const obligaciones = pgTable(
+  'obligaciones',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    /** iva_digital | sicore | iibb | otro */
+    impuesto: text('impuesto').notNull(),
+    nombre: text('nombre').notNull(),
+    dia: smallint('dia').notNull(),
+    activa: boolean('activa').notNull().default(true),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('obligaciones_nombre').on(t.empresaId, t.nombre),
+    unique('obligaciones_empresa_id').on(t.empresaId, t.id),
+    check('obligaciones_impuesto', sql`${t.impuesto} in ('iva_digital', 'sicore', 'iibb', 'otro')`),
+    check('obligaciones_dia', sql`${t.dia} between 1 and 31`),
+  ],
+)
+
+export const vencimientos = pgTable(
+  'vencimientos',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    obligacionId: uuid('obligacion_id').notNull(),
+    periodo: text('periodo').notNull(),
+    fecha: date('fecha').notNull(),
+    /** La fecha se corrigió a mano (no se recalcula). */
+    ajustada: boolean('ajustada').notNull().default(false),
+    /** Cumplida a mano (IIBB y otras); IVA y SICORE salen de las presentaciones. */
+    cumplida: timestamp('cumplida', { withTimezone: true }),
+    avisado: timestamp('avisado', { withTimezone: true }),
+    avisadoVencido: timestamp('avisado_vencido', { withTimezone: true }),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex('vencimientos_periodo').on(t.empresaId, t.obligacionId, t.periodo),
+    index().on(t.empresaId, t.fecha),
+    foreignKey({
+      name: 'vencimientos_obligacion_fk',
+      columns: [t.empresaId, t.obligacionId],
+      foreignColumns: [obligaciones.empresaId, obligaciones.id],
+    }).onDelete('cascade'),
+  ],
+)
+
+/** Paquetes del mes mandados al contador (para no mandarlos dos veces solos). */
+export const enviosContador = pgTable(
+  'envios_contador',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    periodo: text('periodo').notNull(),
+    para: text('para').notNull(),
+    correoId: uuid('correo_id'),
+    automatico: boolean('automatico').notNull().default(false),
+    usuarioId: uuid('usuario_id'),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.empresaId, t.periodo)],
 )

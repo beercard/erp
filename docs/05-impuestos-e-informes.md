@@ -26,6 +26,19 @@ Cada descarga queda en `presentaciones` con el archivo exacto. Al marcarla prese
 - Para corregir se reabre con un motivo (queda en la auditoría) y la siguiente descarga es la rectificativa (secuencia 1, 2…).
 - Lo presentado no se borra (la base no lo permite).
 
+## Vencimientos (`/impuestos/vencimientos`)
+
+- Obligaciones con vencimiento mensual: arranca con IVA, SICORE e IIBB con días aproximados según la terminación del CUIT (el calendario oficial cambia cada año: cada fecha se corrige con un clic) y se pueden sumar otras (autónomos, cargas sociales…).
+- El vencimiento es el día del mes siguiente al período; si cae sábado o domingo pasa al lunes (los feriados no se calculan: se corrige la fecha).
+- IVA y SICORE quedan presentados solos cuando el período se marca presentado; IIBB y las demás se marcan cumplidas a mano.
+- La tarea programada (`POST /api/cron/servicio`) crea los vencimientos y manda un email unos días antes de cada uno que no esté presentado, y otro si se pasó la fecha. Cada aviso sale una vez.
+
+## Paquete para el contador
+
+- Un .zip con el Libro IVA Digital (el archivo presentado, si ya está), los subdiarios, IIBB, retenciones, SICORE y un `LEEME.txt` con la posición de IVA, los saldos que pasan al mes siguiente y los controles pendientes.
+- Se baja desde IVA o se manda adjunto al email del contador. Si está configurado, sale solo al marcar presentado el Libro IVA.
+- Rol de sistema **Contador**: ve todas las operaciones, genera libros, presentaciones e informes, y no carga ni modifica nada. Se le da al estudio desde Configuración › Usuarios.
+
 ## Ingresos Brutos (`/impuestos/iibb`)
 
 - Ventas netas del mes por provincia del cliente, con su porcentaje: ayuda para el Convenio Multilateral (el coeficiente unificado lo define el contador).

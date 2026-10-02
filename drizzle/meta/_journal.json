@@ -225,6 +225,20 @@
       "when": 1790966733916,
       "tag": "0031_saldos_iva_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790967611274,
+      "tag": "0032_vencimientos_contador",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790967612917,
+      "tag": "0033_vencimientos_contador_seguridad",
+      "breakpoints": true
     }
   ]
 }
