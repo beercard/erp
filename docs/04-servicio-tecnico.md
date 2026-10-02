@@ -137,6 +137,8 @@ Marcas: **[doc]** confirmado en la ayuda o la API; **[mkt]** solo en marketing; 
 
 Relevado de la documentación completa de la API (`docs.api.persat.com.ar`, 186 páginas). Para ver la configuración real de una cuenta: `npm run persat:relevar` con `PERSAT_API_KEY` (solo hace GET; deja todo en `.data/persat/`, fuera de git). La clave de Persat tiene acceso total (puede borrar clientes con su historial): no usarla para escribir.
 
+**Enfoque (acordado en octubre de 2026):** no copiar a Persat función por función. El objetivo es que quien hoy usa Persat (1) pueda migrar sin perder historia, (2) encuentre lo que usa todos los días (lo decide el relevamiento de cuentas reales, no la lista completa de la API) y (3) tenga una razón para quedarse: todo en un solo sistema con facturación, stock y contratos. Se replican funciones, nunca textos, nombres, pantallas ni marca de Persat: los mensajes al cliente se escriben propios. Quedan afuera por ahora la app nativa de Android, el módulo de entregas y logística, el GPS de vehículos con hardware, el asistente de IA por WhatsApp y los permisos sueltos.
+
 Por prioridad:
 
 1. **Importar desde Persat** clientes (con campos propios, grupos y tipos), objetos en cliente (equipos), catálogos, técnicos y el historial de OT con sus formularios y PDF, para dejar Persat sin perder historia. Necesita la clave para validar contra datos reales.
