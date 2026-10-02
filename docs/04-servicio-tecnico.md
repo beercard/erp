@@ -98,6 +98,7 @@ Marcas: **[doc]** confirmado en la ayuda o la API; **[mkt]** solo en marketing; 
 | Formularios sueltos con bandeja de entrada                              | Sí                   | Oficina, técnico y portal; estados de color             | Hecho                           |
 | Reportes por formulario a Excel                                         | Sí                   | Tipos de orden y formularios, columna por campo         | Hecho                           |
 | Asistente de IA sobre los datos, WhatsApp                               | Aparte               | No                                                      | Fase C                          |
+| Enlace público de seguimiento (sin usuario)                             | Sí                   | Pasos, técnico y "en camino" con distancia y minutos    | Hecho (fase E)                  |
 
 ## 3. Decisiones de diseño
 
@@ -125,3 +126,23 @@ Marcas: **[doc]** confirmado en la ayuda o la API; **[mkt]** solo en marketing; 
 - Jornada y geocercas: el técnico ficha la entrada y la salida en Mi agenda (al empezar se comparte la ubicación). Con cada posición se registra la entrada y la salida del lugar de cada orden del día (radio en Servicio técnico › Configuración, 150 m por defecto, con margen para que el GPS no rebote); se ve en la orden. Las posiciones se guardan 30 días: el mapa muestra el recorrido del día y `/servicio/jornadas` resume horas, km, visitas y tiempo en clientes, con descarga a Excel.
 - Reportes a Excel: en cada tipo de orden ("Órdenes en Excel") y en cada formulario suelto, una fila por orden o envío y una columna por campo (de todas las versiones). Los .xlsx se arman sin dependencias (`src/lib/xlsx.ts`).
 - Sin señal: la app del técnico se puede instalar (manifest y service worker). Lo visto queda guardado en el celular; la llegada, las fotos, la firma y el informe cargados sin señal quedan en una cola y se mandan solos al volver. El borrador del informe se guarda mientras se escribe.
+- Enlace de seguimiento (fase E): `/seguimiento/<empresa>.<orden>.<firma>`, sin usuario. La firma es un HMAC del id de la orden con `ERP_CLAVE_MAESTRA`: el enlace es siempre el mismo, no se guarda y no se puede adivinar ni adulterar. Muestra los pasos de la orden y, el día de la visita, si el técnico compartió su ubicación en los últimos 10 minutos y todavía no llegó, la distancia y los minutos estimados (nunca su posición). Va en el aviso de la visita (con `APP_URL` en los automáticos) y se copia desde la orden ("Enlace de seguimiento"). La página se actualiza sola cada minuto.
+
+## 5. Lo que falta frente a la API de Persat (relevamiento de octubre de 2026)
+
+Relevado de la documentación completa de la API (`docs.api.persat.com.ar`, 186 páginas). Para ver la configuración real de una cuenta: `npm run persat:relevar` con `PERSAT_API_KEY` (solo hace GET; deja todo en `.data/persat/`, fuera de git). La clave de Persat tiene acceso total (puede borrar clientes con su historial): no usarla para escribir.
+
+Por prioridad:
+
+1. **Importar desde Persat** clientes (con campos propios, grupos y tipos), objetos en cliente (equipos), catálogos, técnicos y el historial de OT con sus formularios y PDF, para dejar Persat sin perder historia. Necesita la clave para validar contra datos reales.
+2. ~~Enlace público de seguimiento~~ (hecho).
+3. **Etiquetas de colores en las órdenes**, para filtrar y ver en el calendario.
+4. **Varios técnicos por orden**: responsable y acompañantes, en la agenda de cada uno.
+5. **Historial de estados de los formularios** (quién y cuándo) y **cambio de estado masivo** en la bandeja.
+6. **Grupos de clientes que limitan qué ve cada usuario.**
+7. **Horario laboral por día** (licencias, feriados, horarios especiales) además del semanal, para el asistente de huecos.
+8. **Zonas de trabajo por técnico** con alertas de salida de zona, y **visitas detectadas por GPS** a cualquier cliente (no solo a las órdenes del día).
+9. **Recerrar una orden cerrada** (cambiar el tipo de cierre sin reabrirla).
+10. **Entregas y rutas** (logística con ventanas horarias, capacidad y retrabajos): solo si la cuenta lo usa; el relevamiento lo dice.
+
+Lo que Persat no tiene y el ERP sí: lógica condicional en formularios, preventivo por contador de copias, historial por equipo, stock real de materiales, facturación y contratos, webhooks firmados (los de Persat no tienen firma documentada) y OT con prioridad y SLA.

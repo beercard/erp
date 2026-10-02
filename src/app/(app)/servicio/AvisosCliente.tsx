@@ -1,18 +1,19 @@
 'use client'
 
-import { Copy, Mail, MessageCircle } from 'lucide-react'
+import { Copy, Mail, MessageCircle, Navigation } from 'lucide-react'
 import { useState, useTransition } from 'react'
 
 import { Aviso, Boton } from '@/components/ui'
 
-import { avisarClienteAccion, enlaceEncuestaAccion } from './acciones'
+import { avisarClienteAccion, enlaceEncuestaAccion, enlaceSeguimientoAccion } from './acciones'
 
 type Resultado = Awaited<ReturnType<typeof avisarClienteAccion>>
 
 /**
  * Avisos al cliente desde la orden: el de la visita programada y el de
- * trabajo terminado (con la encuesta). Encola el email si el cliente tiene y
- * deja el texto listo para WhatsApp, como hace Persat.
+ * trabajo terminado (con la encuesta), y el enlace público de seguimiento.
+ * Encola el email si el cliente tiene y deja el texto listo para WhatsApp,
+ * como hace Persat.
  */
 export function AvisosCliente({
   id,
@@ -68,6 +69,21 @@ export function AvisosCliente({
             </Boton>
           </>
         )}
+        <Boton
+          type="button"
+          disabled={enviando}
+          onClick={() =>
+            iniciar(async () => {
+              const e = await enlaceSeguimientoAccion(id)
+              if (e.ok) {
+                setEnlace(e.enlace)
+                await copiar(e.enlace, 'enlace')
+              } else setR(e)
+            })
+          }
+        >
+          <Navigation aria-hidden className="size-4" /> Enlace de seguimiento
+        </Boton>
       </div>
       {enlace && (
         <p className="text-xs break-all text-texto-2">

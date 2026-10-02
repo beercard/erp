@@ -22,6 +22,7 @@ import { emailValido, encolarCorreo, enlaceWhatsapp } from '../comunicaciones/co
 import { emitir } from '../integraciones/webhooks'
 import { sumarDias } from './agenda'
 import { obtenerConfiguracion } from './configuracion'
+import { enlaceSeguimiento } from './seguimiento'
 import { generarPreventivos } from './preventivo'
 import { marcarVencidas } from './servicio'
 
@@ -62,12 +63,13 @@ async function datosAviso(tx: Transaccion, ordenId: string) {
     .where(eq(ordenesServicio.id, ordenId))
   if (!o) return null
   const [empresa] = await tx
-    .select({ razonSocial: empresas.razonSocial, nombreFantasia: empresas.nombreFantasia })
+    .select({ id: empresas.id, razonSocial: empresas.razonSocial, nombreFantasia: empresas.nombreFantasia })
     .from(empresas)
     .where(sql`${empresas.id} = nullif(current_setting('app.empresa_id', true), '')::uuid`)
   const config = await obtenerConfiguracion(tx)
   return {
     ...o,
+    empresaId: empresa?.id ?? null,
     empresa: empresa?.nombreFantasia || empresa?.razonSocial || '',
     config,
     para: o.o.email ?? o.emailCliente,
@@ -80,17 +82,27 @@ const pie = (empresa: string, firma: string | null) => `\n\n${firma ?? empresa}`
 
 export type Aviso = { texto: string; asunto: string; para: string | null; whatsapp: string; encolado: boolean }
 
-/** Aviso de visita programada: día, hora y técnico. */
-export async function avisarVisita(tx: Transaccion, usuarioId: string, ordenId: string): Promise<Aviso | { error: string }> {
+/**
+ * Aviso de visita programada: día, hora, técnico y el enlace para seguirla
+ * (si se conoce la dirección pública del sistema: la del pedido o APP_URL).
+ */
+export async function avisarVisita(
+  tx: Transaccion,
+  usuarioId: string,
+  ordenId: string,
+  base: string | null = process.env.APP_URL ?? null,
+): Promise<Aviso | { error: string }> {
   const d = await datosAviso(tx, ordenId)
   if (!d) return { error: 'Esa orden de servicio ya no existe.' }
   if (!d.o.programada) return { error: 'La orden todavía no tiene día de visita.' }
+  const seguimiento = base && d.empresaId ? enlaceSeguimiento(base, d.empresaId, ordenId) : null
   const asunto = `Visita de servicio técnico · orden ${d.o.numero}`
   const texto =
     `Hola. Le confirmamos la visita de servicio técnico de ${d.empresa} ` +
     `para el ${fechaLarga(d.o.programada)}${d.o.hora ? ` a las ${d.o.hora}` : ''}` +
     `${d.tecnico ? `, a cargo de ${d.tecnico}` : ''}.\n` +
     `Orden N° ${d.o.numero}${d.equipo ? ` · ${d.equipo}` : ''}${d.o.domicilio ? `\nDomicilio: ${d.o.domicilio}` : ''}\n` +
+    (seguimiento ? `El día de la visita puede ver cuándo llega el técnico en: ${seguimiento}\n` : '') +
     `Si necesita cambiar el día, responda este mensaje.` +
     pie(d.empresa, d.config.firma)
   const encolado = !!(await encolarCorreo(tx, {

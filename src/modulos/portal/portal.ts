@@ -359,27 +359,7 @@ export async function cerrarSesionPortal(token: string | undefined) {
 
 // ---------------------------------------------------------------- Lo que ve el cliente
 
-export const ESTADOS_PORTAL: Record<string, string> = {
-  pendiente: 'Recibida',
-  proyectada: 'Recibida',
-  asignada: 'Visita programada',
-  vencida: 'Visita programada',
-  informe: 'Trabajo realizado',
-  cerrada_ok: 'Resuelta',
-  cerrada_desvio: 'Resuelta',
-  cerrada_no_cumplida: 'Cerrada sin resolver',
-  cancelada: 'Cancelada',
-}
-
-/** Color del estado en el portal. */
-export const tonoEstado = (estado: string): 'ok' | 'aviso' | 'neutro' =>
-  estado === 'cerrada_ok' || estado === 'cerrada_desvio'
-    ? 'ok'
-    : estado === 'cancelada' || estado === 'cerrada_no_cumplida'
-      ? 'neutro'
-      : estado === 'asignada' || estado === 'vencida'
-        ? 'aviso'
-        : 'neutro'
+export { ESTADOS_PORTAL, tonoEstado } from '../servicio/seguimiento'
 
 export async function equiposDelCliente(tx: Transaccion, terceroId: string) {
   return tx

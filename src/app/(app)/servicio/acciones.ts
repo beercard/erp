@@ -19,6 +19,7 @@ import { buscarHuecos } from '@/modulos/servicio/agenda'
 import { fichar } from '@/modulos/servicio/jornada'
 import { puntoDeOrden, registrarPosicion, ubicar, ubicarPendientes } from '@/modulos/servicio/mapa'
 import { avisarCierre, avisarVisita, crearEncuesta } from '@/modulos/servicio/avisos'
+import { enlaceSeguimiento } from '@/modulos/servicio/seguimiento'
 import { guardarConfiguracion } from '@/modulos/servicio/configuracion'
 import { guardarRecordatorio, marcarRecordatorio } from '@/modulos/servicio/recordatorios'
 import { guardarArchivo, quitarArchivo } from '@/modulos/servicio/archivos'
@@ -385,7 +386,7 @@ export async function avisarClienteAccion(id: string, tipo: 'visita' | 'cierre')
     enLaEmpresa('servicio.cargar', async (tx, s) => {
       const a =
         tipo === 'visita'
-          ? await avisarVisita(tx, s.usuario.id, id)
+          ? await avisarVisita(tx, s.usuario.id, id, base)
           : await avisarCierre(tx, s.usuario.id, id, { empresaId: s.empresa.id, base })
       if ('error' in a) return { ok: false as const, error: a.error }
       if (a.encolado) enviarDespues(s.empresa.id)
@@ -406,6 +407,14 @@ export async function enlaceEncuestaAccion(id: string) {
         ? { ok: true as const, enlace: `${base}/encuesta/${token}` }
         : { ok: false as const, error: 'La encuesta ya fue respondida.' }
     }),
+  )
+}
+
+/** Enlace público para que el cliente siga la orden (siempre el mismo). */
+export async function enlaceSeguimientoAccion(id: string) {
+  const base = await origen()
+  return intentar(() =>
+    enLaEmpresa('servicio.ver', async (_, s) => ({ ok: true as const, enlace: enlaceSeguimiento(base, s.empresa.id, id) })),
   )
 }
 
