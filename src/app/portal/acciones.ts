@@ -8,6 +8,7 @@ import { after } from 'next/server'
 import { conEmpresa } from '@/db/empresa'
 import { ipDe } from '@/lib/auth/servidor'
 import { anotar, claveIp, superado } from '@/lib/frenos'
+import { crearPago, hayPasarelas } from '@/modulos/cobros/cobros'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
 import { entregarPendientes } from '@/modulos/integraciones/webhooks'
 import {
@@ -203,4 +204,24 @@ export async function equiposPortalAccion() {
   return conEmpresa(s.empresaId, async (tx) =>
     (await equiposDelCliente(tx, s.cliente.id)).map((e) => ({ id: e.id, serie: e.serie, modelo: e.modelo, sector: e.sector })),
   )
+}
+
+/**
+ * "Pagar" desde Mi cuenta: arma un link de pago por una factura o por todo
+ * el saldo y lleva a elegir con qué pagar. Solo con la cuenta corriente
+ * habilitada y alguna pasarela conectada.
+ */
+export async function pagarDesdePortalAccion(comprobanteId: string | null) {
+  const s = await requerirPortal()
+  if (!s.cuenta) redirect('/portal')
+  const r = await conEmpresa(s.empresaId, async (tx) => {
+    if (!(await hayPasarelas(tx))) return { ok: false as const, error: 'Por ahora no hay medios de pago online.' }
+    return crearPago(tx, null, {
+      terceroId: s.cliente.id,
+      comprobanteIds: comprobanteId ? [comprobanteId] : [],
+      origen: 'portal',
+    })
+  })
+  if (!r.ok) redirect(`/portal/cuenta?error=${encodeURIComponent(r.error)}`)
+  redirect(`/pago/${r.clave}`)
 }

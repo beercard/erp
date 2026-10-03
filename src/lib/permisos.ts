@@ -38,7 +38,8 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
       'ventas.remitos': 'Emitir remitos',
       'ventas.facturar': 'Emitir facturas y notas de crédito y débito',
       'ventas.anular': 'Anular comprobantes',
-      'ventas.cobrar': 'Cargar cobranzas',
+      'ventas.cobrar': 'Cargar cobranzas y mandar links de pago',
+      'ventas.pasarelas': 'Conectar Mercado Pago, Payway, GoCuotas y Clover',
     },
   },
   {

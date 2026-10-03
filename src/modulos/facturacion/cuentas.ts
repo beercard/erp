@@ -87,7 +87,7 @@ async function disponible(tx: Transaccion, origen: { reciboId?: string; notaCred
  */
 export async function imputar(
   tx: Transaccion,
-  usuarioId: string,
+  usuarioId: string | null,
   origen: { reciboId?: string; notaCreditoId?: string },
   destinos: { comprobanteId: string; importe: string }[],
   fecha: string,
@@ -295,7 +295,8 @@ const EsquemaRecibo = z.object({
 
 export async function emitirRecibo(
   tx: Transaccion,
-  usuarioId: string,
+  /** Vacío: lo emite el sistema (por ejemplo, al aprobarse un pago online). */
+  usuarioId: string | null,
   entrada: unknown,
 ): Promise<{ ok: true; id: string; numero: number } | { ok: false; error: string }> {
   const p = EsquemaRecibo.safeParse(entrada)

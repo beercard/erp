@@ -1,13 +1,16 @@
+import { CreditCard } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-import { Chip, Panel } from '@/components/ui'
+import { Aviso, Boton, Chip, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
 import { formatearNumero } from '@/modulos/comercial/formato'
+import { hayPasarelas } from '@/modulos/cobros/cobros'
 import { cuentaCorriente } from '@/modulos/facturacion/cuentas'
 import { nombreComprobante } from '@/modulos/facturacion/tipos'
 import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 
+import { pagarDesdePortalAccion } from '../../acciones'
 import { requerirPortal } from '../../sesion'
 
 export const metadata: Metadata = { title: 'Mi cuenta' }
@@ -16,16 +19,30 @@ const pesos = (v: string | number) =>
   Number(v).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 })
 
 /** Cuenta corriente del cliente en el portal: saldo, lo que debe y los últimos movimientos. */
-export default async function MiCuenta() {
+export default async function MiCuenta({ searchParams }: PageProps<'/portal/cuenta'>) {
   const s = await requerirPortal()
   if (!s.cuenta) notFound()
-  const c = await conEmpresa(s.empresaId, (tx) => cuentaCorriente(tx, s.cliente.id))
+  const { error } = await searchParams
+  const [c, pagable] = await conEmpresa(
+    s.empresaId,
+    async (tx) => [await cuentaCorriente(tx, s.cliente.id), await hayPasarelas(tx)] as const,
+  )
   const hoy = hoyArgentina()
   const vencido = c.pendientes.filter((p) => p.vencimiento && p.vencimiento < hoy).reduce((t, p) => t + Number(p.saldo), 0)
   const saldo = Number(c.saldo)
   return (
     <>
-      <h1 className="text-xl font-semibold">Mi cuenta</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Mi cuenta</h1>
+        {pagable && saldo > 0 && (
+          <form action={pagarDesdePortalAccion.bind(null, null)}>
+            <Boton type="submit" variante="primario">
+              <CreditCard aria-hidden /> Pagar todo ({pesos(saldo)})
+            </Boton>
+          </form>
+        )}
+      </div>
+      {typeof error === 'string' && <Aviso>{error}</Aviso>}
       <div className="grid gap-3 sm:grid-cols-3">
         <Panel className="p-4">
           <p className="text-xs text-texto-2">{saldo > 0 ? 'Saldo a pagar' : saldo < 0 ? 'Saldo a tu favor' : 'Saldo'}</p>
@@ -53,6 +70,7 @@ export default async function MiCuenta() {
                 <th className="px-4 py-2 font-medium">Fecha</th>
                 <th className="px-4 py-2 font-medium">Vence</th>
                 <th className="px-4 py-2 text-right font-medium">Saldo</th>
+                {pagable && <th className="px-4 py-2" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-borde">
@@ -74,6 +92,15 @@ export default async function MiCuenta() {
                     )}
                   </td>
                   <td className="cifras px-4 py-2 text-right font-medium">{pesos(p.saldo)}</td>
+                  {pagable && (
+                    <td className="px-4 py-2 text-right">
+                      <form action={pagarDesdePortalAccion.bind(null, p.id)}>
+                        <button type="submit" className="text-sm font-medium text-acento hover:underline">
+                          Pagar
+                        </button>
+                      </form>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -94,6 +121,7 @@ export default async function MiCuenta() {
                 <th className="px-4 py-2 text-right font-medium">Debe</th>
                 <th className="px-4 py-2 text-right font-medium">Haber</th>
                 <th className="px-4 py-2 text-right font-medium">Saldo</th>
+                {pagable && <th className="px-4 py-2" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-borde">

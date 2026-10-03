@@ -21,6 +21,7 @@ import {
   HandCoins,
   Inbox,
   Landmark,
+  Link2,
   LayoutDashboard,
   Map,
   ListChecks,
@@ -164,6 +165,7 @@ export const SECCIONES: Seccion[] = [
     items: [
       { href: '/facturas', permiso: 'ventas.ver', texto: 'Facturas y notas', icono: Receipt, funcion: 'facturacion' },
       { href: '/cobranzas', permiso: 'ventas.ver', texto: 'Cobranzas', icono: Wallet, funcion: 'facturacion' },
+      { href: '/cobros-online', permiso: 'ventas.ver', texto: 'Links de pago', icono: Link2, funcion: 'facturacion' },
       { href: '/cuentas', permiso: 'ventas.ver', texto: 'Cuentas corrientes', icono: BookOpen, funcion: 'facturacion' },
     ],
   },

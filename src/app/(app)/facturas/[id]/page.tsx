@@ -1,4 +1,4 @@
-import { ChevronLeft, FileMinus, FilePlus, Pencil, Printer, Send, Trash2, Wallet } from 'lucide-react'
+import { ChevronLeft, FileMinus, FilePlus, Pencil, Printer, Send, Trash2, Link2, Wallet } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -6,6 +6,8 @@ import QRCode from 'qrcode'
 
 import { ChipEstado, VistaDocumento } from '@/components/comercial/VistaDocumento'
 import { Aviso, Boton, BotonEnlace, EncabezadoPagina, Panel } from '@/components/ui'
+
+import { linkDeFacturaAccion } from '../../cobros-online/acciones'
 import { arcaConfiguracion } from '@/db/schema'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
@@ -220,9 +222,16 @@ export default async function Comprobante({ params, searchParams }: PageProps<'/
                 Saldo pendiente: <span className="cifras font-medium">{formatearMonto(deuda.saldo, '$')}</span>
               </p>
               {Number(deuda.saldo) > 0 && tienePermiso(sesion.permisos, 'ventas.cobrar') && (
-                <BotonEnlace href={`/cobranzas/nueva?cliente=${c.terceroId}`} className="justify-center">
-                  <Wallet aria-hidden className="size-4" /> Cobrar
-                </BotonEnlace>
+                <>
+                  <BotonEnlace href={`/cobranzas/nueva?cliente=${c.terceroId}`} className="justify-center">
+                    <Wallet aria-hidden className="size-4" /> Cobrar
+                  </BotonEnlace>
+                  <form action={linkDeFacturaAccion.bind(null, c.terceroId, c.id)}>
+                    <Boton type="submit" variante="fantasma" className="w-full justify-center">
+                      <Link2 aria-hidden className="size-4" /> Link de pago
+                    </Boton>
+                  </form>
+                </>
               )}
             </Panel>
           )}

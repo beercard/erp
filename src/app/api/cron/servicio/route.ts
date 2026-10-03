@@ -11,6 +11,7 @@ import { liquidarPendientes } from '@/modulos/contabilidad/cierre'
 import { avisarVencimientos } from '@/modulos/impuestos/vencimientos'
 import { ponerAlDia } from '@/modulos/servicio/avisos'
 import { limpiarFrenos } from '@/lib/frenos'
+import { revisarPendientes } from '@/modulos/cobros/cobros'
 import { resumenDiario } from '@/modulos/crm/extras'
 import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
 
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
     webhooks: 0,
     pedidosTiendas: 0,
     resumenesCrm: 0,
+    pagosOnline: 0,
     errores: 0,
   }
   await limpiarFrenos().catch(() => undefined)
@@ -66,6 +68,8 @@ export async function POST(request: Request) {
       })
       // CRM: resumen diario de actividades, desde las 8 de la mañana (hora argentina).
       if (horaArgentina() >= 8) resultado.resumenesCrm += (await conEmpresa(e.id, (tx) => resumenDiario(tx, e.id))).enviados
+      // Links de pago: vence los viejos y confirma los que se pagaron sin aviso.
+      resultado.pagosOnline += (await revisarPendientes(e.id)).aprobados
       resultado.enviados += (await enviarPendientes(e.id, 100)).enviados
       resultado.webhooks += (await entregarPendientes(e.id, 200)).entregados
       // Tiendas online: pedidos que no avisaron y stock y precios que cambiaron.
