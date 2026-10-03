@@ -2,6 +2,7 @@ import { Plus, Repeat } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import { Aviso, BotonEnlace, Chip, EncabezadoPagina, Panel, Vacio } from '@/components/ui'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
 import { fechaCorta } from '@/lib/fechas'
@@ -25,11 +26,14 @@ export default async function Recurrentes({ searchParams }: PageProps<'/facturas
         titulo="Facturas recurrentes"
         bajada="Abonos y servicios que se facturan solos cada mes (o cada 2, 3, 6 o 12): se arman el día que toca, se autorizan en ARCA y le llegan al cliente por email."
         acciones={
-          puede && (
-            <BotonEnlace href="/facturas/recurrentes/nueva" variante="primario">
-              <Plus aria-hidden className="size-4" /> Nueva recurrente
-            </BotonEnlace>
-          )
+          <div className="flex gap-2">
+            <EnlaceAyuda guia="facturacion-automatica" />
+            {puede && (
+              <BotonEnlace href="/facturas/recurrentes/nueva" variante="primario">
+                <Plus aria-hidden className="size-4" /> Nueva recurrente
+              </BotonEnlace>
+            )}
+          </div>
         }
       />
       {guardada && (

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import Link from 'next/link'
 
 import { Chip, EncabezadoPagina, Panel } from '@/components/ui'
@@ -40,6 +41,7 @@ export default async function Vencimientos() {
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="contador" />}
         titulo="Vencimientos"
         bajada="Calendario de presentaciones, avisos por email y el contador. IVA y SICORE se dan por presentados solos al marcarlos con el número de transacción."
       />

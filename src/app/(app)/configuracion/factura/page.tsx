@@ -1,4 +1,5 @@
 import { ChevronLeft } from 'lucide-react'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -19,6 +20,7 @@ export default async function LogoYDiseno() {
         <ChevronLeft aria-hidden className="size-3.5" /> Configuración
       </Link>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="diseno-factura" />}
         titulo="Logo y diseño de factura"
         bajada="Cómo se ven tus facturas, notas de crédito y débito impresas, en PDF y en el enlace que reciben tus clientes. Los datos que exige ARCA van igual en los tres diseños."
       />

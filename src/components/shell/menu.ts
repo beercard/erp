@@ -1,4 +1,5 @@
 import {
+  LifeBuoy,
   Banknote,
   BellRing,
   BookOpen,
@@ -316,6 +317,7 @@ export function rutaActiva(ruta: string, secciones: { items: Item[] }[]): string
 
 /** Ítem de configuración: va al pie del menú y como aplicación en el lanzador. */
 export const CONFIGURACION: Item = { href: '/configuracion', texto: 'Configuración', icono: Settings }
+export const AYUDA: Item = { href: '/ayuda', texto: 'Ayuda y guías', icono: LifeBuoy }
 
 /** Todas las secciones que corresponden a la empresa, en orden. */
 export function seccionesDe(funciones: string[]): Seccion[] {

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import { BotonConfirmar } from '@/components/BotonConfirmar'
 import { Aviso, Boton, EncabezadoPagina, Panel } from '@/components/ui'
 import { enLaEmpresa, exigirPermiso } from '@/lib/auth/servidor'
@@ -48,6 +49,7 @@ export default async function ConfiguracionCrm({ searchParams }: PageProps<'/crm
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="formulario-web" />}
         titulo="Configuración del CRM"
         bajada="Etapas, motivos de pérdida, plantillas de mensajes, reparto de consultas y formulario para tu sitio."
       />

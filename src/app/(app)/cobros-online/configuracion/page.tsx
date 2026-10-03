@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import { BotonConfirmar } from '@/components/BotonConfirmar'
 import { Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { cuentasTesoreria } from '@/db/schema'
@@ -41,6 +42,7 @@ export default async function MediosDePago() {
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="mercado-pago" />}
         titulo="Medios de pago online"
         bajada="Conectá las pasarelas con que tus clientes pueden pagar los links. Las claves se guardan cifradas."
       />

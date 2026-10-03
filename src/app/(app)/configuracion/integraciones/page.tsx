@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import { BotonConfirmar } from '@/components/BotonConfirmar'
 import { Boton, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
@@ -43,6 +44,7 @@ export default async function Integraciones() {
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="api" />}
         titulo="API e integraciones"
         bajada="Para conectar una tienda, un sistema de lecturas (MPS Monitor) u otro sistema: claves de la API y avisos por webhook."
       />

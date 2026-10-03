@@ -2,6 +2,7 @@ import { Download } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import { Aviso, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { enLaEmpresa, exigirPermiso } from '@/lib/auth/servidor'
 import { listarLotes } from '@/modulos/facturacion/automatica'
@@ -26,14 +27,17 @@ export default async function FacturacionMasiva() {
         titulo="Facturación masiva"
         bajada="Subí una planilla con muchas facturas: se revisan, se arman, se autorizan en ARCA y les llegan a tus clientes. Hasta 500 por planilla."
         acciones={
-          <Link
-            download
-            prefetch={false}
-            href="/facturas/masiva/modelo"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-acento hover:underline"
-          >
-            <Download aria-hidden className="size-4" /> Bajar la planilla modelo
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <EnlaceAyuda guia="facturacion-automatica" />
+            <Link
+              download
+              prefetch={false}
+              href="/facturas/masiva/modelo"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-acento hover:underline"
+            >
+              <Download aria-hidden className="size-4" /> Bajar la planilla modelo
+            </Link>
+          </div>
         }
       />
       {!o.puntosVenta.length ? (

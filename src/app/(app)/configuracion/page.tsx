@@ -11,6 +11,7 @@ import {
   Plug,
   ShieldCheck,
 } from 'lucide-react'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -100,6 +101,7 @@ export default async function Configuracion() {
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="primeros-pasos" />}
         titulo="Configuración"
         bajada="Los datos que usan todas las pantallas: depósitos, puntos de venta, listas, condiciones y más."
       />

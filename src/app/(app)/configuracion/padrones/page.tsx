@@ -1,4 +1,5 @@
 import { ChevronLeft } from 'lucide-react'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -32,6 +33,7 @@ export default async function Padrones() {
         <ChevronLeft aria-hidden className="size-3.5" /> Configuración
       </Link>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="arba" />}
         titulo="Padrones de IIBB y ARBA"
         bajada="Las alícuotas de percepción y retención de Ingresos Brutos de cada cliente y proveedor, según el padrón de cada provincia. Se usan solas al facturar y al pagar."
       />

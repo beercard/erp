@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import Link from 'next/link'
 
 import { ComparativaPlanes, pesos } from '@/components/planes/TarjetasPlanes'
@@ -62,7 +63,11 @@ export default async function Suscripcion({ searchParams }: PageProps<'/configur
 
   return (
     <>
-      <EncabezadoPagina titulo="Suscripción" bajada="Plan, aplicaciones y uso de la empresa en el sistema." />
+      <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="suscripcion" />}
+        titulo="Suscripción"
+        bajada="Plan, aplicaciones y uso de la empresa en el sistema."
+      />
       {falta && !sit.funciones.includes(falta) && (
         <div className="mb-4">
           <Aviso tono="info">
