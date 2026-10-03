@@ -1,5 +1,6 @@
 import { ChevronRight, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 import { Logo } from '@/components/sitio/Logo'
 import { Boton, Panel } from '@/components/ui'
@@ -83,9 +84,9 @@ export default async function PaginaEmpresas() {
         </div>
       </details>
       {sesion.usuario.adminPlataforma && (
-        <a href="/plataforma" className="mt-6 block tarjeta px-4 py-3 text-sm font-medium hover:border-acento">
+        <Link href="/plataforma" className="mt-6 block tarjeta px-4 py-3 text-sm font-medium hover:border-acento">
           Panel de la plataforma →
-        </a>
+        </Link>
       )}
       <form action={salir} className="mt-6">
         <Boton type="submit" variante="fantasma">
