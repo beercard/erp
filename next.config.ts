@@ -20,7 +20,8 @@ const csp = [
   "manifest-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self' https:",
+  // En desarrollo, los subdominios de prueba van por http.
+  `form-action 'self' https:${dev ? ' http:' : ''}`,
   "frame-ancestors 'none'",
   ...(dev ? [] : ['upgrade-insecure-requests']),
 ].join('; ')
@@ -32,6 +33,9 @@ const nextConfig: NextConfig = {
   // Las acciones del servidor solo se aceptan desde el mismo origen (por
   // defecto en Next); no se agregan orígenes extra.
   poweredByHeader: false,
+  // Solo en desarrollo: hosts extra para probar los subdominios de empresas
+  // (por ejemplo DEV_ORIGENES=erp.prueba,*.erp.prueba).
+  allowedDevOrigins: process.env.DEV_ORIGENES?.split(',').filter(Boolean),
   async headers() {
     return [
       {

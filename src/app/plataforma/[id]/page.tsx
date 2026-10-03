@@ -5,13 +5,17 @@ import { notFound } from 'next/navigation'
 
 import { pesos } from '@/components/planes/TarjetasPlanes'
 import { EncabezadoPagina, Panel } from '@/components/ui'
+import { comoPlataforma } from '@/db/empresa'
+import { empresas } from '@/db/schema'
 import { formatearCuit } from '@/lib/cuit'
+import { dominioEmpresas } from '@/lib/subdominio'
+import { eq } from 'drizzle-orm'
 import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 import { MESES_COBRADOS_EN_ANUAL, precioDeLista, situacion } from '@/lib/planes'
 import { historial, listarSuscripciones, suscripcionDe, usoDe } from '@/modulos/plataforma/suscripciones'
 
 import { exigirAdmin } from '../admin'
-import { FormularioPago, FormularioSuscripcionAdmin } from './FormulariosAdmin'
+import { FormularioCodigo, FormularioPago, FormularioSuscripcionAdmin } from './FormulariosAdmin'
 
 export const metadata: Metadata = { title: 'Empresa · Plataforma' }
 
@@ -22,6 +26,9 @@ export default async function EmpresaPlataforma({ params }: PageProps<'/platafor
   if (!empresa) notFound()
   const hoy = hoyArgentina()
   const [s, uso, eventos] = await Promise.all([suscripcionDe(id), usoDe(id, hoy), historial(id)])
+  const [{ codigo }] = await comoPlataforma((tx) =>
+    tx.select({ codigo: empresas.codigo }).from(empresas).where(eq(empresas.id, id)),
+  )
   const sit = situacion(s, hoy)
   const mensual = s.precioAcordado ? Number(s.precioAcordado) : precioDeLista(s)
   const periodo = s.ciclo === 'anual' ? mensual * MESES_COBRADOS_EN_ANUAL : mensual
@@ -36,6 +43,10 @@ export default async function EmpresaPlataforma({ params }: PageProps<'/platafor
         bajada={`CUIT ${formatearCuit(empresa.cuit)} · alta ${fechaCorta(empresa.alta.toISOString())} · ${uso.usuarios} usuarios, ${uso.comprobantesMes} comprobantes este mes, ${uso.puntosVenta} puntos de venta`}
       />
       {sit.aviso && <p className="text-sm text-texto-2">{sit.aviso.texto}</p>}
+      <Panel className="p-4">
+        <h2 className="mb-3 text-sm font-semibold">Dirección de ingreso</h2>
+        <FormularioCodigo key={codigo ?? ''} empresaId={id} codigo={codigo} dominio={dominioEmpresas()} />
+      </Panel>
       <Panel className="p-4">
         <h2 className="mb-3 text-sm font-semibold">Suscripción</h2>
         <FormularioSuscripcionAdmin

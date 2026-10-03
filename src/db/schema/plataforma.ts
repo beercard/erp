@@ -27,6 +27,8 @@ import { id, marcasDeTiempo } from './comunes'
 
 export const empresas = pgTable('empresas', {
   id: id(),
+  /** Código de ingreso: la empresa trabaja en <codigo>.<DOMINIO_EMPRESAS>. */
+  codigo: text('codigo').unique(),
   razonSocial: text('razon_social').notNull(),
   nombreFantasia: text('nombre_fantasia'),
   cuit: text('cuit').notNull().unique(),

@@ -72,6 +72,20 @@ describe('sesiones', () => {
     expect(ingresos.length).toBeGreaterThan(0)
   })
 
+  it('desde el subdominio de una empresa entra solo a esa, y solo si es usuario de ella', async () => {
+    const r = await iniciarSesion('beto@estudio.com', CLAVE, {}, empresaB)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect((await leerSesion(r.token))?.empresa?.id).toBe(empresaB)
+    // Ana no es usuaria de Beta: no entra (y no se crea la sesión).
+    const antes = (await base.select().from(sesiones)).length
+    expect(await iniciarSesion('ana@alfa.com', CLAVE, {}, empresaB)).toEqual({
+      ok: false,
+      error: 'Ese usuario no tiene acceso a esta empresa.',
+    })
+    expect((await base.select().from(sesiones)).length).toBe(antes)
+  })
+
   it('la base guarda solo el hash del token', async () => {
     const r = await iniciarSesion('ana@alfa.com', CLAVE)
     if (!r.ok) throw new Error('no entró')

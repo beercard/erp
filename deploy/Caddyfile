@@ -1,9 +1,32 @@
-# HTTPS automático (Let's Encrypt) para el dominio de deploy/.env.
-{$DOMINIO} {
+# HTTPS automático (Let's Encrypt).
+#   - El dominio de deploy/.env: sitio comercial, ingreso con el código de
+#     empresa y panel de la plataforma.
+#   - Un subdominio por empresa (komsa.<DOMINIO_EMPRESAS>): el certificado se
+#     saca la primera vez que alguien entra, solo si el ERP confirma que esa
+#     empresa existe (/api/dominio). Hace falta el DNS comodín
+#     *.<DOMINIO_EMPRESAS> apuntando a esta VPS.
+{
+	on_demand_tls {
+		ask http://app:3000/api/dominio
+	}
+}
+
+(erp) {
 	encode zstd gzip
 	reverse_proxy app:3000
 	# Los archivos que suben los técnicos (fotos) pueden pesar.
 	request_body {
 		max_size 25MB
 	}
+}
+
+{$DOMINIO} {
+	import erp
+}
+
+*.{$DOMINIO_EMPRESAS} {
+	tls {
+		on_demand
+	}
+	import erp
 }

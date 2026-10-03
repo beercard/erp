@@ -26,7 +26,7 @@ const EsquemaRegistro = z.object({
 
 export async function registrarCuenta(
   entrada: unknown,
-): Promise<{ ok: true; email: string; empresaId: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; email: string; empresaId: string; codigo: string } | { ok: false; error: string }> {
   const p = EsquemaRegistro.safeParse(entrada)
   if (!p.success) return { ok: false, error: p.error.issues[0].message }
   const d = p.data
@@ -55,5 +55,5 @@ export async function registrarCuenta(
     await comoPlataforma((tx) => tx.delete(usuarios).where(sql`${usuarios.id} = ${usuario.id}`))
     return empresa
   }
-  return { ok: true, email: d.email, empresaId: empresa.empresaId }
+  return { ok: true, email: d.email, empresaId: empresa.empresaId, codigo: empresa.codigo }
 }
