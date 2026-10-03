@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { JsonLd } from '@/components/sitio/JsonLd'
 import { ComparativaPlanes, pesos, TarjetasPlanes } from '@/components/planes/TarjetasPlanes'
 import {
   APLICACIONES,
@@ -12,9 +13,10 @@ import {
 } from '@/lib/planes'
 
 export const metadata: Metadata = {
-  title: 'Planes y precios',
+  title: 'Planes y precios del sistema de gestión',
   description:
-    'Sistema de gestión en la nube para pymes argentinas: facturación electrónica, stock, compras, bancos e impuestos.',
+    'Planes de Vektra ERP para pymes argentinas: gratis para facturar con ARCA y la gestión completa con stock, compras, bancos e impuestos. Probalo 30 días sin tarjeta.',
+  alternates: { canonical: '/precios' },
 }
 
 const PREGUNTAS = [
@@ -28,7 +30,7 @@ const PREGUNTAS = [
   },
   {
     p: '¿Cómo se paga?',
-    r: 'Por mes o por año, con tarjeta, débito automático o transferencia. Te facturamos con factura A o B. Los precios se actualizan cada trimestre y se avisan con 30 días.',
+    r: 'Por mes o por año, con débito automático de Mercado Pago (tarjeta o dinero en cuenta) o por transferencia. Te facturamos con factura A o B. Los precios se actualizan cada trimestre y se avisan con 30 días.',
   },
   {
     p: '¿Qué pasa si se vence el pago?',
@@ -49,26 +51,21 @@ export default async function Precios({ searchParams }: PageProps<'/precios'>) {
   const ciclo = c === 'anual' ? 'anual' : 'mensual'
   const ahorro = Math.round((1 - MESES_COBRADOS_EN_ANUAL / 12) * 100)
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 py-10 sm:px-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <Link href="/precios" className="flex items-center gap-2.5">
-          <span aria-hidden className="grid size-8 place-items-center rounded-md bg-acento text-sm font-bold text-sobre-acento">
-            E
-          </span>
-          <span className="text-base font-semibold tracking-tight">ERP</span>
-        </Link>
-        <nav className="flex items-center gap-3 text-sm">
-          <Link href="/ingresar" className="text-texto-2 hover:text-texto">
-            Ingresar
-          </Link>
-          <Link href="/registro" className="rounded-md bg-acento px-3 py-1.5 font-medium text-sobre-acento hover:opacity-90">
-            Probar gratis
-          </Link>
-        </nav>
-      </header>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 py-12 sm:px-6 sm:py-16">
+      <JsonLd
+        datos={{
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: PREGUNTAS.map((q) => ({
+            '@type': 'Question',
+            name: q.p,
+            acceptedAnswer: { '@type': 'Answer', text: q.r },
+          })),
+        }}
+      />
 
       <section className="flex flex-col items-center gap-4 text-center">
-        <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+        <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
           Toda la gestión de tu pyme en un solo sistema, en la nube
         </h1>
         <p className="max-w-2xl text-texto-2">
@@ -154,9 +151,17 @@ export default async function Precios({ searchParams }: PageProps<'/precios'>) {
         <p>
           Precios en pesos argentinos, por mes y sin IVA. Los datos son de la empresa: se pueden exportar en cualquier momento y
           se conservan al menos 12 meses después de dar de baja la suscripción. El servicio se presta con copias de seguridad
-          diarias. El texto completo de los términos y la política de privacidad se publica antes del lanzamiento.
+          diarias. Leé los{' '}
+          <Link href="/legal/terminos" className="underline">
+            términos y condiciones
+          </Link>{' '}
+          y la{' '}
+          <Link href="/legal/privacidad" className="underline">
+            política de privacidad
+          </Link>
+          .
         </p>
       </section>
-    </main>
+    </div>
   )
 }

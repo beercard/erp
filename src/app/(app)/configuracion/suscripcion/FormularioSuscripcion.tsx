@@ -15,7 +15,7 @@ import {
   type PlanId,
 } from '@/lib/planes'
 
-import { cambiarSuscripcionAccion } from './acciones'
+import { cambiarSuscripcionAccion, pagarConMercadoPagoAccion } from './acciones'
 
 const pesos = (n: number) => `$ ${Math.round(n).toLocaleString('es-AR')}`
 
@@ -155,4 +155,17 @@ function Resultado({ estado }: { estado: { error?: string; ok?: string } | undef
   if (estado?.error) return <Aviso>{estado.error}</Aviso>
   if (estado?.ok) return <Aviso tono="ok">{estado.ok}</Aviso>
   return null
+}
+
+/** Lleva a Mercado Pago a autorizar el débito automático. */
+export function PagarConMercadoPago() {
+  const [estado, accion, enviando] = useActionState(pagarConMercadoPagoAccion, undefined)
+  return (
+    <form action={accion} className="flex flex-col gap-2">
+      <Boton type="submit" variante="primario" disabled={enviando}>
+        {enviando ? 'Abriendo Mercado Pago…' : 'Pagar con Mercado Pago'}
+      </Boton>
+      {estado?.error && <Aviso>{estado.error}</Aviso>}
+    </form>
+  )
 }

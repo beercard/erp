@@ -171,6 +171,9 @@ export const suscripciones = pgTable(
     pagadoHasta: date('pagado_hasta'),
     /** Precio mensual acordado sin IVA; nulo es el de lista. */
     precioAcordado: numeric('precio_acordado', { precision: 18, scale: 2 }),
+    /** Débito automático de Mercado Pago (preapproval): su id y su estado. */
+    mpSuscripcion: text('mp_suscripcion'),
+    mpEstado: text('mp_estado'),
     observaciones: text('observaciones'),
     ...marcasDeTiempo(),
   },
@@ -207,4 +210,28 @@ export const eventosSuscripcion = pgTable(
     index().on(t.empresaId, t.creado),
     check('eventos_suscripcion_tipo', sql`${t.tipo} in ('alta', 'cambio', 'pago', 'pedido', 'nota')`),
   ],
+)
+
+/**
+ * Consultas del formulario de contacto del sitio comercial. De plataforma:
+ * las atiende Vektra. La IP se guarda resumida (hash), solo para frenar abusos.
+ */
+export const consultasSitio = pgTable(
+  'consultas_sitio',
+  {
+    id: id(),
+    nombre: text('nombre').notNull(),
+    email: text('email').notNull(),
+    telefono: text('telefono'),
+    empresa: text('empresa'),
+    rubro: text('rubro'),
+    mensaje: text('mensaje').notNull(),
+    /** Página desde la que escribió. */
+    origen: text('origen'),
+    ipHash: text('ip_hash'),
+    /** nueva | atendida */
+    estado: text('estado').notNull().default('nueva'),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.creado), index().on(t.ipHash, t.creado)],
 )

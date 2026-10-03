@@ -137,3 +137,24 @@ export function enlaceWhatsapp(telefono: string | null | undefined, texto: strin
   }
   return `https://wa.me/${n}?text=${encodeURIComponent(texto)}`
 }
+
+/**
+ * Correo de la plataforma (no de una empresa): por ejemplo, el aviso de una
+ * consulta del sitio. Sin SMTP no hace nada; un fallo no corta al que llama.
+ */
+export async function enviarDePlataforma(para: string, asunto: string, texto: string, responderA?: string) {
+  if (!correoConfigurado()) return false
+  try {
+    await smtp().sendMail({
+      from: process.env.CORREO_REMITENTE ?? 'Vektra ERP <no-responder@localhost>',
+      to: para,
+      replyTo: responderA,
+      subject: asunto,
+      text: texto,
+    })
+    return true
+  } catch (e) {
+    console.error('[correo] plataforma', e instanceof Error ? e.message : e)
+    return false
+  }
+}

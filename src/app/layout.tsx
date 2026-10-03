@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 
+import { MARCA, URL_SITIO } from '@/lib/marca'
+
 import './globals.css'
 
 const plex = IBM_Plex_Sans({
@@ -17,9 +19,14 @@ const plexMono = IBM_Plex_Mono({
   display: 'swap',
 })
 
+// Por defecto nada se indexa: el sistema es privado. El sitio comercial
+// ((sitio)/layout.tsx) y el registro lo habilitan para sus páginas.
 export const metadata: Metadata = {
-  title: { default: 'ERP', template: '%s · ERP' },
-  description: 'Gestión comercial, facturación electrónica y tesorería en la nube.',
+  metadataBase: new URL(URL_SITIO),
+  title: { default: MARCA.producto, template: `%s · ${MARCA.producto}` },
+  description:
+    'Sistema de gestión en la nube para pymes argentinas: facturación electrónica, stock, compras, bancos e impuestos.',
+  applicationName: MARCA.producto,
   robots: { index: false, follow: false },
 }
 

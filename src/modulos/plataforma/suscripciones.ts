@@ -38,9 +38,14 @@ import {
 
 type Resultado = { ok: true } | { ok: false; error: string }
 
-export async function suscripcionDe(
-  empresaId: string,
-): Promise<DatosSuscripcion & { ciclo: string; precioAcordado: string | null; observaciones: string | null }> {
+export async function suscripcionDe(empresaId: string): Promise<
+  DatosSuscripcion & {
+    ciclo: string
+    precioAcordado: string | null
+    observaciones: string | null
+    mpEstado: string | null
+  }
+> {
   const [s] = await comoPlataforma((tx) => tx.select().from(suscripciones).where(eq(suscripciones.empresaId, empresaId)))
   // Una empresa sin suscripción (no debería pasar) queda en el plan gratis.
   return (
@@ -54,6 +59,7 @@ export async function suscripcionDe(
       pagadoHasta: null,
       precioAcordado: null,
       observaciones: null,
+      mpEstado: null,
     }
   )
 }
@@ -387,7 +393,7 @@ export async function actualizarSuscripcion(adminId: string, empresaId: string, 
 
 /** Registra un pago: corre la fecha de pago un mes o un año y deja la suscripción activa. */
 export async function registrarPago(
-  adminId: string,
+  adminId: string | null,
   empresaId: string,
   entrada: { importe: string; medio: string; referencia?: string },
   hoy = hoyArgentina(),
@@ -410,7 +416,7 @@ export async function registrarPago(
 }
 
 /** Aplica un pedido pendiente (después de cobrar) o lo rechaza. */
-export async function resolverPedido(adminId: string, pedidoId: string, aceptar: boolean): Promise<Resultado> {
+export async function resolverPedido(adminId: string | null, pedidoId: string, aceptar: boolean): Promise<Resultado> {
   const [pedido] = await comoPlataforma((tx) =>
     tx
       .select()

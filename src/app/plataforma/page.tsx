@@ -8,9 +8,10 @@ import { Boton, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { formatearCuit } from '@/lib/cuit'
 import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 import { FUNCIONES, MESES_COBRADOS_EN_ANUAL, planPorId, precioDeLista, situacion, type Funcion } from '@/lib/planes'
+import { listarConsultas } from '@/modulos/plataforma/consultas'
 import { listarSuscripciones, pedidosPendientes } from '@/modulos/plataforma/suscripciones'
 
-import { resolverPedidoAccion } from './acciones'
+import { atenderConsultaAccion, resolverPedidoAccion } from './acciones'
 import { exigirAdmin } from './admin'
 
 export const metadata: Metadata = { title: 'Plataforma' }
@@ -27,7 +28,7 @@ export default async function Plataforma({ searchParams }: PageProps<'/plataform
   await exigirAdmin()
   const { estado: filtro } = (await searchParams) as { estado?: string }
   const hoy = hoyArgentina()
-  const [todas, pedidos] = await Promise.all([listarSuscripciones(), pedidosPendientes()])
+  const [todas, pedidos, consultas] = await Promise.all([listarSuscripciones(), pedidosPendientes(), listarConsultas(50)])
   const filas = todas.map((e) => {
     const datos = {
       plan: e.plan ?? 'gratis',
@@ -180,6 +181,55 @@ export default async function Plataforma({ searchParams }: PageProps<'/plataform
             ))}
           </tbody>
         </table>
+      </Panel>
+      <Panel className="overflow-x-auto">
+        <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">
+          Consultas del sitio{' '}
+          {consultas.some((c) => c.estado === 'nueva') && (
+            <Chip tono="aviso">{consultas.filter((c) => c.estado === 'nueva').length} nuevas</Chip>
+          )}
+        </h2>
+        {consultas.length === 0 ? (
+          <p className="px-4 py-6 text-sm text-texto-2">Todavía no llegó ninguna consulta.</p>
+        ) : (
+          <table className="w-full min-w-[720px] text-sm">
+            <tbody className="divide-y divide-borde">
+              {consultas.map((c) => (
+                <tr key={c.id} className={c.estado === 'nueva' ? '' : 'text-texto-3'}>
+                  <td className="cifras px-4 py-2 align-top text-xs text-texto-2">
+                    {c.creado.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                    <span className="block">{c.id.slice(0, 8).toUpperCase()}</span>
+                  </td>
+                  <td className="px-4 py-2 align-top">
+                    <span className="font-medium">{c.nombre}</span>
+                    {c.empresa && ` · ${c.empresa}`}
+                    <a href={`mailto:${c.email}`} className="block text-xs text-acento">
+                      {c.email}
+                    </a>
+                    {c.telefono && <span className="block text-xs text-texto-2">{c.telefono}</span>}
+                  </td>
+                  <td className="max-w-md px-4 py-2 align-top whitespace-pre-line">
+                    {(c.rubro || c.origen) && (
+                      <span className="mb-1 block text-xs text-texto-3">{[c.rubro, c.origen].filter(Boolean).join(' · ')}</span>
+                    )}
+                    {c.mensaje}
+                  </td>
+                  <td className="px-4 py-2 text-right align-top">
+                    {c.estado === 'nueva' ? (
+                      <form action={atenderConsultaAccion.bind(null, c.id)}>
+                        <Boton type="submit" className="h-8 px-2 text-xs">
+                          Atendida
+                        </Boton>
+                      </form>
+                    ) : (
+                      <Chip>Atendida</Chip>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Panel>
     </main>
   )

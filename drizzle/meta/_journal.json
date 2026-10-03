@@ -358,6 +358,20 @@
       "when": 1790984798462,
       "tag": "0050_tiendas_online_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1790985953328,
+      "tag": "0051_cobro_mercadopago",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1790986389226,
+      "tag": "0052_consultas_sitio",
+      "breakpoints": true
     }
   ]
 }
