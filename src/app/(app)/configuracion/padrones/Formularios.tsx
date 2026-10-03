@@ -88,7 +88,9 @@ export function ImportarPadron({ provincias, formatos }: { provincias: Provincia
       const d = await r.json()
       setEstado(
         d.ok
-          ? { ok: `Se leyeron ${d.leidos.toLocaleString('es-AR')} renglones del padrón; quedaron ${d.guardados} de tus clientes y proveedores.` }
+          ? {
+              ok: `Se leyeron ${d.leidos.toLocaleString('es-AR')} renglones del padrón; quedaron ${d.guardados} de tus clientes y proveedores.`,
+            }
           : { error: d.error },
       )
       if (d.ok) router.refresh()
