@@ -57,12 +57,15 @@ const reglas = []
 function regla(id, severidad, que, casos) {
   reglas.push({ id, severidad, que, casos })
 }
-function buscar(re, { en = () => true, excluir = () => false } = {}) {
+function buscar(re, { en = () => true, excluir = () => false, segura = () => false } = {}) {
   const casos = []
   for (const [p, t] of texto) {
     if (!en(p) || excluir(p)) continue
-    t.split('\n').forEach((l, i) => {
-      if (re.test(l) && !/^\s*(\*|\/\/)/.test(l)) casos.push(`${rel(p)}:${i + 1} — ${l.trim().slice(0, 110)}`)
+    const lineas = t.split('\n')
+    lineas.forEach((l, i) => {
+      // `segura` recibe los 8 renglones anteriores: hay patrones que se arman en un renglón y se formatean en otro.
+      if (re.test(l) && !/^\s*(\*|\/\/)/.test(l) && !segura(l, lineas.slice(Math.max(0, i - 8), i)))
+        casos.push(`${rel(p)}:${i + 1} — ${l.trim().slice(0, 110)}`)
     })
   }
   return casos
@@ -113,9 +116,10 @@ regla(
   'AVISO',
   'Fecha de negocio sacada de toISOString()/UTC: después de las 21 h da mañana. Usar hoyArgentina()/fechaCorta().',
   buscar(/^(?!.*(T12:00:00Z|Date\.UTC\()).*(toISOString\(\)\.slice\(0, ?10\)|toISOString\(\)\.split\(['"]T['"]\))/, {
-    // Aritmética sobre `${fecha}T12:00:00Z` (como sumarDias) o fechas armadas con Date.UTC es segura.
-    // Lo que queda puede ser seguro si la Date se armó así en otro renglón: confirmalo leyendo el caso.
-    excluir: (p) => rel(p) === 'src/lib/fechas.ts' || esPrueba(p),
+    // Aritmética sobre `${fecha}T12:00:00Z` (como sumarDias) o fechas armadas con Date.UTC es segura, en el mismo
+    // renglón o en los 8 anteriores (la Date se arma y después se formatea). persatApi.ts: solo una etiqueta de avance.
+    excluir: (p) => rel(p) === 'src/lib/fechas.ts' || rel(p) === 'src/modulos/importacion/persatApi.ts' || esPrueba(p),
+    segura: (_l, previas) => previas.some((x) => /T12:00:00Z|Date\.UTC\(/.test(x)),
   }),
 )
 
