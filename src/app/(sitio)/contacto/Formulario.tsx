@@ -3,6 +3,7 @@
 import { CheckCircle2 } from 'lucide-react'
 import { useActionState } from 'react'
 
+import { Antibots } from '@/components/Antibots'
 import { SOLUCIONES } from '@/components/sitio/soluciones'
 
 import { enviarConsultaAccion } from './acciones'
@@ -31,12 +32,7 @@ export function FormularioContacto({ origen }: { origen: string }) {
   return (
     <form action={accion} className="grid gap-4 rounded-xl border border-borde bg-superficie p-6 sm:grid-cols-2 sm:p-8">
       <input type="hidden" name="origen" value={origen} />
-      <div aria-hidden className="absolute -left-[9999px]">
-        <label>
-          No completar
-          <input name="sitio_web" tabIndex={-1} autoComplete="off" />
-        </label>
-      </div>
+      <Antibots />
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Nombre y apellido
         <input name="nombre" required autoComplete="name" className={campo} />

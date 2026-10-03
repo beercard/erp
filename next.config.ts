@@ -11,7 +11,9 @@ const dev = process.env.NODE_ENV === 'development'
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ''}`,
+  // Cloudflare Turnstile (desafío antibots de los formularios públicos).
+  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ''} https://challenges.cloudflare.com`,
+  'frame-src https://challenges.cloudflare.com',
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://tile.openstreetmap.org",
   "font-src 'self'",

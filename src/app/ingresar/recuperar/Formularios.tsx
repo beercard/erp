@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 
+import { Antibots } from '@/components/Antibots'
 import { Aviso, Boton, Campo } from '@/components/ui'
 
 import { cambiarAccion, pedirAccion } from './acciones'
@@ -13,6 +14,7 @@ export function PedirEnlace() {
     <form action={accion} className="flex flex-col gap-4">
       {estado?.error && <Aviso>{estado.error}</Aviso>}
       <Campo id="email" name="email" type="email" etiqueta="Email de tu cuenta" autoComplete="username" required autoFocus />
+      <Antibots />
       <Boton type="submit" variante="primario" disabled={enviando} className="h-10">
         {enviando ? 'Enviando…' : 'Mandarme el enlace'}
       </Boton>
