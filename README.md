@@ -9,6 +9,7 @@ ERP en la nube para pymes argentinas: gestión comercial, facturación electrón
 - [Puesta en producción](docs/07-produccion.md)
 - [Tiendas online](docs/08-tiendas-online.md)
 - [Sitio comercial, SEO y suscripciones](docs/09-sitio-y-seo.md)
+- [Servidores: requisitos y proveedores](docs/10-servidores.md)
 - [Diseño de la interfaz](docs/03-diseno.md)
 
 ## Desarrollo
