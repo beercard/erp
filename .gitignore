@@ -47,3 +47,7 @@ next-env.d.ts
 # Pruebas en navegador
 /test-results/
 /playwright-report/
+
+# Claude Code: entregables entre subagentes (planes, revisiones) y ajustes personales
+/.claude/trabajo/
+/.claude/settings.local.json

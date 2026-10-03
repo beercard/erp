@@ -131,7 +131,7 @@ export default async function LinksDePago({ searchParams }: PageProps<'/cobros-o
                     <div className="min-w-0">
                       <p className="font-medium">{p.cliente}</p>
                       <p className="text-xs text-texto-2">
-                        {p.concepto} · creado {fechaCorta(p.creado.toISOString().slice(0, 10))}
+                        {p.concepto} · creado {fechaCorta(hoyArgentina(p.creado))}
                         {p.proveedor && ` · ${PROVEEDORES[p.proveedor as Proveedor]?.nombre ?? p.proveedor}`}
                         {p.origen !== 'erp' && ` · desde ${p.origen === 'portal' ? 'el portal' : 'WhatsApp'}`}
                       </p>

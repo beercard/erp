@@ -2,6 +2,7 @@ import { and, eq, max } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
 import { arcaConfiguracion, arcaTickets, comprobantes } from '../../db/schema'
+import { hoyArgentina, sumarDias } from '../../lib/fechas'
 import { descifrar } from './certificado'
 import { ErrorArca, transporteHttp, type Transporte } from './soap'
 import { pedirTicket } from './wsaa'
@@ -85,7 +86,7 @@ function clienteSimulado(tx: Transaccion): ClienteArca {
     solicitarCae: async () => ({
       resultado: 'A',
       cae: String(70_000_000_000_000 + Math.floor(Math.random() * 9_999_999_999_999)),
-      caeVence: new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10),
+      caeVence: sumarDias(hoyArgentina(), 10),
       observaciones: [],
       errores: [],
     }),
