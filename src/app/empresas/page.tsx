@@ -1,4 +1,4 @@
-import { ChevronRight, Plus } from 'lucide-react'
+import { ChevronRight, Plus, Server } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -73,6 +73,16 @@ export default async function PaginaEmpresas() {
             )
           })}
         </Panel>
+      )}
+      {sesion.usuario.adminPlataforma && (
+        <Link
+          href="/plataforma"
+          className="tarjeta mt-4 flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors hover:bg-superficie-2"
+        >
+          <Server aria-hidden className="size-4 text-acento" />
+          <span className="flex-1">Administración de la plataforma</span>
+          <ChevronRight aria-hidden className="size-4 text-texto-3" />
+        </Link>
       )}
       <details className="mt-6 tarjeta" open={sesion.empresas.length === 0}>
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium">

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm'
+import { and, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm'
 
 import { conEmpresa, comoPlataforma } from '../../db/empresa'
 import { auditoria, empresas, membresias, roles, sesiones, usuarios } from '../../db/schema'
@@ -38,7 +38,15 @@ export type SesionActiva = {
   rol: string | null
   permisos: string[]
   empresas: EmpresaDeUsuario[]
+  /**
+   * Acceso de soporte de la plataforma a una empresa de la que no es
+   * miembro: solo lectura y hasta una hora fija. Nulo en el uso normal.
+   */
+  soporte: { hasta: Date } | null
 }
+
+/** Rol que se muestra durante un acceso de soporte. */
+export const ROL_SOPORTE = 'Soporte de la plataforma'
 
 type Meta = { ip?: string | null; navegador?: string | null }
 
@@ -124,6 +132,7 @@ export async function leerSesion(token: string): Promise<SesionActiva | null> {
       .select({
         sesionId: sesiones.id,
         empresaId: sesiones.empresaId,
+        soporteHasta: sesiones.soporteHasta,
         usuario: { id: usuarios.id, nombre: usuarios.nombre, email: usuarios.email, adminPlataforma: usuarios.adminPlataforma },
       })
       .from(sesiones)
@@ -134,9 +143,16 @@ export async function leerSesion(token: string): Promise<SesionActiva | null> {
   if (!fila) return null
 
   const disponibles = await empresasDe(fila.usuario.id)
-  const base = { sesionId: fila.sesionId, usuario: fila.usuario, empresas: disponibles }
+  const base = { sesionId: fila.sesionId, usuario: fila.usuario, empresas: disponibles, soporte: null }
   const sinEmpresa = { ...base, empresa: null, suscripcion: null, rol: null, permisos: [] }
   if (!fila.empresaId) return sinEmpresa
+
+  // Acceso de soporte: solo para quien sigue administrando la plataforma y
+  // mientras no venza. Vencido, la sesión sigue sin empresa.
+  if (fila.soporteHasta) {
+    if (!fila.usuario.adminPlataforma || fila.soporteHasta <= new Date()) return sinEmpresa
+    return sesionDeSoporte(base, fila.empresaId, fila.soporteHasta)
+  }
 
   const actual = await comoPlataforma(async (tx) => {
     const [m] = await tx
@@ -180,12 +196,89 @@ export async function leerSesion(token: string): Promise<SesionActiva | null> {
   }
 }
 
+/**
+ * Sesión de soporte: la empresa (aunque esté dada de baja), sin rol propio y
+ * con solo los permisos de consulta (".ver") que habilita su plan. No hay
+ * forma de cargar ni cambiar nada: toda acción pasa por un permiso.
+ */
+async function sesionDeSoporte(
+  base: Pick<SesionActiva, 'sesionId' | 'usuario' | 'empresas'>,
+  empresaId: string,
+  hasta: Date,
+): Promise<SesionActiva> {
+  const [empresa] = await comoPlataforma((tx) =>
+    tx
+      .select({ id: empresas.id, razonSocial: empresas.razonSocial, cuit: empresas.cuit })
+      .from(empresas)
+      .where(eq(empresas.id, empresaId)),
+  )
+  if (!empresa) return { ...base, empresa: null, suscripcion: null, rol: null, permisos: [], soporte: null }
+  const sit = situacion(await suscripcionDe(empresa.id), hoyArgentina())
+  // Solo consulta: ni siquiera "empresa.suscripcion", que permite pedir un cambio de plan.
+  const permisos = Object.keys(PERMISOS).filter((p) => p.endsWith('.ver') && permitidoPorPlan(sit, p))
+  return {
+    ...base,
+    empresa,
+    suscripcion: { plan: sit.plan.id, nombrePlan: sit.plan.nombre, funciones: sit.funciones, soloLectura: true, aviso: null },
+    rol: ROL_SOPORTE,
+    permisos,
+    soporte: { hasta },
+  }
+}
+
 export async function elegirEmpresa(token: string, empresaId: string, meta: Meta = {}): Promise<boolean> {
   const sesion = await leerSesion(token)
   if (!sesion || !sesion.empresas.some((e) => e.id === empresaId)) return false
-  await comoPlataforma((tx) => tx.update(sesiones).set({ empresaId }).where(eq(sesiones.id, sesion.sesionId)))
+  // Elegir una empresa propia termina un acceso de soporte en curso.
+  await comoPlataforma((tx) => tx.update(sesiones).set({ empresaId, soporteHasta: null }).where(eq(sesiones.id, sesion.sesionId)))
   await registrarIngreso(empresaId, sesion.usuario.id, meta)
   return true
+}
+
+/** Duración de un acceso de soporte. */
+export const MINUTOS_DE_SOPORTE = 60
+
+/**
+ * Abre un acceso de soporte de solo lectura a una empresa. Solo para quien
+ * administra la plataforma; queda en la auditoría de la empresa (la ve su
+ * dueño) además de la de la plataforma (src/modulos/plataforma/consola.ts).
+ */
+export async function abrirSoporte(
+  token: string,
+  empresaId: string,
+  meta: Meta = {},
+  ahora = new Date(),
+): Promise<{ ok: true; hasta: Date } | { ok: false; error: string }> {
+  const sesion = await leerSesion(token)
+  if (!sesion?.usuario.adminPlataforma) return { ok: false, error: 'Solo quien administra la plataforma.' }
+  const [empresa] = await comoPlataforma((tx) => tx.select({ id: empresas.id }).from(empresas).where(eq(empresas.id, empresaId)))
+  if (!empresa) return { ok: false, error: 'No existe esa empresa.' }
+  const hasta = new Date(ahora.getTime() + MINUTOS_DE_SOPORTE * 60_000)
+  // Primero queda registrado en la empresa; recién después se abre el acceso.
+  // Así no hay forma de entrar sin que la empresa lo vea en su auditoría.
+  await conEmpresa(empresaId, (tx) =>
+    tx.insert(auditoria).values({
+      usuarioId: sesion.usuario.id,
+      accion: 'ingreso',
+      entidad: 'soporte',
+      despues: { hasta: hasta.toISOString(), email: sesion.usuario.email },
+      ip: meta.ip ?? null,
+    }),
+  )
+  await comoPlataforma((tx) =>
+    tx.update(sesiones).set({ empresaId, soporteHasta: hasta }).where(eq(sesiones.id, sesion.sesionId)),
+  )
+  return { ok: true, hasta }
+}
+
+/** Termina el acceso de soporte: la sesión queda sin empresa. */
+export async function cerrarSoporte(token: string): Promise<void> {
+  await comoPlataforma((tx) =>
+    tx
+      .update(sesiones)
+      .set({ empresaId: null, soporteHasta: null })
+      .where(and(eq(sesiones.hashToken, hashDe(token)), isNotNull(sesiones.soporteHasta))),
+  )
 }
 
 export async function cerrarSesion(token: string): Promise<void> {

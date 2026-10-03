@@ -143,7 +143,7 @@ Cada archivo de pruebas crea su base (`erp_prueba_…`); el usuario necesita `CR
 ## 11. Monitoreo
 
 - `GET /api/salud`: servidor y base. `GET /api/salud?cron=1`: además, 503 si la tarea periódica no corre hace más de 45 minutos (para un monitor externo).
-- Errores del servidor (páginas, rutas y acciones): se agrupan por huella y se ven en el panel de la plataforma; se avisan por correo a `AVISOS_ADMIN` (o a quienes administran la plataforma) como mucho cada 6 horas por error. Código: `src/modulos/plataforma/monitoreo.ts` y `src/instrumentation.ts`.
+- Errores del servidor (páginas, rutas y acciones): se agrupan por huella y se ven en la consola de la plataforma (Operación); se avisan por correo a `AVISOS_ADMIN` (o a quienes administran la plataforma) como mucho cada 6 horas por error. Código: `src/modulos/plataforma/monitoreo.ts` y `src/instrumentation.ts`.
 
 ## 12. Pruebas automáticas
 

@@ -2,19 +2,14 @@
 
 import { useActionState } from 'react'
 
-import { Aviso, Boton } from '@/components/ui'
+import { Boton } from '@/components/ui'
 import { APLICACIONES, FUNCIONES, PLANES } from '@/lib/planes'
 
-import { cambiarCodigoAccion, guardarSuscripcionAccion, registrarPagoAccion, type EstadoAdmin } from '../acciones'
+import { cambiarCodigoAccion, guardarSuscripcionAccion, registrarPagoAccion } from '../../acciones'
+import { Resultado } from '../../Formularios'
 
 const control = 'h-9 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento'
 const etiqueta = 'text-xs font-medium text-texto-2'
-
-function Resultado({ estado }: { estado: EstadoAdmin }) {
-  if (estado?.error) return <Aviso>{estado.error}</Aviso>
-  if (estado?.ok) return <Aviso tono="ok">{estado.ok}</Aviso>
-  return null
-}
 
 export type DatosAdmin = {
   plan: string

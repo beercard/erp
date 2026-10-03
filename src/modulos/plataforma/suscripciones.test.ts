@@ -108,7 +108,7 @@ describe('cambios de plan', () => {
     expect((await suscripcionDe(empresa)).plan).toBe('empresa')
     const [pedido] = await pedidosPendientes()
     expect(pedido.empresaId).toBe(empresa)
-    expect(await resolverPedido(admin, pedido.id, true)).toEqual({ ok: true })
+    expect(await resolverPedido(admin, pedido.id, true)).toEqual({ ok: true, empresaId: empresa })
     const s = await suscripcionDe(empresa)
     expect([s.plan, s.usuariosAdicionales]).toEqual(['pyme', 1])
     expect(await resolverPedido(admin, pedido.id, true)).toMatchObject({ ok: false })

@@ -5,7 +5,7 @@ El sitio comercial de Vektra ERP vive en la misma aplicación que el sistema:
 - Sin sesión, `/` muestra la portada comercial (`src/app/(sitio)/sitio`); con sesión, el inicio del sistema.
 - Páginas: `/funciones`, `/integraciones`, `/precios`, `/soluciones/[rubro]` (siete rubros, entre ellos mayoristas y distribución, y profesionales y servicios), `/contacto`, `/legal/terminos`, `/legal/privacidad`, `/legal/arrepentimiento`, más `/registro` e `/ingresar`.
 - La marca (nombre del producto, razón social, CUIT) está en un solo archivo: `src/lib/marca.ts`.
-- Las consultas del formulario quedan en el panel de la plataforma (`/plataforma`, "Consultas del sitio") y, con `CONTACTO_EMAIL` y SMTP configurados, llegan por email. Tienen una trampa para robots y un tope de 5 por hora por conexión.
+- Las consultas del formulario quedan en la consola de la plataforma (`/plataforma/pedidos`, "Consultas del sitio") y, con `CONTACTO_EMAIL` y SMTP configurados, llegan por email. Tienen una trampa para robots y un tope de 5 por hora por conexión.
 
 Variables: `SITIO_URL` (la dirección pública del sitio; si falta, se usa `APP_URL`), `CONTACTO_EMAIL` y `CONTACTO_WHATSAPP` (opcionales: si no están, el sitio no muestra esos datos).
 
@@ -93,7 +93,7 @@ Ordenado por impacto y esfuerzo.
 - Prueba de 30 días sin tarjeta desde `/registro`; después, el plan se elige en Configuración › Suscripción.
 - Cobro con **débito automático de Mercado Pago** (suscripción sin plan asociado): la empresa lo autoriza una vez; cada cobro aprobado llega por notificación firmada, se registra el pago y, si había un cambio de plan esperando el pago, se aplica. Código: `src/modulos/plataforma/mercadopago.ts`.
 - Configuración en la cuenta de Mercado Pago de Vektra: credenciales de producción (`MP_ACCESS_TOKEN`) y, en Webhooks, la URL `APP_URL/api/pagos/mercadopago` con los eventos de suscripciones (planes y suscripciones; pagos recurrentes), y su clave secreta (`MP_WEBHOOK_SECRET`).
-- El panel de la plataforma sigue permitiendo registrar pagos a mano (transferencias).
+- La ficha de cada empresa en la consola de la plataforma sigue permitiendo registrar pagos a mano (transferencias).
 
 Pendiente de revisión legal antes de publicar: los términos y condiciones y la política de privacidad son una base redactada sobre la Ley 25.326, la Ley 24.240 y la Resolución 424/2020; conviene que los revise un abogado.
 

@@ -1,6 +1,6 @@
 {
-  "id": "f6cc849b-e24e-463a-9fde-6d128b680490",
-  "prevId": "9f9f6e37-678c-489e-a09f-817a23e59fd0",
+  "id": "6311b048-4b36-499a-b1e6-4943dfc4383e",
+  "prevId": "f6cc849b-e24e-463a-9fde-6d128b680490",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2768,6 +2768,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "rubro": {
+          "name": "rubro",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "nombre_fantasia": {
           "name": "nombre_fantasia",

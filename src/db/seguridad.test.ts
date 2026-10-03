@@ -15,7 +15,12 @@ const PLATAFORMA = new Set([
   'suscripciones',
   'eventos_suscripcion',
   'cuentas_canal',
-  'crm_formularios', 'claves_cobro', 'whatsapp_numeros', 'latidos', 'errores_servidor',
+  'crm_formularios',
+  'claves_cobro',
+  'whatsapp_numeros',
+  'latidos',
+  'errores_servidor',
+  'auditoria_plataforma',
 ])
 
 /** Mensaje de Postgres detrás del error de Drizzle: la prueba verifica el MOTIVO del rechazo. */
