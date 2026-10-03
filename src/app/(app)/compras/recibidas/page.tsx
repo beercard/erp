@@ -1,4 +1,4 @@
-import { MessageCircle, Upload } from 'lucide-react'
+import { CheckCheck, MessageCircle, Upload, Zap } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -7,6 +7,8 @@ import { enLaEmpresa, exigirPermiso } from '@/lib/auth/servidor'
 import { formatearMonto } from '@/lib/dinero'
 import { listarRecibidas } from '@/modulos/compras/recibidas'
 import { iaConfigurada } from '@/modulos/ia/claude'
+
+import { registrarTodasAccion, registrarUnClicAccion } from './acciones'
 
 export const metadata: Metadata = { title: 'Facturas recibidas' }
 
@@ -26,16 +28,38 @@ const FILTROS = [
 
 export default async function FacturasRecibidas({ searchParams }: PageProps<'/compras/recibidas'>) {
   await exigirPermiso('compras.ver')
-  const { ver, error } = await searchParams
+  const { ver, error, registradas } = await searchParams
   const filtro = FILTROS.find(([v]) => v === ver)?.[0] ?? 'pendientes'
   const todas = await enLaEmpresa('compras.ver', (tx) => listarRecibidas(tx, filtro === 'pendientes' ? 'todas' : filtro))
   const filas = filtro === 'pendientes' ? todas.filter((r) => ['lista', 'error', 'leyendo'].includes(r.estado)) : todas
+  const unClic = (r: (typeof todas)[number]) => r.estado === 'lista' && (r.datos as { unClic?: boolean } | null)?.unClic === true
+  const verificadas = todas.filter(unClic).length
   return (
     <>
       <EncabezadoPagina
         titulo="Facturas recibidas"
         bajada="Facturas de proveedores que llegaron por WhatsApp o que subiste: se leen solas y las registrás después de revisarlas."
       />
+      {typeof registradas === 'string' && (
+        <div className="mb-4">
+          <Aviso tono="ok">Se registraron {registradas} facturas verificadas.</Aviso>
+        </div>
+      )}
+      {verificadas > 0 && (
+        <form
+          action={registrarTodasAccion}
+          className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-ok/30 bg-ok/5 px-4 py-3 text-sm"
+        >
+          <CheckCheck aria-hidden className="size-5 text-ok" />
+          <span className="flex-1">
+            <b>{verificadas}</b> {verificadas === 1 ? 'factura se leyó' : 'facturas se leyeron'} sin dudas y pasaron todos los
+            controles (CUIT, receptor, fecha, CAE e importes).
+          </span>
+          <Boton type="submit" variante="primario">
+            Registrar {verificadas === 1 ? 'la' : 'las'} {verificadas}
+          </Boton>
+        </form>
+      )}
       {typeof error === 'string' && (
         <div className="mb-4">
           <Aviso>{error}</Aviso>
@@ -79,29 +103,37 @@ export default async function FacturasRecibidas({ searchParams }: PageProps<'/co
               }
               const e = ESTADOS[r.estado as keyof typeof ESTADOS]
               return (
-                <Link
-                  key={r.id}
-                  href={r.compraId ? `/compras/${r.compraId}` : `/compras/recibidas/${r.id}`}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-superficie-2"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium">{d.razonSocialEmisor ?? 'Sin leer'}</span>
-                    <span className="block text-xs text-texto-2">
-                      {d.letra
-                        ? `${d.letra} ${String(d.puntoVenta ?? '').padStart(5, '0')}-${String(d.numero ?? '').padStart(8, '0')} · `
-                        : ''}
-                      {r.creado.toLocaleString('es-AR', {
-                        dateStyle: 'short',
-                        timeStyle: 'short',
-                        timeZone: 'America/Argentina/Buenos_Aires',
-                      })}
-                      {r.usuario && ` · ${r.usuario}`}
+                <div key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-superficie-2">
+                  <Link
+                    href={r.compraId ? `/compras/${r.compraId}` : `/compras/recibidas/${r.id}`}
+                    className="flex min-w-0 flex-1 flex-wrap items-center gap-3"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{d.razonSocialEmisor ?? 'Sin leer'}</span>
+                      <span className="block text-xs text-texto-2">
+                        {d.letra
+                          ? `${d.letra} ${String(d.puntoVenta ?? '').padStart(5, '0')}-${String(d.numero ?? '').padStart(8, '0')} · `
+                          : ''}
+                        {r.creado.toLocaleString('es-AR', {
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                          timeZone: 'America/Argentina/Buenos_Aires',
+                        })}
+                        {r.usuario && ` · ${r.usuario}`}
+                      </span>
                     </span>
-                  </span>
-                  {d.avisos?.length ? <Chip tono="aviso">{d.avisos.length} para revisar</Chip> : null}
-                  {d.total != null && <span className="cifras font-semibold">{formatearMonto(String(d.total), '$')}</span>}
-                  <Chip tono={e.tono}>{e.texto}</Chip>
-                </Link>
+                    {d.avisos?.length ? <Chip tono="aviso">{d.avisos.length} para revisar</Chip> : null}
+                    {d.total != null && <span className="cifras font-semibold">{formatearMonto(String(d.total), '$')}</span>}
+                    <Chip tono={e.tono}>{unClic(r) ? 'Verificada' : e.texto}</Chip>
+                  </Link>
+                  {unClic(r) && (
+                    <form action={registrarUnClicAccion.bind(null, r.id)}>
+                      <Boton type="submit" variante="primario" title="Leída sin dudas y con todos los controles bien">
+                        <Zap aria-hidden /> Registrar
+                      </Boton>
+                    </form>
+                  )}
+                </div>
               )
             })}
           </Panel>

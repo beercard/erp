@@ -61,6 +61,8 @@ export const EsquemaLectura = z.object({
     .default([]),
   total: z.number().nullable(),
   observaciones: z.string().nullable().default(null),
+  /** Qué tan segura está la lectura: solo "alta" (y sin avisos) permite registrar en un clic. */
+  confianza: z.enum(['alta', 'media', 'baja']).default('baja'),
 })
 
 export type Lectura = z.infer<typeof EsquemaLectura>
@@ -110,6 +112,12 @@ const HERRAMIENTA = {
       },
       total: { type: ['number', 'null'] },
       observaciones: { type: ['string', 'null'], description: 'Lo que no se pudo leer bien o haya que revisar.' },
+      confianza: {
+        type: 'string',
+        enum: ['alta', 'media', 'baja'],
+        description:
+          'alta: todos los datos se leen nítidos y sin dudas (comprobante original, completo, con CAE). media: algún dato dudoso. baja: imagen borrosa, cortada o manuscrita.',
+      },
     },
     required: ['esComprobante', 'letra', 'clase', 'puntoVenta', 'numero', 'fecha', 'cuitEmisor', 'total'],
   },
@@ -171,6 +179,22 @@ export function controlar(l: Lectura, cuitEmpresa: string, hoy = hoyArgentina())
 const sumar = (l: Lectura) =>
   l.iva.reduce((s, a) => s + a.base + a.importe, 0) + l.noGravado + l.exento + l.tributos.reduce((s, t) => s + t.importe, 0)
 
+/**
+ * Se puede registrar sin abrir la revisión: lectura con confianza alta, con
+ * CAE, sin ningún aviso de los controles y con el comprobante completo.
+ */
+export function aptaParaUnClic(l: Lectura, avisos: string[]) {
+  return (
+    l.esComprobante &&
+    l.confianza === 'alta' &&
+    avisos.length === 0 &&
+    !!l.cae &&
+    /^\d{14}$/.test(l.cae) &&
+    l.total != null &&
+    codigo(l) != null
+  )
+}
+
 const codigo = (l: Lectura) => (l.letra && l.clase ? codigoCompra(l.letra, l.clase, l.fce && l.letra !== 'M') : null)
 
 // ------------------------------------------------------------------ Bandeja
@@ -219,7 +243,7 @@ export async function procesarRecibida(empresaId: string, id: string, cuitEmpres
         .update(facturasRecibidas)
         .set({
           estado: 'lista',
-          datos: { ...lectura, avisos },
+          datos: { ...lectura, avisos, unClic: aptaParaUnClic(lectura, avisos) },
           proveedorId: prov?.id ?? null,
           error: null,
           actualizado: new Date(),
@@ -383,4 +407,15 @@ export async function registrarRecibida(tx: Transaccion, usuarioId: string, id: 
     .set({ estado: 'registrada', compraId: res.id, proveedorId: prov.id, datos: { ...l }, actualizado: new Date() })
     .where(eq(facturasRecibidas.id, id))
   return { ok: true as const, id: res.id }
+}
+
+/** Registra en un clic una factura que la IA leyó con confianza alta y pasó todos los controles. */
+export async function registrarEnUnClic(tx: Transaccion, usuarioId: string, id: string, cuitEmpresa: string) {
+  const [r] = await tx.select().from(facturasRecibidas).where(eq(facturasRecibidas.id, id))
+  if (!r || r.estado !== 'lista') return { ok: false as const, error: 'Esa factura ya se registró o se descartó.' }
+  const p = EsquemaLectura.safeParse(r.datos)
+  // Se vuelve a controlar con los datos guardados: lo que valía al leerla tiene que seguir valiendo.
+  if (!p.success || !aptaParaUnClic(p.data, controlar(p.data, cuitEmpresa)))
+    return { ok: false as const, error: 'Esta factura necesita revisión antes de registrarse.' }
+  return registrarRecibida(tx, usuarioId, id, p.data)
 }

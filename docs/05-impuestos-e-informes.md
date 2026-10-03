@@ -81,3 +81,17 @@ Desde el 1/12/2025 no hay factura M. En Configuración → ARCA se elige cómo e
 
 - Con leyenda hace falta cargar la **CBU informada**. Las notas de crédito y débito siguen siempre a su factura, aunque después cambie el régimen.
 - **En compras**, los comprobantes 51 a 53 se muestran como "A sujeta a retención" (FA-R): al pagarlos, el sistema avisa que corresponde retener el 100 % del IVA y el 6 % de Ganancias sobre el neto y pagar en la CBU informada del proveedor.
+
+## Mis Comprobantes: recordatorio mensual
+
+ARCA no ofrece un servicio web para bajar los comprobantes recibidos, así que el calendario de vencimientos trae una obligación más: **"Mis Comprobantes de ARCA: bajar y cruzar las compras del mes"**, una semana antes del IVA, con el mismo aviso por correo que los demás vencimientos. Se cruza en Compras → Importar → Mis Comprobantes. Se puede desactivar o cambiar de día como cualquier obligación.
+
+## Facturas recibidas en un clic
+
+La IA, además de leer, dice qué tan segura está de la lectura. Si la confianza es **alta**, el comprobante tiene CAE y **todos los controles dan bien** (CUIT válido, hecho a la empresa, fecha, tipo e importes que cierran), la factura queda "Verificada" y se registra con un botón, o todas juntas con "Registrar las N". Si algo no cierra, hay que abrirla y revisarla como antes. Al registrar en un clic se vuelven a correr los controles.
+
+## Reposición de stock (Stock → Reposición)
+
+- Muestra los artículos con stock mínimo que, **contando lo ya pedido en órdenes de compra sin recibir**, quedaron por debajo.
+- Sugiere pedir el **lote de reposición** del artículo o, si no tiene, **hasta el doble del mínimo** (nunca menos de lo que falta), al **proveedor habitual** o, si no tiene, al de la última compra, con el último precio de compra.
+- Con los marcados arma **una orden de compra por proveedor**; las cantidades se pueden cambiar antes. En la ficha del artículo se cargan el lote y el proveedor habitual. La página de Stock avisa cuando hay algo por reponer.

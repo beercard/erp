@@ -84,9 +84,25 @@ export async function guardarConfiguracion(tx: Transaccion, usuarioId: string, e
 
 // ---------------------------------------------------------------- Obligaciones
 
-/** Crea las obligaciones de siempre (IVA, SICORE, IIBB) la primera vez, con los días según el CUIT. */
+/**
+ * Recordatorio mensual de Mis Comprobantes: ARCA no tiene un servicio web
+ * para bajar los comprobantes recibidos, así que se avisa antes del IVA que
+ * hay que descargarlos y cruzarlos (Compras → Importar → Mis Comprobantes).
+ */
+export const MIS_COMPROBANTES = 'Mis Comprobantes de ARCA: bajar y cruzar las compras del mes'
+
+/** Crea las obligaciones de siempre (IVA, SICORE, IIBB y el cruce de Mis Comprobantes) con los días según el CUIT. */
 export async function obligacionesDeLaEmpresa(tx: Transaccion, empresaId: string) {
   let lista = await tx.select().from(obligaciones).orderBy(asc(obligaciones.dia), asc(obligaciones.nombre))
+  // Las empresas que ya tenían calendario también reciben el recordatorio (se puede desactivar).
+  if (lista.length && !lista.some((o) => o.nombre === MIS_COMPROBANTES)) {
+    const iva = lista.find((o) => o.impuesto === 'iva_digital')?.dia ?? 18
+    await tx
+      .insert(obligaciones)
+      .values({ impuesto: 'otro', nombre: MIS_COMPROBANTES, dia: Math.max(5, iva - 7) })
+      .onConflictDoNothing()
+    lista = await tx.select().from(obligaciones).orderBy(asc(obligaciones.dia), asc(obligaciones.nombre))
+  }
   if (!lista.length) {
     const [e] = await tx.select({ cuit: empresas.cuit }).from(empresas).where(eq(empresas.id, empresaId))
     const d = diasSugeridos(e?.cuit ?? '')
@@ -96,6 +112,7 @@ export async function obligacionesDeLaEmpresa(tx: Transaccion, empresaId: string
         { impuesto: 'iva_digital', nombre: 'IVA (F.2002 y Libro IVA Digital)', dia: d.iva },
         { impuesto: 'sicore', nombre: 'SICORE: retenciones de Ganancias', dia: d.sicore },
         { impuesto: 'iibb', nombre: 'Ingresos Brutos', dia: d.iibb },
+        { impuesto: 'otro', nombre: MIS_COMPROBANTES, dia: Math.max(5, d.iva - 7) },
       ])
       .onConflictDoNothing()
     lista = await tx.select().from(obligaciones).orderBy(asc(obligaciones.dia), asc(obligaciones.nombre))

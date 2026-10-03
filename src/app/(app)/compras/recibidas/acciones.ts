@@ -4,7 +4,13 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
-import { descartarRecibida, procesarRecibida, registrarRecibida } from '@/modulos/compras/recibidas'
+import {
+  descartarRecibida,
+  listarRecibidas,
+  procesarRecibida,
+  registrarEnUnClic,
+  registrarRecibida,
+} from '@/modulos/compras/recibidas'
 import { iaConfigurada } from '@/modulos/ia/claude'
 
 export type EstadoRecibida = { error?: string; datos?: Record<string, unknown> } | undefined
@@ -78,4 +84,28 @@ export async function releerAccion(id: string) {
   )
   if (r.ok && iaConfigurada()) await procesarRecibida(r.empresaId, id, r.cuit)
   revalidatePath(`/compras/recibidas/${id}`)
+}
+
+/** Registra en un clic una factura leída con confianza alta y sin avisos. */
+export async function registrarUnClicAccion(id: string) {
+  const r = await intentar(() =>
+    enLaEmpresa('compras.cargar', (tx, s) => registrarEnUnClic(tx, s.usuario.id, id, s.empresa.cuit)),
+  )
+  revalidatePath('/compras', 'layout')
+  if (!r.ok) redirect(`/compras/recibidas?error=${encodeURIComponent(r.error)}`)
+}
+
+/** Registra todas las que están listas para un clic; las demás quedan para revisar. */
+export async function registrarTodasAccion() {
+  const r = await intentar(() =>
+    enLaEmpresa('compras.cargar', async (tx, s) => {
+      const listas = (await listarRecibidas(tx, 'lista')).filter((x) => (x.datos as { unClic?: boolean } | null)?.unClic)
+      let hechas = 0
+      for (const x of listas) if ((await registrarEnUnClic(tx, s.usuario.id, x.id, s.empresa.cuit)).ok) hechas++
+      return { ok: true as const, hechas, total: listas.length }
+    }),
+  )
+  revalidatePath('/compras', 'layout')
+  if (!r.ok) redirect(`/compras/recibidas?error=${encodeURIComponent(r.error)}`)
+  redirect(`/compras/recibidas?registradas=${r.hechas}`)
 }

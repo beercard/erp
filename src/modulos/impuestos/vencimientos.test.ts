@@ -15,6 +15,7 @@ import {
   generarVencimientos,
   guardarConfiguracion,
   marcarCumplida,
+  MIS_COMPROBANTES,
   obligacionesDeLaEmpresa,
 } from './vencimientos'
 
@@ -40,13 +41,15 @@ describe('vencimientos, avisos y paquete del contador', () => {
     empresa = e.id
   })
 
-  it('arranca con IVA, SICORE e IIBB según el CUIT y genera los vencimientos', async () => {
+  it('arranca con IVA, SICORE, IIBB y el cruce de Mis Comprobantes según el CUIT y genera los vencimientos', async () => {
     const o = await en((tx) => obligacionesDeLaEmpresa(tx, empresa))
-    expect(o.map((x) => x.impuesto).sort()).toEqual(['iibb', 'iva_digital', 'sicore'])
+    expect(o.map((x) => x.impuesto).sort()).toEqual(['iibb', 'iva_digital', 'otro', 'sicore'])
+    // Mis Comprobantes: una semana antes del IVA (CUIT terminado en 3: IVA el 19, recordatorio el 12).
+    expect(o.find((x) => x.impuesto === 'otro')).toMatchObject({ nombre: MIS_COMPROBANTES, dia: 12 })
     await en((tx) => generarVencimientos(tx, empresa, '2026-10-02'))
     await en((tx) => generarVencimientos(tx, empresa, '2026-10-02')) // no duplica
     const v = await en((tx) => tx.select().from(vencimientos))
-    expect(v).toHaveLength(12) // 3 obligaciones × 4 períodos
+    expect(v).toHaveLength(16) // 4 obligaciones × 4 períodos
   })
 
   it('avisa una sola vez antes de vencer y otra si se pasó; lo presentado no avisa', async () => {

@@ -222,6 +222,10 @@ export const articulos = pgTable(
       .default('PES')
       .references(() => monedas.codigo),
     stockMinimo: cantidad('stock_minimo'),
+    /** Cuánto pedir al reponer; sin dato, se repone hasta el doble del mínimo. */
+    loteReposicion: cantidad('lote_reposicion'),
+    /** Proveedor habitual; sin dato, el de la última compra. */
+    proveedorId: uuid('proveedor_id'),
     activo: boolean('activo').notNull().default(true),
     ...marcasDeTiempo(),
   },

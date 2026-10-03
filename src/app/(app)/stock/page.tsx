@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
-import { EncabezadoPagina, Panel } from '@/components/ui'
+import { Aviso, EncabezadoPagina, Panel } from '@/components/ui'
 import { enLaEmpresa } from '@/lib/auth/servidor'
+import { faltantes } from '@/modulos/comercial/reposicion'
 import { listarStock } from '@/modulos/comercial/stock'
 
 export const metadata: Metadata = { title: 'Stock' }
@@ -13,7 +14,10 @@ export default async function Stock({ searchParams }: PageProps<'/stock'>) {
   const { q, con } = await searchParams
   const texto = typeof q === 'string' ? q : ''
   const soloConStock = con === '1'
-  const { depositos, filas } = await enLaEmpresa('stock.ver', (tx) => listarStock(tx, texto))
+  const { depositos, filas, reponer } = await enLaEmpresa('stock.ver', async (tx) => ({
+    ...(await listarStock(tx, texto)),
+    reponer: (await faltantes(tx)).length,
+  }))
   const total = (saldos: Map<string, string>) => [...saldos.values()].reduce((s, v) => s + Number(v), 0)
   const visibles = soloConStock ? filas.filter((f) => total(f.saldos) !== 0) : filas
   // Solo las columnas de depósitos que tienen algo; el resto ensucia la tabla.
@@ -28,6 +32,16 @@ export default async function Stock({ searchParams }: PageProps<'/stock'>) {
           visibles.length > POR_PAGINA ? ` · se muestran los primeros ${POR_PAGINA}, buscá para acotar` : ''
         }`}
       />
+      {reponer > 0 && (
+        <div className="mb-3">
+          <Aviso tono="aviso">
+            {reponer} {reponer === 1 ? 'artículo quedó' : 'artículos quedaron'} por debajo del mínimo.{' '}
+            <Link href="/stock/reposicion" className="font-medium underline">
+              Ver la reposición sugerida
+            </Link>
+          </Aviso>
+        </div>
+      )}
       <form className="mb-3 flex flex-wrap items-center gap-3" role="search">
         <label htmlFor="q" className="sr-only">
           Buscar

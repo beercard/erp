@@ -5,7 +5,16 @@ import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
 import { compras, comprasTributos, empresas, facturasRecibidas, terceros } from '../../db/schema'
 import type { Fetch } from '../ia/claude'
-import { controlar, guardarRecibida, procesarRecibida, registrarRecibida, tipoDeArchivo, type Lectura } from './recibidas'
+import {
+  aptaParaUnClic,
+  controlar,
+  guardarRecibida,
+  procesarRecibida,
+  registrarEnUnClic,
+  registrarRecibida,
+  tipoDeArchivo,
+  type Lectura,
+} from './recibidas'
 
 process.env.ANTHROPIC_API_KEY ??= 'clave-de-prueba'
 process.env.IA_MODELO ??= 'modelo-de-prueba'
@@ -33,6 +42,7 @@ const lectura: Lectura = {
   tributos: [{ tipo: 'percepcion_iibb', provincia: 'Buenos Aires', importe: 300 }],
   total: 12400,
   observaciones: null,
+  confianza: 'media',
 }
 
 /** IA de mentira: contesta la herramienta con lo que se le diga y anota lo que recibió. */
@@ -119,5 +129,27 @@ describe('Facturas recibidas por WhatsApp', () => {
     expect(fila.estado).toBe('error')
     const reg = await en((tx) => registrarRecibida(tx, U, id, { ...lectura, numero: 1521 }))
     expect(reg.ok).toBe(true)
+  })
+
+  it('en un clic solo las que la IA leyó con confianza alta, con CAE y sin avisos', async () => {
+    const alta = { ...lectura, numero: 1600, confianza: 'alta' as const }
+    expect(aptaParaUnClic(alta, [])).toBe(true)
+    expect(aptaParaUnClic({ ...alta, confianza: 'media' }, [])).toBe(false)
+    expect(aptaParaUnClic({ ...alta, cae: null }, [])).toBe(false)
+    expect(aptaParaUnClic(alta, ['Los importes no cierran'])).toBe(false)
+
+    const subir = () =>
+      en((tx) => guardarRecibida(tx, { usuarioId: U, archivo: Buffer.from('%PDF-1.7 otra'), tipo: 'application/pdf' }))
+    const buena = await subir()
+    await procesarRecibida(empresa, buena, CUIT_EMPRESA, iaFalsa(alta).f)
+    const [fila] = await en((tx) => tx.select().from(facturasRecibidas).where(eq(facturasRecibidas.id, buena)))
+    expect(fila.datos).toMatchObject({ unClic: true })
+    const r = await en((tx) => registrarEnUnClic(tx, U, buena, CUIT_EMPRESA))
+    expect(r.ok).toBe(true)
+
+    // Con un aviso (no cierra el total) hay que revisarla.
+    const dudosa = await subir()
+    await procesarRecibida(empresa, dudosa, CUIT_EMPRESA, iaFalsa({ ...alta, numero: 1601, total: 99999 }).f)
+    expect(await en((tx) => registrarEnUnClic(tx, U, dudosa, CUIT_EMPRESA))).toMatchObject({ ok: false })
   })
 })

@@ -17,7 +17,7 @@ export function FormularioArticulo({
   soloLectura?: boolean
   id: string | null
   inicial: Record<string, string | boolean | null>
-  opciones: { rubros: Opcion[]; marcas: Opcion[]; alicuotas: Opcion[]; monedas: Opcion[] }
+  opciones: { rubros: Opcion[]; marcas: Opcion[]; alicuotas: Opcion[]; monedas: Opcion[]; proveedores: Opcion[] }
 }) {
   const [estado, accion, enviando] = useActionState(guardarArticuloAccion.bind(null, id), undefined)
   const formulario = useRef<HTMLFormElement>(null)
@@ -136,6 +136,24 @@ export function FormularioArticulo({
                   error={e.stockMinimo}
                   inputMode="decimal"
                   className="cifras"
+                />
+                <Campo
+                  id="loteReposicion"
+                  name="loteReposicion"
+                  etiqueta="Cuánto pedir al reponer"
+                  defaultValue={v('loteReposicion')}
+                  error={e.loteReposicion}
+                  inputMode="decimal"
+                  className="cifras"
+                  placeholder="Hasta el doble del mínimo"
+                />
+                <Selector
+                  id="proveedorId"
+                  name="proveedorId"
+                  etiqueta="Proveedor habitual"
+                  vacio="El de la última compra"
+                  opciones={opciones.proveedores}
+                  defaultValue={v('proveedorId')}
                 />
                 <div className="flex flex-col justify-end gap-2 pb-1 sm:col-span-2">
                   <label className="flex items-center gap-2 text-sm">

@@ -2,7 +2,7 @@ import { and, asc, desc, eq, lte, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
 import type { Transaccion } from '../../db/conexion'
-import { alicuotasIva, articulos, listasPrecios, marcas, monedas, precios, rubros } from '../../db/schema'
+import { alicuotasIva, articulos, listasPrecios, marcas, monedas, precios, rubros, terceros } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { aImporte, aplicarPorcentaje, normalizarNumero } from '../../lib/dinero'
 import { hoyArgentina } from '../../lib/fechas'
@@ -49,6 +49,8 @@ export const EsquemaArticulo = z.object({
   costo: decimal('El costo tiene que ser un número positivo (hasta 4 decimales).'),
   monedaCosto: z.string().min(3),
   stockMinimo: decimal(),
+  loteReposicion: decimal('El lote tiene que ser un número.'),
+  proveedorId: uuid,
 })
 
 export type DatosArticulo = z.infer<typeof EsquemaArticulo>
@@ -101,7 +103,12 @@ export async function opcionesArticulo(tx: Transaccion) {
       .orderBy(asc(alicuotasIva.porcentaje)),
     tx.select({ valor: monedas.codigo, texto: monedas.nombre }).from(monedas),
   ])
-  return { rubros: rbs, marcas: mcs, alicuotas: ivas, monedas: mons }
+  const provs = await tx
+    .select({ valor: terceros.id, texto: terceros.razonSocial })
+    .from(terceros)
+    .where(and(eq(terceros.esProveedor, true), eq(terceros.activo, true)))
+    .orderBy(asc(terceros.razonSocial))
+  return { rubros: rbs, marcas: mcs, alicuotas: ivas, monedas: mons, proveedores: provs }
 }
 
 export type PrecioDeLista = {
