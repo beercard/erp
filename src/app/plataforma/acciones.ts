@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { cambiarCodigo } from '@/modulos/plataforma/codigos'
 import { marcarAtendida } from '@/modulos/plataforma/consultas'
 import { actualizarSuscripcion, registrarPago, resolverPedido } from '@/modulos/plataforma/suscripciones'
 
@@ -53,4 +54,12 @@ export async function atenderConsultaAccion(id: string) {
   await exigirAdmin()
   await marcarAtendida(id)
   revalidatePath('/plataforma')
+}
+
+export async function cambiarCodigoAccion(empresaId: string, _: EstadoAdmin, formData: FormData): Promise<EstadoAdmin> {
+  await exigirAdmin()
+  const r = await cambiarCodigo(empresaId, valor(formData, 'codigo'))
+  if (!r.ok) return { error: r.error }
+  revalidatePath(`/plataforma/${empresaId}`)
+  return { ok: `Código guardado: ${r.codigo}. La empresa entra ahora por su nueva dirección.` }
 }

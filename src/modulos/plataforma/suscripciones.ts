@@ -16,6 +16,7 @@ import {
   suscripciones,
   usuarios,
 } from '../../db/schema'
+import { codigoLibre } from './codigos'
 import { mensajeDeBase } from '../../lib/errores'
 import { auditar } from '../../lib/auditoria'
 import { validarCuit } from '../../lib/cuit'
@@ -153,7 +154,7 @@ export async function crearEmpresa(
   usuarioId: string,
   entrada: unknown,
   hoy: string = hoyArgentina(),
-): Promise<{ ok: true; empresaId: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; empresaId: string; codigo: string } | { ok: false; error: string }> {
   const p = EsquemaAlta.safeParse(entrada)
   if (!p.success) return { ok: false, error: p.error.issues[0].message }
   const cuit = validarCuit(p.data.cuit)
@@ -163,7 +164,12 @@ export async function crearEmpresa(
     if (ya) return { error: 'Esa empresa ya usa el sistema. Pedile a quien la administra que te invite.' }
     const [empresa] = await tx
       .insert(empresas)
-      .values({ razonSocial: p.data.razonSocial, cuit: cuit.cuit, condicionIva: p.data.condicionIva })
+      .values({
+        razonSocial: p.data.razonSocial,
+        cuit: cuit.cuit,
+        condicionIva: p.data.condicionIva,
+        codigo: await codigoLibre(tx, p.data.razonSocial),
+      })
       .returning()
     const [dueno] = await tx
       .select()
@@ -175,7 +181,7 @@ export async function crearEmpresa(
     await tx
       .insert(eventosSuscripcion)
       .values({ empresaId: empresa.id, tipo: 'alta', detalle: { plan: PLAN_DE_PRUEBA, pruebaHasta }, usuarioId })
-    return { empresaId: empresa.id }
+    return { empresaId: empresa.id, codigo: empresa.codigo! }
   })
   if ('error' in r) return { ok: false, error: r.error! }
   await conEmpresa(r.empresaId, async (tx) => {
@@ -187,7 +193,7 @@ export async function crearEmpresa(
     ])
     await auditar(tx, { usuarioId, accion: 'alta', entidad: 'empresa', entidadId: r.empresaId, despues: p.data })
   })
-  return { ok: true, empresaId: r.empresaId }
+  return { ok: true, empresaId: r.empresaId, codigo: r.codigo }
 }
 
 // ------------------------------------------------- Cambios desde la empresa

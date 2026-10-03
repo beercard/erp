@@ -7,8 +7,10 @@ import { elegirEmpresa, iniciarSesion } from '@/lib/auth/sesiones'
 import { anotar, claveIp, superado } from '@/lib/frenos'
 import { registrarCuenta } from '@/modulos/plataforma/registro'
 import { crearEmpresa } from '@/modulos/plataforma/suscripciones'
+import { dominioEmpresas, urlDeEmpresa } from '@/lib/subdominio'
 
-export type EstadoRegistro = { error?: string; valores?: Record<string, string> } | undefined
+/** irA: con subdominios, la dirección de la empresa nueva (el navegador va ahí). */
+export type EstadoRegistro = { error?: string; valores?: Record<string, string>; irA?: string } | undefined
 
 // Freno a las altas en masa (en la base): 5 intentos por conexión cada hora.
 const HORA = 60 * 60_000
@@ -24,6 +26,8 @@ export async function registrarse(_: EstadoRegistro, formData: FormData): Promis
   await anotar([ip])
   const r = await registrarCuenta(valores)
   if (!r.ok) return { error: r.error, valores: sinClaves }
+  // Con subdominios, la empresa se usa en su dirección: se ingresa ahí.
+  if (dominioEmpresas()) return { irA: urlDeEmpresa(r.codigo, `/ingresar?bienvenida=1&email=${encodeURIComponent(r.email)}`) }
   const sesion = await iniciarSesion(r.email, valores.clave, meta)
   if (!sesion.ok) redirect('/ingresar')
   await guardarCookieDeSesion(sesion.token, sesion.vence)
@@ -43,6 +47,8 @@ export async function crearOtraEmpresa(_: EstadoRegistro, formData: FormData): P
   await anotar([freno])
   const r = await crearEmpresa(sesion.usuario.id, valores)
   if (!r.ok) return { error: r.error, valores }
+  if (dominioEmpresas())
+    return { irA: urlDeEmpresa(r.codigo, `/ingresar?bienvenida=1&email=${encodeURIComponent(sesion.usuario.email)}`) }
   await elegirEmpresa(token, r.empresaId, await datosDelPedido())
   redirect('/?bienvenida=1')
 }

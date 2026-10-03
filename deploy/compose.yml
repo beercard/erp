@@ -42,6 +42,8 @@ services:
       - '443:443/udp'
     environment:
       DOMINIO: ${DOMINIO:?Falta DOMINIO en deploy/.env}
+      # Subdominios de las empresas (komsa.erp.vektra.digital): por defecto, del mismo dominio.
+      DOMINIO_EMPRESAS: ${DOMINIO_EMPRESAS:-${DOMINIO}}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_datos:/data

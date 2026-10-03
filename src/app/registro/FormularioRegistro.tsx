@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
 
 import { Aviso, Boton, Campo, Selector } from '@/components/ui'
 
@@ -42,6 +42,7 @@ function DatosEmpresa({ valores }: { valores?: Record<string, string> }) {
 /** Cuenta nueva con su empresa. */
 export function FormularioRegistro() {
   const [estado, accion, enviando] = useActionState(registrarse, undefined)
+  useIrA(estado?.irA)
   const v = estado?.valores
   return (
     <form action={accion} className="flex flex-col gap-4">
@@ -96,6 +97,7 @@ export function FormularioRegistro() {
 /** Empresa adicional para una cuenta que ya existe. */
 export function FormularioOtraEmpresa() {
   const [estado, accion, enviando] = useActionState(crearOtraEmpresa, undefined)
+  useIrA(estado?.irA)
   return (
     <form action={accion} className="flex flex-col gap-4">
       {estado?.error && <Aviso>{estado.error}</Aviso>}
@@ -105,4 +107,11 @@ export function FormularioOtraEmpresa() {
       </Boton>
     </form>
   )
+}
+
+/** Con subdominios, la empresa nueva se abre en su dirección (otro origen: navegación común). */
+function useIrA(url: string | undefined) {
+  useEffect(() => {
+    if (url) window.location.assign(url)
+  }, [url])
 }

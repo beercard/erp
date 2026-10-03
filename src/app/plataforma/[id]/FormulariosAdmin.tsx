@@ -5,7 +5,7 @@ import { useActionState } from 'react'
 import { Aviso, Boton } from '@/components/ui'
 import { APLICACIONES, FUNCIONES, PLANES } from '@/lib/planes'
 
-import { guardarSuscripcionAccion, registrarPagoAccion, type EstadoAdmin } from '../acciones'
+import { cambiarCodigoAccion, guardarSuscripcionAccion, registrarPagoAccion, type EstadoAdmin } from '../acciones'
 
 const control = 'h-9 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento'
 const etiqueta = 'text-xs font-medium text-texto-2'
@@ -135,6 +135,39 @@ export function FormularioPago({ empresaId, sugerido }: { empresaId: string; sug
       <Boton type="submit" disabled={enviando}>
         Registrar pago
       </Boton>
+      <div className="w-full">
+        <Resultado estado={estado} />
+      </div>
+    </form>
+  )
+}
+
+/** Código de ingreso (subdominio) de la empresa. */
+export function FormularioCodigo({
+  empresaId,
+  codigo,
+  dominio,
+}: {
+  empresaId: string
+  codigo: string | null
+  dominio: string | null
+}) {
+  const [estado, accion, enviando] = useActionState(cambiarCodigoAccion.bind(null, empresaId), undefined)
+  return (
+    <form action={accion} className="flex flex-wrap items-end gap-3">
+      <label className="flex flex-col gap-1">
+        <span className={etiqueta}>Código</span>
+        <span className="flex items-center gap-1">
+          <input name="codigo" defaultValue={codigo ?? ''} required className={`${control} cifras w-48`} />
+          {dominio && <span className="text-sm text-texto-3">.{dominio}</span>}
+        </span>
+      </label>
+      <Boton type="submit" disabled={enviando}>
+        Cambiar
+      </Boton>
+      <p className="w-full text-xs text-texto-3">
+        Cambiarlo cambia la dirección por la que entran todos los usuarios de la empresa: avisales antes.
+      </p>
       <div className="w-full">
         <Resultado estado={estado} />
       </div>

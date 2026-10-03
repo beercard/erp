@@ -5,6 +5,7 @@ import { Logo } from '@/components/sitio/Logo'
 import { Boton, Panel } from '@/components/ui'
 import { requerirSesion } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
+import { dominioEmpresas, urlDeEmpresa } from '@/lib/subdominio'
 
 import { elegir, salir } from '../ingresar/acciones'
 import { FormularioOtraEmpresa } from '../registro/FormularioRegistro'
@@ -13,6 +14,7 @@ export const metadata: Metadata = { title: 'Elegir empresa' }
 
 export default async function PaginaEmpresas() {
   const sesion = await requerirSesion()
+  const dominio = dominioEmpresas()
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
       <div className="mb-10">
@@ -24,13 +26,9 @@ export default async function PaginaEmpresas() {
       </p>
       {sesion.empresas.length > 0 && (
         <Panel className="divide-y divide-borde overflow-hidden">
-          {sesion.empresas.map((e) => (
-            <form key={e.id} action={elegir}>
-              <input type="hidden" name="empresa" value={e.id} />
-              <button
-                type="submit"
-                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-superficie-2"
-              >
+          {sesion.empresas.map((e) => {
+            const contenido = (
+              <>
                 <span
                   aria-hidden
                   className="grid size-10 shrink-0 place-items-center rounded-lg bg-acento-suave font-semibold text-acento"
@@ -42,11 +40,37 @@ export default async function PaginaEmpresas() {
                   <span className="cifras block text-xs text-texto-3">
                     CUIT {formatearCuit(e.cuit)} · {e.rol}
                   </span>
+                  {dominio && e.codigo && (
+                    <span className="block truncate text-xs text-acento">
+                      {e.codigo}.{dominio}
+                    </span>
+                  )}
                 </span>
                 <ChevronRight aria-hidden className="size-4 text-texto-3" />
-              </button>
-            </form>
-          ))}
+              </>
+            )
+            const clase = 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-superficie-2'
+            // Con subdominios, cada empresa se abre en su dirección, con su propia sesión.
+            if (dominio && e.codigo) {
+              return (
+                <a
+                  key={e.id}
+                  href={urlDeEmpresa(e.codigo, `/ingresar?email=${encodeURIComponent(sesion.usuario.email)}`)}
+                  className={clase}
+                >
+                  {contenido}
+                </a>
+              )
+            }
+            return (
+              <form key={e.id} action={elegir}>
+                <input type="hidden" name="empresa" value={e.id} />
+                <button type="submit" className={clase}>
+                  {contenido}
+                </button>
+              </form>
+            )
+          })}
         </Panel>
       )}
       <details className="mt-6 tarjeta" open={sesion.empresas.length === 0}>
@@ -58,6 +82,11 @@ export default async function PaginaEmpresas() {
           <FormularioOtraEmpresa />
         </div>
       </details>
+      {sesion.usuario.adminPlataforma && (
+        <a href="/plataforma" className="mt-6 block tarjeta px-4 py-3 text-sm font-medium hover:border-acento">
+          Panel de la plataforma →
+        </a>
+      )}
       <form action={salir} className="mt-6">
         <Boton type="submit" variante="fantasma">
           Cerrar sesión
