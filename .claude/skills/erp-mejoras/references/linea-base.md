@@ -10,17 +10,23 @@ zonas con sesión pasan por `enLaEmpresa` o un envoltorio (`enContratos`, `exigi
 importa servidor; ninguna capa invertida (las pruebas de la API v1 importan sus rutas a propósito).
 
 ## Para corregir (bugs chicos confirmados)
-- `src/app/(app)/compras/acciones.ts:127` — `aplicarNotaCredito(..., new Date().toISOString().slice(0, 10))`: la fecha
-  de aplicación sale en UTC; entre las 21 y las 24 h de Argentina queda en el día siguiente (y puede chocar con un
-  bloqueo de período). Cambiar por `hoyArgentina()`.
-- `src/app/(app)/cobros-online/page.tsx:134` y `src/app/(app)/configuracion/suscripcion/page.tsx:117,183` — fecha de
-  creación mostrada con `creado.toISOString().slice(0, 10)`: muestra el día UTC. Usar `hoyArgentina(creado)`.
-- `src/app/ingresar/acciones.ts` — `destinoSeguro` es un helper puro exportado desde un archivo `'use server'`, así que
-  queda publicado como acción del servidor. Moverlo a un archivo sin la directiva (o no exportarlo).
+Sin casos abiertos. Resueltos el 2026-10-03 (rama `claude/fix-fechas-y-destino-seguro`):
+- ~~`compras/acciones.ts:127`~~ — `aplicarNotaCredito` usaba el día UTC; ahora `hoyArgentina()`.
+- ~~`cobros-online/page.tsx` y `configuracion/suscripcion/page.tsx`~~ — mostraban `creado` en UTC; ahora
+  `fechaCorta(hoyArgentina(creado))`.
+- ~~`ingresar/acciones.ts`~~ — `destinoSeguro` (helper puro exportado desde un `'use server'`, publicado como acción)
+  pasó a `src/lib/auth/destino.ts`. Regla en `erp-pantallas`.
 
 ## Revisar (AVISO, puede ser seguro)
-- `fechas-utc`: 17 casos. Muchos arman la fecha con `Date.UTC` o `T12:00:00Z` en otro renglón (seguros); revisar uno
-  por uno en `impuestos/vencimientos.ts`, `contabilidad/*`, `servicio/agenda.ts`, `crm/[id]/PiezasFicha.tsx`.
+- `fechas-utc`: 0 casos. Las 13 ocurrencias restantes se revisaron una por una el 2026-10-03:
+  - Corregidas (bugs menores): `crm/[id]/PiezasFicha.tsx` ("Mañana" se armaba con la hora local del navegador y se
+    formateaba en UTC), `whatsapp/agente.ts` (ventana de 30 días) y `arca/cliente.ts` (vencimiento del CAE simulado):
+    ahora `sumarDias(hoyArgentina(), n)`. `importacion/persat.ts`: mismo resultado, ahora con `hoyArgentina(Date)`.
+  - Seguras, sin cambios: `impuestos/vencimientos.ts`, `contabilidad/{asientos,automaticos,cierre}.ts`,
+    `servicio/agenda.ts` y `impuestos/vencimientos/page.tsx` (aritmética sobre `T12:00:00Z` / `Date.UTC`);
+    `importacion/persatApi.ts` (solo una etiqueta de avance).
+  - El auditor ya no marca la aritmética anclada a `T12:00:00Z` / `Date.UTC` hecha hasta 8 renglones antes; si vuelve
+    a aparecer un caso, es una fecha sin ancla: leelo con cuidado.
 
 ## Deuda técnica (MEJORA)
 - **Archivos largos** (> 700 líneas): `modulos/servicio/servicio.ts` (1353), `modulos/crm/crm.ts` (1013),

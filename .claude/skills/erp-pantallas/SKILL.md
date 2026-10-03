@@ -95,6 +95,9 @@ export async function guardarValeAccion(id: string | null, _: EstadoVale, formDa
 - Correos encolados por el módulo: `after(() => enviarPendientes(empresaId).catch(() => undefined))`.
 - Acciones simples sin estado (borrar, quitar): `async function xAccion(id: string) { await enLaEmpresa(...); revalidatePath(...) }`
   y en el cliente `<form action={xAccion.bind(null, id)}>` con `BotonConfirmar` si no tiene vuelta atrás.
+- Un archivo `'use server'` solo exporta acciones `async` (y tipos): todo `export` de valor queda publicado como acción
+  del servidor, invocable desde el cliente, y los helpers puros o síncronos rompen el build. Van a un archivo aparte
+  sin la directiva (ej. `destinoSeguro` en `src/lib/auth/destino.ts`, usado por `src/app/ingresar/acciones.ts`).
 
 ## Formulario cliente (de `articulos/FormularioArticulo.tsx`)
 ```tsx
