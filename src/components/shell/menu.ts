@@ -178,6 +178,7 @@ export const SECCIONES: Seccion[] = [
     items: [
       { href: '/ordenes-compra', permiso: 'compras.ver', texto: 'Órdenes de compra', icono: ShoppingCart, funcion: 'compras' },
       { href: '/compras', permiso: 'compras.ver', texto: 'Comprobantes de compra', icono: FileInput, funcion: 'compras' },
+      { href: '/compras/recibidas', permiso: 'compras.ver', texto: 'Facturas recibidas', icono: Inbox, funcion: 'compras' },
       { href: '/pagos', permiso: 'compras.ver', texto: 'Pagos a proveedores', icono: HandCoins, funcion: 'compras' },
       { href: '/cuentas-proveedores', permiso: 'compras.ver', texto: 'Cuentas de proveedores', icono: Scale, funcion: 'compras' },
     ],
