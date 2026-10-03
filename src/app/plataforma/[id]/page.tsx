@@ -27,7 +27,7 @@ export default async function EmpresaPlataforma({ params }: PageProps<'/platafor
   const periodo = s.ciclo === 'anual' ? mensual * MESES_COBRADOS_EN_ANUAL : mensual
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6 sm:px-6">
+    <main className="contenido mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6 sm:px-8 sm:py-8">
       <Link href="/plataforma" className="flex items-center gap-1.5 text-sm text-texto-2 hover:text-texto">
         <ArrowLeft aria-hidden className="size-4" /> Todas las empresas
       </Link>

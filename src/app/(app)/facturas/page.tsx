@@ -54,7 +54,7 @@ export default async function Facturas({ searchParams }: PageProps<'/facturas'>)
             name="q"
             defaultValue={texto}
             placeholder="Cliente, número o CAE, y Enter"
-            className="h-9 w-full rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+            className="h-9 w-full rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
           />
         </form>
         <nav aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
@@ -63,7 +63,7 @@ export default async function Facturas({ searchParams }: PageProps<'/facturas'>)
               key={f.valor}
               href={enlace(f.valor)}
               aria-current={filtro === f.valor ? 'page' : undefined}
-              className={`rounded-full border px-3 py-1 text-xs ${
+              className={`inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-medium transition-colors ${
                 filtro === f.valor
                   ? 'border-acento bg-acento-suave text-acento'
                   : 'border-borde text-texto-2 hover:bg-superficie-2'

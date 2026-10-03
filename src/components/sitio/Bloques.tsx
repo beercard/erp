@@ -33,7 +33,7 @@ export function BotonesInicio({ centrado = false }: { centrado?: boolean }) {
       </Link>
       <Link
         href="/contacto"
-        className="rounded-lg border border-borde bg-superficie px-6 py-3 text-center font-medium hover:bg-superficie-2"
+        className="rounded-xl border border-borde bg-superficie shadow-suave px-6 py-3 text-center font-medium hover:bg-superficie-2"
       >
         Hablar con un asesor
       </Link>
@@ -77,7 +77,7 @@ export function Llamado({ titulo, bajada }: { titulo: string; bajada: string }) 
   return (
     <section className="py-20">
       <Contenedor>
-        <div className="relative overflow-hidden rounded-2xl border border-borde bg-superficie px-6 py-14 text-center shadow-[var(--sombra)]">
+        <div className="relative overflow-hidden rounded-2xl border border-borde bg-superficie px-6 py-14 text-center shadow-panel">
           <div aria-hidden className="fondo-sitio pointer-events-none absolute inset-0 opacity-70" />
           <div className="relative flex flex-col items-center gap-5">
             <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance">{titulo}</h2>

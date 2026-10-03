@@ -24,7 +24,7 @@ export function Encabezado() {
             <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md px-3 py-2 text-texto-2 hover:text-texto [&::-webkit-details-marker]:hidden">
               Soluciones <ChevronDown aria-hidden className="size-3.5 transition group-open:rotate-180" />
             </summary>
-            <div className="absolute left-0 top-full mt-2 w-72 rounded-lg border border-borde bg-superficie p-2 shadow-[var(--sombra)]">
+            <div className="absolute left-0 top-full mt-2 w-72 rounded-xl border border-borde bg-superficie shadow-suave p-2 shadow-flotante">
               {SOLUCIONES.map((s) => (
                 <Link
                   key={s.slug}
@@ -61,7 +61,7 @@ export function Encabezado() {
             </summary>
             <nav
               aria-label="Menú del celular"
-              className="absolute right-0 top-full mt-2 flex w-64 flex-col rounded-lg border border-borde bg-superficie p-2 text-sm shadow-[var(--sombra)]"
+              className="absolute right-0 top-full mt-2 flex w-64 flex-col rounded-xl border border-borde bg-superficie shadow-suave p-2 text-sm shadow-flotante"
             >
               {ENLACES.map((e) => (
                 <Link key={e.href} href={e.href} className="rounded-md px-3 py-2 hover:bg-superficie-2">

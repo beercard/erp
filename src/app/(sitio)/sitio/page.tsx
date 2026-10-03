@@ -198,7 +198,7 @@ export default function Inicio() {
               <Link
                 key={titulo}
                 href={`/funciones#${ancla}`}
-                className="group flex flex-col gap-3 rounded-xl border border-borde bg-superficie p-5 transition hover:-translate-y-0.5 hover:border-acento/50 hover:shadow-[var(--sombra)]"
+                className="group flex flex-col gap-3 rounded-xl border border-borde bg-superficie p-5 transition hover:-translate-y-0.5 hover:border-acento/50 hover:shadow-panel"
               >
                 <span className="grid size-10 place-items-center rounded-lg bg-acento-suave text-acento">
                   <I aria-hidden className="size-5" />

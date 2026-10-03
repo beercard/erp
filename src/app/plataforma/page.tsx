@@ -49,7 +49,7 @@ export default async function Plataforma({ searchParams }: PageProps<'/plataform
   const cuenta = (e: string) => filas.filter((f) => f.estado === e).length
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
+    <main className="contenido mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-8 sm:py-8">
       <Link href="/" className="flex items-center gap-1.5 text-sm text-texto-2 hover:text-texto">
         <ArrowLeft aria-hidden className="size-4" /> Volver al sistema
       </Link>

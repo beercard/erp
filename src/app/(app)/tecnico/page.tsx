@@ -96,7 +96,7 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
       {datos.propio && (
         <Link
           href="/tecnico/formularios"
-          className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-borde bg-superficie px-3 py-2 text-sm hover:border-acento"
+          className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-borde bg-superficie shadow-suave px-3 py-2 text-sm hover:border-acento"
         >
           <span className="flex items-center gap-2">
             <FileText aria-hidden className="size-4 text-acento" /> Formularios (checklists, relevamientos)
@@ -109,7 +109,7 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
           href={datos.ruta.enlace}
           target="_blank"
           rel="noreferrer"
-          className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-borde bg-superficie px-3 py-2 text-sm hover:border-acento"
+          className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-borde bg-superficie shadow-suave px-3 py-2 text-sm hover:border-acento"
         >
           <span className="flex items-center gap-2">
             <Navigation aria-hidden className="size-4 text-acento" /> Recorrido de hoy en Google Maps
@@ -160,7 +160,7 @@ export default async function MiAgenda({ searchParams }: PageProps<'/tecnico'>) 
                   <li key={o.id}>
                     <Link
                       href={`/tecnico/${o.id}`}
-                      className="flex items-center gap-3 rounded-lg border border-borde bg-superficie p-3 hover:border-acento"
+                      className="flex items-center gap-3 rounded-xl border border-borde bg-superficie shadow-suave p-3 hover:border-acento"
                       style={{ borderLeftWidth: 4, borderLeftColor: o.color ?? undefined }}
                     >
                       <span className="cifras w-12 shrink-0 text-center text-sm font-semibold">

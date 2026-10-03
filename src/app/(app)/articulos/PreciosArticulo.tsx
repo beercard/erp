@@ -49,7 +49,7 @@ function FilaBase({
               name="precio"
               inputMode="decimal"
               required
-              className="cifras h-8 w-full min-w-24 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento"
+              className="cifras h-8 w-full min-w-24 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm focus:border-acento"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -57,7 +57,7 @@ function FilaBase({
             <select
               name="moneda"
               defaultValue={p.moneda}
-              className="h-8 rounded-md border border-borde bg-superficie px-1 text-sm"
+              className="h-8 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-1 text-sm"
             >
               <option value="PES">$</option>
               <option value="DOL">US$</option>
@@ -71,7 +71,7 @@ function FilaBase({
               type="date"
               defaultValue={hoy}
               required
-              className="h-8 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento"
+              className="h-8 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm focus:border-acento"
             />
           </label>
           <Boton type="submit" disabled={enviando} className="h-8">
@@ -151,14 +151,14 @@ function FilaDerivada({
                   name="precio"
                   inputMode="decimal"
                   required
-                  className="cifras h-8 w-full rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento"
+                  className="cifras h-8 w-full rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm focus:border-acento"
                 />
               </label>
               <select
                 name="moneda"
                 defaultValue={p.moneda}
                 aria-label="Moneda"
-                className="h-8 rounded-md border border-borde bg-superficie px-1 text-sm"
+                className="h-8 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-1 text-sm"
               >
                 <option value="PES">$</option>
                 <option value="DOL">US$</option>

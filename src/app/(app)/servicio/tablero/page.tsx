@@ -106,7 +106,7 @@ export default async function Tablero({ searchParams }: PageProps<'/servicio/tab
             type="date"
             name="desde"
             defaultValue={desde}
-            className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-texto-2">
@@ -115,7 +115,7 @@ export default async function Tablero({ searchParams }: PageProps<'/servicio/tab
             type="date"
             name="hasta"
             defaultValue={hasta}
-            className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
           />
         </label>
         <button className="h-9 rounded-md border border-borde px-3 text-sm hover:bg-superficie-2">Ver</button>

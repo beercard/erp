@@ -349,7 +349,7 @@ function Materiales({
             inputMode="decimal"
             value={m.cantidad}
             onChange={(e) => poner(n, { cantidad: e.target.value })}
-            className="cifras h-9 w-20 rounded-md border border-borde bg-superficie px-2 text-right text-sm"
+            className="cifras h-9 w-20 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-right text-sm"
           />
           <button
             type="button"

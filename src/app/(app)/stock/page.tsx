@@ -37,7 +37,7 @@ export default async function Stock({ searchParams }: PageProps<'/stock'>) {
           name="q"
           defaultValue={texto}
           placeholder="Nombre o código, y Enter"
-          className="h-9 w-full max-w-sm rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+          className="h-9 w-full max-w-sm rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
         />
         <label className="flex items-center gap-2 text-sm text-texto-2">
           <input type="checkbox" name="con" value="1" defaultChecked={soloConStock} className="size-4 accent-[var(--acento)]" />

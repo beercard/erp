@@ -110,12 +110,12 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
           name="q"
           defaultValue={q}
           placeholder="Cliente, serie, falla o número"
-          className="h-9 min-w-64 flex-1 rounded-md border border-borde bg-superficie px-2.5 text-sm focus:border-acento"
+          className="h-9 min-w-64 flex-1 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2.5 text-sm focus:border-acento"
         />
         <select
           name="estado"
           defaultValue={estado ?? 'activas'}
-          className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+          className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
         >
           <option value="activas">Activas (sin cerrar)</option>
           <option value="cerradas">Cerradas</option>
@@ -130,7 +130,7 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
           <select
             name="tecnico"
             defaultValue={tecnico ?? ''}
-            className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
           >
             <option value="">Todos los técnicos</option>
             {tecnicos.map((t) => (
@@ -145,7 +145,7 @@ export default async function Servicio({ searchParams }: PageProps<'/servicio'>)
             name="etiqueta"
             defaultValue={etiqueta ?? ''}
             aria-label="Etiqueta"
-            className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
           >
             <option value="">Todas las etiquetas</option>
             {etiquetas.map((e) => (

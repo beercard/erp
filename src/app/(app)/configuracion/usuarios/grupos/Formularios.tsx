@@ -17,7 +17,7 @@ export function NuevoGrupo() {
           name="nombre"
           required
           placeholder="Córdoba, Cuentas grandes, Zona norte…"
-          className="h-9 w-72 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento"
+          className="h-9 w-72 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm focus:border-acento"
         />
       </label>
       <Boton type="submit" variante="primario" disabled={enviando}>

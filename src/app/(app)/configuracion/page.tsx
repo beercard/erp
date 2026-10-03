@@ -69,7 +69,7 @@ export default async function Configuracion() {
             <Link
               key={e.href}
               href={e.href}
-              className="group flex items-start gap-3 rounded-lg border border-borde bg-superficie p-4 hover:border-acento"
+              className="group flex items-start gap-3 rounded-xl border border-borde bg-superficie shadow-suave p-4 hover:border-acento"
             >
               <e.icono aria-hidden className="mt-0.5 size-5 text-acento" />
               <span className="min-w-0 flex-1">

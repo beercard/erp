@@ -58,7 +58,7 @@ export function Maqueta() {
               ['Pedidos online', '46', 'hoy 9'],
               ['IVA del mes', '$ 1,2 M', 'a pagar'],
             ].map(([t, v, d]) => (
-              <div key={t} className="rounded-lg border border-borde bg-superficie p-3">
+              <div key={t} className="rounded-xl border border-borde bg-superficie shadow-suave p-3">
                 <p className="text-[11px] text-texto-3">{t}</p>
                 <p className="cifras mt-1 text-base font-semibold">{v}</p>
                 <p className="text-[11px] text-acento">{d}</p>
@@ -66,7 +66,7 @@ export function Maqueta() {
             ))}
           </div>
           <div className="grid gap-3 lg:grid-cols-[1fr_200px]">
-            <div className="rounded-lg border border-borde bg-superficie">
+            <div className="rounded-xl border border-borde bg-superficie shadow-suave">
               <p className="border-b border-borde px-3 py-2 text-xs font-semibold">Últimas facturas</p>
               {FACTURAS.map((f) => (
                 <div key={f.n} className="flex items-center gap-3 border-b border-borde px-3 py-2 text-[11px] last:border-0">
@@ -77,7 +77,7 @@ export function Maqueta() {
                 </div>
               ))}
             </div>
-            <div className="hidden rounded-lg border border-borde bg-superficie p-3 lg:block">
+            <div className="hidden rounded-xl border border-borde bg-superficie shadow-suave p-3 lg:block">
               <p className="text-xs font-semibold">Ventas por mes</p>
               <div className="mt-3 flex h-24 items-end gap-1">
                 {BARRAS.map((h, i) => (

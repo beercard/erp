@@ -48,7 +48,7 @@ export default async function Compras({ searchParams }: PageProps<'/compras'>) {
             name="q"
             defaultValue={texto}
             placeholder="Proveedor, CUIT o número, y Enter"
-            className="h-9 rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -57,7 +57,7 @@ export default async function Compras({ searchParams }: PageProps<'/compras'>) {
             type="month"
             name="periodo"
             defaultValue={mes}
-            className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento"
+            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm focus:border-acento"
           />
         </label>
         <button type="submit" className="h-9 rounded-md border border-borde px-3 text-sm hover:bg-superficie-2">

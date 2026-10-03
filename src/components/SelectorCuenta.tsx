@@ -59,7 +59,7 @@ export function SelectorCuenta({
       value={valor}
       onChange={(e) => onChange(e.target.value)}
       aria-label={etiqueta}
-      className="h-9 min-w-40 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento"
+      className="h-9 min-w-40 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm focus:border-acento"
     >
       <option value="">{predeterminada ? predeterminada.nombre : 'Sin cuenta'}</option>
       {posibles

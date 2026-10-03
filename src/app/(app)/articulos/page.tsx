@@ -43,7 +43,7 @@ export default async function PaginaArticulos({ searchParams }: PageProps<'/arti
             name="q"
             defaultValue={q}
             placeholder="Nombre, código o código de barras"
-            className="h-9 w-full max-w-md rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+            className="h-9 w-full max-w-md rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -54,7 +54,7 @@ export default async function PaginaArticulos({ searchParams }: PageProps<'/arti
             id="lista"
             name="lista"
             defaultValue={lista?.id}
-            className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
           >
             {listas.map((l) => (
               <option key={l.id} value={l.id}>
@@ -65,7 +65,7 @@ export default async function PaginaArticulos({ searchParams }: PageProps<'/arti
         </div>
         <button
           type="submit"
-          className="h-9 rounded-md border border-borde bg-superficie px-3 text-sm font-medium hover:bg-superficie-2"
+          className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm font-medium hover:bg-superficie-2"
         >
           Ver
         </button>

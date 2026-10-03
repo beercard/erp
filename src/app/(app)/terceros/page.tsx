@@ -56,7 +56,7 @@ export default async function PaginaTerceros({ searchParams }: PageProps<'/terce
             name="q"
             defaultValue={q}
             placeholder="Buscar por nombre, código, CUIT o email y Enter"
-            className="h-9 w-full max-w-md rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+            className="h-9 w-full max-w-md rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
           />
         </form>
       </div>

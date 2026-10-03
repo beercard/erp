@@ -79,7 +79,7 @@ export function FormularioRemito({
         <div className="flex flex-col gap-1 md:col-span-2">
           <span className="text-xs font-medium text-texto-2">Cliente</span>
           {tercero ? (
-            <div className="flex h-9 items-center justify-between rounded-md border border-borde bg-superficie-2 px-2.5">
+            <div className="flex h-9 items-center justify-between rounded-lg border border-borde-fuerte/80 bg-superficie-2 px-2.5">
               <span className="truncate text-sm font-medium">{tercero.razonSocial}</span>
               {!pedido && (
                 <button type="button" onClick={() => setTercero(null)} className="text-xs text-acento hover:underline">

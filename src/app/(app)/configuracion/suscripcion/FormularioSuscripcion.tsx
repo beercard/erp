@@ -113,7 +113,7 @@ export function FormularioSuscripcion(props: {
             value={extra}
             onChange={(e) => setExtra(Math.max(0, Number(e.target.value) || 0))}
             disabled={!props.puedeCambiar || elegido.precioMensual === 0}
-            className="cifras h-9 w-28 rounded-md border border-borde bg-superficie px-2 text-sm"
+            className="cifras h-9 w-28 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
           />
         </label>
         <fieldset className="flex gap-4 text-sm" disabled={!props.puedeCambiar || elegido.precioMensual === 0}>

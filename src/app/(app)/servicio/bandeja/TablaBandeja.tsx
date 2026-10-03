@@ -65,13 +65,13 @@ export function TablaBandeja({ envios, estados }: { envios: Fila[]; estados: Est
   return (
     <div className="flex flex-col gap-3">
       {elegidos.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-borde bg-superficie p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-borde bg-superficie shadow-suave p-3 text-sm">
           <span className="font-medium">{elegidos.size} elegidos</span>
           <select
             value={destino}
             onChange={(e) => setDestino(e.target.value)}
             aria-label="Nuevo estado"
-            className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
           >
             <option value="" disabled>
               Pasar a…
@@ -88,7 +88,7 @@ export function TablaBandeja({ envios, estados }: { envios: Fila[]; estados: Est
         </div>
       )}
       {mensaje && <Aviso tono={mensaje.tono}>{mensaje.texto}</Aviso>}
-      <div className="overflow-x-auto rounded-lg border border-borde bg-superficie">
+      <div className="overflow-x-auto rounded-xl border border-borde bg-superficie shadow-suave">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="border-b border-borde text-left text-xs text-texto-2">
             <tr>

@@ -72,7 +72,7 @@ export default async function Usuarios({ searchParams }: PageProps<'/configuraci
                       id={`rol-${m.membresiaId}`}
                       name="rolId"
                       defaultValue={m.rolId}
-                      className="h-8 rounded-md border border-borde bg-superficie px-2 text-sm"
+                      className="h-8 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
                     >
                       {opcionesRol.map((r) => (
                         <option key={r.valor} value={r.valor}>

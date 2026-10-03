@@ -245,10 +245,10 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
         type="button"
         onClick={() => setAbierta(true)}
         aria-label="Buscar (Ctrl + K)"
-        className="flex h-9 w-full max-w-md items-center gap-2 rounded-md border border-borde bg-superficie-2 px-3 text-sm text-texto-3 transition-colors hover:border-texto-3"
+        className="flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-borde bg-superficie-2/70 px-3 text-sm text-texto-3 transition-colors hover:border-borde-fuerte hover:bg-superficie"
       >
         <Search aria-hidden className="size-4" />
-        <span className="flex-1 text-left">Buscar clientes, artículos o acciones…</span>
+        <span className="flex-1 truncate text-left">Buscar clientes, artículos o acciones…</span>
         <span className="hidden items-center gap-1 sm:flex">
           <Tecla>Ctrl</Tecla>
           <Tecla>K</Tecla>
@@ -259,8 +259,8 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
         onOpenChange={setAbierta}
         label="Búsqueda universal"
         shouldFilter={false}
-        overlayClassName="fixed inset-0 z-40 bg-black/30"
-        contentClassName="fixed top-[12vh] left-1/2 z-50 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-xl border border-borde bg-superficie shadow-panel"
+        overlayClassName="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+        contentClassName="fixed top-[12vh] left-1/2 z-50 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-xl border border-borde bg-superficie shadow-flotante"
       >
         <div className="flex items-center gap-2 border-b border-borde px-4">
           <Search aria-hidden className="size-4 text-texto-3" />
@@ -268,7 +268,7 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
             value={texto}
             onValueChange={alEscribir}
             placeholder="Nombre, código, CUIT o acción…"
-            className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-3"
+            className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-3 focus-visible:shadow-none"
           />
           {buscando && <span className="text-xs text-texto-3">Buscando…</span>}
         </div>
@@ -326,6 +326,18 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
             </Command.Group>
           )}
         </Command.List>
+        <div className="flex items-center gap-4 border-t border-borde bg-superficie-2/60 px-4 py-2 text-[11px] text-texto-3">
+          <span className="flex items-center gap-1">
+            <Tecla>↑</Tecla>
+            <Tecla>↓</Tecla> moverse
+          </span>
+          <span className="flex items-center gap-1">
+            <Tecla>Enter</Tecla> abrir
+          </span>
+          <span className="flex items-center gap-1">
+            <Tecla>Esc</Tecla> cerrar
+          </span>
+        </div>
       </Command.Dialog>
     </>
   )

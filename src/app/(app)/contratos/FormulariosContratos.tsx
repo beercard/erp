@@ -35,7 +35,7 @@ function ElegirCliente({ inicial }: { inicial?: { id: string; razonSocial: strin
       <span className={etiqueta}>Cliente</span>
       <input type="hidden" name="terceroId" value={cliente?.id ?? ''} />
       {cliente ? (
-        <div className="flex h-9 items-center justify-between rounded-md border border-borde bg-superficie-2 px-2.5">
+        <div className="flex h-9 items-center justify-between rounded-lg border border-borde-fuerte/80 bg-superficie-2 px-2.5">
           <span className="truncate text-sm font-medium">{cliente.razonSocial}</span>
           <button type="button" onClick={() => setCliente(null)} className="text-xs text-acento hover:underline">
             Cambiar

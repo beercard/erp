@@ -122,7 +122,7 @@ export function Mapa({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          font: '600 11px/1 var(--fuente-plex), sans-serif',
+          font: '600 11px/1 var(--fuente-ui), sans-serif',
           boxShadow: '0 1px 4px rgb(0 0 0 / 0.35)',
         })
         const lado = mk.clase === 'tecnico' ? 30 : 14
@@ -132,7 +132,7 @@ export function Mapa({
         })
       }
       const globo = document.createElement('div')
-      globo.style.font = '13px/1.4 var(--fuente-plex), sans-serif'
+      globo.style.font = '13px/1.4 var(--fuente-ui), sans-serif'
       mk.globo.forEach((renglon, i) => {
         const p = document.createElement('div')
         p.textContent = renglon

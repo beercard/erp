@@ -45,4 +45,5 @@ export const colores = (color: string) =>
     '--acento-hover': `color-mix(in srgb, ${color} 85%, black)`,
     '--acento-suave': `color-mix(in srgb, ${color} 12%, transparent)`,
     '--sobre-acento': '#ffffff',
+    '--anillo': `color-mix(in srgb, ${color} 25%, transparent)`,
   }) as CSSProperties

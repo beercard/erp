@@ -6,11 +6,16 @@ import {
   ClipboardList,
   FileInput,
   FilePlus,
+  FileText,
+  History,
   HandCoins,
+  Package,
   Receipt,
   Smartphone,
+  Store,
   Truck,
   UserPlus,
+  Users,
   Wallet,
   Wrench,
   type LucideIcon,
@@ -18,6 +23,7 @@ import {
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { type App, COLOR_APP, COLOR_APP_LLENO } from '@/components/shell/menu'
 import { BotonEnlace, EncabezadoPagina, Panel, Tecla } from '@/components/ui'
 import { comoPlataforma, conEmpresa } from '@/db/empresa'
 import {
@@ -42,14 +48,22 @@ import { WidgetCotizacion } from './WidgetCotizacion'
 export const metadata: Metadata = { title: 'Inicio' }
 
 /** Las tareas de todos los días, en botones grandes. Cada uno aparece solo si quien entra puede hacerlo. */
-const TAREAS: { href: string; texto: string; ayuda: string; icono: LucideIcon; permiso: string }[] = [
-  { href: '/facturas/nueva', texto: 'Facturar', ayuda: 'Factura A, B o C con CAE', icono: Receipt, permiso: 'ventas.facturar' },
+const TAREAS: { href: string; texto: string; ayuda: string; icono: LucideIcon; permiso: string; app: App }[] = [
+  {
+    href: '/facturas/nueva',
+    texto: 'Facturar',
+    ayuda: 'Factura A, B o C con CAE',
+    icono: Receipt,
+    permiso: 'ventas.facturar',
+    app: 'facturacion',
+  },
   {
     href: '/cobranzas/nueva',
     texto: 'Cobrar',
     ayuda: 'Registrar un pago de un cliente',
     icono: Wallet,
     permiso: 'ventas.cobrar',
+    app: 'facturacion',
   },
   {
     href: '/presupuestos/nuevo',
@@ -57,6 +71,7 @@ const TAREAS: { href: string; texto: string; ayuda: string; icono: LucideIcon; p
     ayuda: 'Armar y mandar un presupuesto',
     icono: FilePlus,
     permiso: 'ventas.presupuestos',
+    app: 'ventas',
   },
   {
     href: '/pedidos/nuevo',
@@ -64,15 +79,31 @@ const TAREAS: { href: string; texto: string; ayuda: string; icono: LucideIcon; p
     ayuda: 'Lo que pidió un cliente',
     icono: ClipboardList,
     permiso: 'ventas.pedidos',
+    app: 'ventas',
   },
-  { href: '/remitos/nuevo', texto: 'Entregar', ayuda: 'Remito que descuenta stock', icono: Truck, permiso: 'ventas.remitos' },
-  { href: '/stock', texto: 'Ver el stock', ayuda: 'Cuánto hay de cada artículo', icono: Boxes, permiso: 'stock.ver' },
+  {
+    href: '/remitos/nuevo',
+    texto: 'Entregar',
+    ayuda: 'Remito que descuenta stock',
+    icono: Truck,
+    permiso: 'ventas.remitos',
+    app: 'ventas',
+  },
+  {
+    href: '/stock',
+    texto: 'Ver el stock',
+    ayuda: 'Cuánto hay de cada artículo',
+    icono: Boxes,
+    permiso: 'stock.ver',
+    app: 'ventas',
+  },
   {
     href: '/compras/nueva',
     texto: 'Cargar una compra',
     ayuda: 'Factura de un proveedor',
     icono: FileInput,
     permiso: 'compras.cargar',
+    app: 'compras',
   },
   {
     href: '/pagos/nuevo',
@@ -80,6 +111,7 @@ const TAREAS: { href: string; texto: string; ayuda: string; icono: LucideIcon; p
     ayuda: 'Con las retenciones calculadas',
     icono: HandCoins,
     permiso: 'compras.pagar',
+    app: 'compras',
   },
   {
     href: '/servicio/nueva',
@@ -87,8 +119,16 @@ const TAREAS: { href: string; texto: string; ayuda: string; icono: LucideIcon; p
     ayuda: 'Un pedido de visita técnica',
     icono: Wrench,
     permiso: 'servicio.cargar',
+    app: 'servicio',
   },
-  { href: '/tecnico', texto: 'Mi agenda', ayuda: 'Mis visitas de hoy', icono: Smartphone, permiso: 'servicio.trabajar' },
+  {
+    href: '/tecnico',
+    texto: 'Mi agenda',
+    ayuda: 'Mis visitas de hoy',
+    icono: Smartphone,
+    permiso: 'servicio.trabajar',
+    app: 'servicio',
+  },
 ]
 
 function saludo(ahora = new Date()) {
@@ -165,17 +205,47 @@ export default async function Inicio() {
   const tareas = TAREAS.filter((t) => tienePermiso(sesion.permisos, t.permiso)).slice(0, 8)
 
   const cifras = [
-    { valor: datos.clientes, texto: 'clientes activos', href: '/terceros?tipo=clientes', permiso: 'maestros.ver' },
-    { valor: datos.proveedores, texto: 'proveedores', href: '/terceros?tipo=proveedores', permiso: 'maestros.ver' },
-    { valor: datos.articulos, texto: 'artículos', href: '/articulos', permiso: 'maestros.ver' },
-    { valor: datos.pedidosAbiertos, texto: 'pedidos por entregar', href: '/pedidos', permiso: 'ventas.ver' },
+    {
+      valor: datos.clientes,
+      texto: 'clientes activos',
+      href: '/terceros?tipo=clientes',
+      permiso: 'maestros.ver',
+      icono: Users,
+      app: 'maestros' as App,
+    },
+    {
+      valor: datos.proveedores,
+      texto: 'proveedores',
+      href: '/terceros?tipo=proveedores',
+      permiso: 'maestros.ver',
+      icono: Store,
+      app: 'compras' as App,
+    },
+    {
+      valor: datos.articulos,
+      texto: 'artículos',
+      href: '/articulos',
+      permiso: 'maestros.ver',
+      icono: Package,
+      app: 'maestros' as App,
+    },
+    {
+      valor: datos.pedidosAbiertos,
+      texto: 'pedidos por entregar',
+      href: '/pedidos',
+      permiso: 'ventas.ver',
+      icono: ClipboardList,
+      app: 'ventas' as App,
+    },
     {
       valor: datos.presupuestosEnviados,
       texto: 'presupuestos esperando respuesta',
       href: '/presupuestos',
       permiso: 'ventas.ver',
+      icono: FileText,
+      app: 'ventas' as App,
     },
-    { valor: datos.cambios, texto: 'cambios en los últimos 7 días' },
+    { valor: datos.cambios, texto: 'cambios en los últimos 7 días', icono: History, app: 'ajustes' as App },
   ].filter((c) => !c.permiso || tienePermiso(sesion.permisos, c.permiso))
 
   return (
@@ -184,7 +254,10 @@ export default async function Inicio() {
         titulo={`${saludo()}, ${sesion.usuario.nombre.split(' ')[0]}`}
         bajada={
           <>
-            Buscá cualquier cliente, artículo o acción con <Tecla>Ctrl</Tecla> <Tecla>K</Tecla>.
+            <span className="sm:hidden">Tocá la lupa de arriba para buscar cualquier cliente, artículo o acción.</span>
+            <span className="hidden sm:inline">
+              Buscá cualquier cliente, artículo o acción con <Tecla>Ctrl</Tecla> <Tecla>K</Tecla>.
+            </span>
           </>
         }
         acciones={
@@ -201,14 +274,17 @@ export default async function Inicio() {
             ¿Qué querés hacer?
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {tareas.map(({ href, texto, ayuda, icono: Icono }) => (
+            {tareas.map(({ href, texto, ayuda, icono: Icono, app }) => (
               <Link
                 key={href}
                 href={href}
-                className="group flex flex-col items-start gap-2 rounded-lg border border-borde bg-superficie p-4 transition hover:border-acento/60 hover:shadow-[var(--sombra)] sm:flex-row sm:items-center sm:gap-3"
+                className="group flex flex-col items-start gap-3 rounded-xl border border-borde bg-superficie p-4 shadow-suave transition hover:-translate-y-px hover:border-borde-fuerte hover:shadow-panel sm:flex-row sm:items-center"
               >
-                <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-acento-suave text-acento transition group-hover:bg-acento group-hover:text-sobre-acento">
-                  <Icono aria-hidden className="size-5" />
+                <span
+                  aria-hidden
+                  className={`grid size-11 shrink-0 place-items-center rounded-xl text-white shadow-suave transition group-hover:scale-105 ${COLOR_APP_LLENO[app]}`}
+                >
+                  <Icono className="size-5" />
                 </span>
                 <span className="min-w-0">
                   <span className="block font-semibold">{texto}</span>
@@ -220,34 +296,55 @@ export default async function Inicio() {
         </section>
       )}
 
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-borde bg-borde lg:grid-cols-6">
-        {cifras.map((c) => {
-          const contenido = (
-            <>
-              <span className="cifras block text-2xl font-medium">{c.valor.toLocaleString('es-AR')}</span>
-              <span className="mt-1 block text-xs text-texto-2">{c.texto}</span>
-            </>
-          )
-          return c.href ? (
-            <Link key={c.texto} href={c.href} className="bg-superficie px-4 py-4 transition-colors hover:bg-superficie-2">
-              {contenido}
-            </Link>
-          ) : (
-            <div key={c.texto} className="bg-superficie px-4 py-4">
-              {contenido}
-            </div>
-          )
-        })}
-      </div>
+      <section aria-labelledby="resumen">
+        <h2 id="resumen" className="mb-3 text-sm font-semibold text-texto-2">
+          Resumen
+        </h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {cifras.map((c) => {
+            const contenido = (
+              <>
+                <span className={`mb-3 grid size-8 place-items-center rounded-lg ${COLOR_APP[c.app]}`}>
+                  <c.icono aria-hidden className="size-4" />
+                </span>
+                <span className="cifras block text-2xl leading-none font-semibold tracking-tight">
+                  {c.valor.toLocaleString('es-AR')}
+                </span>
+                <span className="mt-1.5 block text-xs text-texto-2">{c.texto}</span>
+              </>
+            )
+            const clase = 'rounded-xl border border-borde bg-superficie p-4 shadow-suave'
+            return c.href ? (
+              <Link key={c.texto} href={c.href} className={`${clase} transition hover:border-borde-fuerte hover:shadow-panel`}>
+                {contenido}
+              </Link>
+            ) : (
+              <div key={c.texto} className={clase}>
+                {contenido}
+              </div>
+            )
+          })}
+        </div>
+      </section>
 
       <div className={`mt-6 grid gap-6 ${verPasos ? 'lg:grid-cols-[minmax(0,1fr)_340px]' : 'lg:grid-cols-[340px]'}`}>
         {verPasos && (
           <Panel className="h-fit">
-            <div className="flex items-center justify-between gap-3 border-b border-borde px-4 py-3">
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
               <h2 className="text-sm font-semibold">{hechos === pasos.length ? 'Todo listo para trabajar' : 'Primeros pasos'}</h2>
               <span className="cifras text-xs text-texto-2">
                 {hechos} de {pasos.length}
               </span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="Avance de los primeros pasos"
+              aria-valuemin={0}
+              aria-valuemax={pasos.length}
+              aria-valuenow={hechos}
+              className="h-1 bg-superficie-2"
+            >
+              <div className="h-full rounded-r-full bg-acento" style={{ width: `${(hechos / pasos.length) * 100}%` }} />
             </div>
             <ol className="divide-y divide-borde">
               {pasos.map((p) => (

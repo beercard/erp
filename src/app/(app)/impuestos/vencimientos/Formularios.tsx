@@ -127,7 +127,7 @@ export function FechaEditable({ id, fecha }: { id: string; fecha: string }) {
             else setEditando(false)
           })
         }
-        className="h-8 rounded-md border border-borde bg-superficie px-1 text-xs"
+        className="h-8 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-1 text-xs"
       />
       {error && <span className="text-xs text-error">{error}</span>}
     </span>

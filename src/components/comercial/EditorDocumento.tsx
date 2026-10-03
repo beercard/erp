@@ -255,7 +255,7 @@ export function EditorDocumento({
         <div className="flex flex-col gap-1 md:col-span-2">
           <span className="text-xs font-medium text-texto-2">Cliente</span>
           {cab.terceroId ? (
-            <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-borde bg-superficie-2 px-2.5">
+            <div className="flex h-9 items-center justify-between gap-2 rounded-lg border border-borde-fuerte/80 bg-superficie-2 px-2.5">
               <span className="truncate text-sm font-medium">{cab.cliente}</span>
               {!factura?.asociado && (
                 <button

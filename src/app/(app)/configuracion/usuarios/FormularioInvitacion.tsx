@@ -48,7 +48,7 @@ export function FormularioInvitacion({ roles }: { roles: { valor: string; texto:
               readOnly
               value={estado.enlace}
               onFocus={(e) => e.currentTarget.select()}
-              className="cifras h-9 min-w-0 flex-1 rounded-md border border-borde bg-superficie px-2 text-xs"
+              className="cifras h-9 min-w-0 flex-1 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-xs"
               aria-label="Enlace de invitación"
             />
             <Boton type="button" onClick={() => copiar(estado.enlace!)}>

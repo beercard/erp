@@ -31,7 +31,7 @@ export default async function Bandeja({ searchParams }: PageProps<'/servicio/ban
     return `/servicio/bandeja?${p}`
   }
   const pestana = (activo: boolean) =>
-    `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${activo ? 'border-acento bg-acento-suave font-medium' : 'border-borde hover:bg-superficie-2'}`
+    `inline-flex items-center gap-1.5 inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-medium transition-colors ${activo ? 'border-acento bg-acento-suave font-medium' : 'border-borde hover:bg-superficie-2'}`
   return (
     <>
       <EncabezadoPagina
@@ -57,7 +57,7 @@ export default async function Bandeja({ searchParams }: PageProps<'/servicio/ban
         <select
           name="formulario"
           defaultValue={formulario ?? ''}
-          className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+          className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
         >
           <option value="">Todos los formularios</option>
           {formularios.map((f) => (
@@ -70,7 +70,7 @@ export default async function Bandeja({ searchParams }: PageProps<'/servicio/ban
           name="q"
           defaultValue={q ?? ''}
           placeholder="Cliente, serie o número"
-          className="h-9 min-w-48 flex-1 rounded-md border border-borde bg-superficie px-2 text-sm"
+          className="h-9 min-w-48 flex-1 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
         />
         <button className="h-9 rounded-md border border-borde px-3 text-sm hover:bg-superficie-2">Buscar</button>
       </form>

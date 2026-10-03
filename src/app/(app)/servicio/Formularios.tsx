@@ -119,7 +119,7 @@ export function FormularioOrden({
         <span className={etiqueta}>Cliente</span>
         <input type="hidden" name="terceroId" value={cliente?.id ?? ''} />
         {cliente ? (
-          <div className="flex h-9 items-center justify-between rounded-md border border-borde bg-superficie-2 px-2.5">
+          <div className="flex h-9 items-center justify-between rounded-lg border border-borde-fuerte/80 bg-superficie-2 px-2.5">
             <span className="truncate text-sm font-medium">{cliente.razonSocial}</span>
             <button
               type="button"
@@ -541,7 +541,7 @@ export function Item({
         <span className={etiqueta}>Artículo o concepto</span>
         <input type="hidden" name="articuloId" value={articulo?.id ?? ''} />
         {articulo ? (
-          <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-borde bg-superficie-2 px-2.5">
+          <div className="flex h-9 items-center justify-between gap-2 rounded-lg border border-borde-fuerte/80 bg-superficie-2 px-2.5">
             <span className="truncate text-sm">
               <span className="cifras text-texto-3">{articulo.codigo}</span> {articulo.nombre}
             </span>

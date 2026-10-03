@@ -134,7 +134,7 @@ export default async function OrdenTecnico({ params }: PageProps<'/tecnico/[id]'
       </Panel>
 
       {historial.length > 0 && (
-        <details className="rounded-lg border border-borde bg-superficie p-4">
+        <details className="rounded-xl border border-borde bg-superficie shadow-suave p-4">
           <summary className="cursor-pointer text-sm font-semibold">Historial del equipo ({historial.length})</summary>
           <ul className="mt-3 flex flex-col gap-2 text-sm">
             {historial.map((h) => (

@@ -69,7 +69,7 @@ export default async function FormulariosTecnico({ searchParams }: PageProps<'/t
                   <li key={b.id}>
                     <Link
                       href={`/servicio/envios/${b.id}`}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-borde bg-superficie p-3 hover:border-acento"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-borde bg-superficie shadow-suave p-3 hover:border-acento"
                     >
                       <span className="font-medium">{b.nombre}</span>
                       <ChevronRight aria-hidden className="size-5 text-texto-3" />

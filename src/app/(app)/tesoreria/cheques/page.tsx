@@ -57,7 +57,7 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
             defaultValue={q}
             placeholder="Cliente, banco o número, y Enter"
             aria-label="Buscar"
-            className="h-9 w-full rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+            className="h-9 w-full rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
           />
         </form>
         <nav aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
@@ -66,7 +66,7 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
               key={f.valor}
               href={`/tesoreria/cheques?${new URLSearchParams({ estado: f.valor, ...(q && { q }) })}`}
               aria-current={estado === f.valor ? 'page' : undefined}
-              className={`rounded-full border px-3 py-1 text-xs ${
+              className={`inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-medium transition-colors ${
                 estado === f.valor
                   ? 'border-acento bg-acento-suave text-acento'
                   : 'border-borde text-texto-2 hover:bg-superficie-2'

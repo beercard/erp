@@ -112,7 +112,7 @@ export default async function Precios({ searchParams }: PageProps<'/precios'>) {
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           {APLICACIONES.map((a) => (
-            <div key={a.id} className="flex flex-col gap-2 rounded-lg border border-borde bg-superficie p-5">
+            <div key={a.id} className="flex flex-col gap-2 rounded-xl border border-borde bg-superficie shadow-suave p-5">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-semibold">{FUNCIONES[a.id].nombre}</h3>
                 {!a.disponible && <span className="rounded-full bg-superficie-2 px-2 py-0.5 text-xs text-texto-2">Pronto</span>}
@@ -138,7 +138,7 @@ export default async function Precios({ searchParams }: PageProps<'/precios'>) {
         <h2 className="text-xl font-semibold">Preguntas frecuentes</h2>
         <div className="grid gap-3 md:grid-cols-2">
           {PREGUNTAS.map((q) => (
-            <details key={q.p} className="rounded-lg border border-borde bg-superficie p-4">
+            <details key={q.p} className="rounded-xl border border-borde bg-superficie shadow-suave p-4">
               <summary className="cursor-pointer font-medium">{q.p}</summary>
               <p className="mt-2 text-sm text-texto-2">{q.r}</p>
             </details>

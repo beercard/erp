@@ -62,7 +62,7 @@ function Fila({ p, puede, cerrado }: { p: Presentacion; puede: boolean; cerrado:
           <input
             name="transaccion"
             placeholder="N° de transacción de ARCA"
-            className="h-8 w-56 rounded-md border border-borde bg-superficie px-2 text-xs"
+            className="h-8 w-56 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-xs"
           />
           <Boton type="submit" disabled={presentando} className="h-8 px-2 text-xs">
             Marcar como presentada
@@ -77,7 +77,7 @@ function Fila({ p, puede, cerrado }: { p: Presentacion; puede: boolean; cerrado:
               name="motivo"
               required
               placeholder="Motivo"
-              className="h-8 w-72 rounded-md border border-borde bg-superficie px-2 text-xs"
+              className="h-8 w-72 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-xs"
             />
             <Boton type="submit" disabled={reabriendo} className="h-8 px-2 text-xs">
               Reabrir

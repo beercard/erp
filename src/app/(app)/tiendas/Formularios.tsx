@@ -133,7 +133,7 @@ export function Vincular({ canalId, id, codigo }: { canalId: string; id: string;
         defaultValue={codigo ?? ''}
         placeholder="Código del artículo"
         aria-label="Código del artículo"
-        className="h-8 w-36 rounded-md border border-borde bg-superficie px-2 text-xs"
+        className="h-8 w-36 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-xs"
       />
       <Boton type="submit" disabled={enviando} className="h-8 px-2 text-xs">
         {codigo ? 'Cambiar' : 'Vincular'}

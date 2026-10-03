@@ -6,17 +6,20 @@
  * Neutros fríos con un leve tinte hacia el acento (petróleo).
  */
 :root {
-  --fondo: #f3f5f7;
+  --fondo: #f4f5f7;
+  --lateral: #fbfbfc;
   --superficie: #ffffff;
-  --superficie-2: #eef1f4;
-  --texto: #141a23;
-  --texto-2: #4c5768;
-  --texto-3: #8792a2;
-  --borde: #dce1e7;
+  --superficie-2: #f0f2f5;
+  --texto: #12161d;
+  --texto-2: #4a5462;
+  --texto-3: #7b8594;
+  --borde: #e3e6eb;
+  --borde-fuerte: #cdd2da;
   --acento: #0b6b77;
-  --acento-hover: #08575f;
-  --acento-suave: #e1f0f1;
+  --acento-hover: #095a64;
+  --acento-suave: #e3f1f2;
   --sobre-acento: #ffffff;
+  --anillo: rgb(11 107 119 / 0.22);
   --ok: #17703f;
   --ok-suave: #e3f3e9;
   --aviso: #8f5d00;
@@ -25,22 +28,47 @@
   --error-suave: #fbe8e5;
   --info: #2454ad;
   --info-suave: #e6edfa;
-  --sombra: 0 1px 2px rgb(20 26 35 / 0.06), 0 4px 16px rgb(20 26 35 / 0.06);
+  --sombra-xs: 0 1px 2px rgb(16 24 40 / 0.05);
+  --sombra: 0 1px 3px rgb(16 24 40 / 0.07), 0 1px 2px rgb(16 24 40 / 0.04);
+  --sombra-lg: 0 16px 40px -12px rgb(16 24 40 / 0.22), 0 4px 10px -4px rgb(16 24 40 / 0.08);
+
+  /*
+   * Color de cada aplicación (como los íconos de Odoo): sirve para reconocer
+   * el área de un vistazo en el menú, el lanzador y el inicio. Solo para
+   * íconos y fondos suaves, nunca para texto largo. Valen en los dos temas.
+   */
+  --app-maestros: oklch(0.6 0.12 195);
+  --app-ventas: oklch(0.6 0.15 255);
+  --app-facturacion: oklch(0.6 0.15 155);
+  --app-compras: oklch(0.62 0.16 50);
+  --app-tesoreria: oklch(0.6 0.13 175);
+  --app-impuestos: oklch(0.58 0.17 300);
+  --app-contabilidad: oklch(0.55 0.16 275);
+  --app-contratos: oklch(0.62 0.13 75);
+  --app-servicio: oklch(0.6 0.18 20);
+  --app-tiendas: oklch(0.6 0.18 340);
+  --app-ajustes: oklch(0.58 0.02 250);
+  /* Paño de la marca (pantallas de acceso): el mismo petróleo oscuro en los dos temas. */
+  --marca: #0b6b77;
+  --marca-2: #063c43;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema='claro']) {
-    --fondo: #0e1217;
+    --fondo: #0c0f14;
+    --lateral: #10141a;
     --superficie: #151a21;
-    --superficie-2: #1b2129;
-    --texto: #e6eaf0;
-    --texto-2: #a3adbb;
-    --texto-3: #6b7584;
-    --borde: #29303a;
+    --superficie-2: #1c222b;
+    --texto: #e7ebf1;
+    --texto-2: #a5afbd;
+    --texto-3: #6f7987;
+    --borde: #262d37;
+    --borde-fuerte: #363e4a;
     --acento: #4cb3bf;
     --acento-hover: #6cc6d0;
     --acento-suave: #12313a;
     --sobre-acento: #06181b;
+    --anillo: rgb(76 179 191 / 0.3);
     --ok: #63c98d;
     --ok-suave: #143222;
     --aviso: #e2b257;
@@ -49,23 +77,28 @@
     --error-suave: #3a1c18;
     --info: #86a9ee;
     --info-suave: #17243d;
-    --sombra: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+    --sombra-xs: 0 1px 2px rgb(0 0 0 / 0.3);
+    --sombra: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
+    --sombra-lg: 0 16px 40px -12px rgb(0 0 0 / 0.7), 0 4px 10px -4px rgb(0 0 0 / 0.4);
     color-scheme: dark;
   }
 }
 
 :root[data-tema='oscuro'] {
-  --fondo: #0e1217;
+  --fondo: #0c0f14;
+  --lateral: #10141a;
   --superficie: #151a21;
-  --superficie-2: #1b2129;
-  --texto: #e6eaf0;
-  --texto-2: #a3adbb;
-  --texto-3: #6b7584;
-  --borde: #29303a;
+  --superficie-2: #1c222b;
+  --texto: #e7ebf1;
+  --texto-2: #a5afbd;
+  --texto-3: #6f7987;
+  --borde: #262d37;
+  --borde-fuerte: #363e4a;
   --acento: #4cb3bf;
   --acento-hover: #6cc6d0;
   --acento-suave: #12313a;
   --sobre-acento: #06181b;
+  --anillo: rgb(76 179 191 / 0.3);
   --ok: #63c98d;
   --ok-suave: #143222;
   --aviso: #e2b257;
@@ -74,22 +107,27 @@
   --error-suave: #3a1c18;
   --info: #86a9ee;
   --info-suave: #17243d;
-  --sombra: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+  --sombra-xs: 0 1px 2px rgb(0 0 0 / 0.3);
+  --sombra: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
+  --sombra-lg: 0 16px 40px -12px rgb(0 0 0 / 0.7), 0 4px 10px -4px rgb(0 0 0 / 0.4);
   color-scheme: dark;
 }
 
 @theme inline {
   --color-fondo: var(--fondo);
+  --color-lateral: var(--lateral);
   --color-superficie: var(--superficie);
   --color-superficie-2: var(--superficie-2);
   --color-texto: var(--texto);
   --color-texto-2: var(--texto-2);
   --color-texto-3: var(--texto-3);
   --color-borde: var(--borde);
+  --color-borde-fuerte: var(--borde-fuerte);
   --color-acento: var(--acento);
   --color-acento-hover: var(--acento-hover);
   --color-acento-suave: var(--acento-suave);
   --color-sobre-acento: var(--sobre-acento);
+  --color-anillo: var(--anillo);
   --color-ok: var(--ok);
   --color-ok-suave: var(--ok-suave);
   --color-aviso: var(--aviso);
@@ -98,9 +136,24 @@
   --color-error-suave: var(--error-suave);
   --color-info: var(--info);
   --color-info-suave: var(--info-suave);
+  --color-app-maestros: var(--app-maestros);
+  --color-app-ventas: var(--app-ventas);
+  --color-app-facturacion: var(--app-facturacion);
+  --color-app-compras: var(--app-compras);
+  --color-app-tesoreria: var(--app-tesoreria);
+  --color-app-impuestos: var(--app-impuestos);
+  --color-app-contabilidad: var(--app-contabilidad);
+  --color-app-contratos: var(--app-contratos);
+  --color-app-servicio: var(--app-servicio);
+  --color-app-tiendas: var(--app-tiendas);
+  --color-app-ajustes: var(--app-ajustes);
+  --color-marca: var(--marca);
+  --color-marca-2: var(--marca-2);
   --shadow-panel: var(--sombra);
-  --font-sans: var(--fuente-plex), ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
-  --font-mono: var(--fuente-plex-mono), ui-monospace, Consolas, monospace;
+  --shadow-suave: var(--sombra-xs);
+  --shadow-flotante: var(--sombra-lg);
+  --font-sans: var(--fuente-ui), ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --font-mono: var(--fuente-mono), ui-monospace, Consolas, monospace;
 }
 
 html,
@@ -114,19 +167,136 @@ body {
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
+  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--acento) 25%, transparent);
 }
 
 /* Importes, CUIT y números de comprobante: cifras tabulares alineadas. */
 .cifras {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: -0.005em;
 }
 
-:focus-visible {
-  outline: 2px solid var(--acento);
-  outline-offset: 2px;
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.011em;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='range'],
+  progress {
+    accent-color: var(--acento);
+  }
+
+  /* Campos: el foco se marca con un anillo suave del acento, como en el resto de la app. */
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']),
+  select,
+  textarea {
+    transition:
+      border-color 0.12s,
+      box-shadow 0.12s;
+  }
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], .outline-none):focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    border-color: var(--acento);
+    box-shadow: 0 0 0 3px var(--anillo);
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--texto-3);
+  }
+
+  input[type='file'] {
+    font-size: 13px;
+    color: var(--texto-2);
+  }
+  input[type='file']::file-selector-button {
+    margin-right: 0.75rem;
+    height: 2.25rem;
+    padding: 0 0.875rem;
+    border: 1px solid var(--borde-fuerte);
+    border-radius: 0.5rem;
+    background: var(--superficie);
+    color: var(--texto);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: var(--sombra-xs);
+  }
+  input[type='file']::file-selector-button:hover {
+    background: var(--superficie-2);
+  }
+
+  /* Barras de desplazamiento finas, que no compiten con el contenido. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--borde-fuerte) transparent;
+  }
+
+  /*
+   * Listas dentro de la aplicación (vista lista de Odoo): encabezado gris
+   * claro, filas que se marcan al pasar y números alineados. Las clases de
+   * cada tabla mandan sobre esto; las hojas de impresión no lo toman.
+   */
+  .contenido table {
+    border-collapse: collapse;
+  }
+  .contenido thead th {
+    background: color-mix(in oklab, var(--superficie-2) 75%, transparent);
+    color: var(--texto-2);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .contenido tbody tr {
+    transition: background-color 0.1s;
+  }
+  .contenido tbody tr:hover {
+    background: color-mix(in oklab, var(--superficie-2) 60%, transparent);
+  }
+  .contenido td {
+    vertical-align: middle;
+  }
+  .hoja thead th,
+  .hoja tbody tr:hover {
+    background: transparent;
+  }
+}
+
+/* Buscadores de las listas: la lupa adentro del campo, sin tocar cada pantalla (fuera de la capa base para ganarle al px-3). */
+form[role='search'] input[name='q'] {
+  padding-left: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a94a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 0.75rem center;
+  background-size: 16px;
+}
+
+/* Entrada de paneles flotantes (menús, lanzador). */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+.aparecer {
+  animation: aparecer 0.14s ease-out;
+  transform-origin: top;
 }
 
 @media (prefers-reduced-motion: reduce) {

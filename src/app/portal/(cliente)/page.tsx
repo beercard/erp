@@ -62,7 +62,7 @@ export default async function InicioPortal() {
             <Link
               key={href}
               href={href}
-              className={`flex flex-col gap-2 rounded-lg border p-4 transition hover:shadow-[var(--sombra)] ${
+              className={`flex flex-col gap-2 rounded-lg border p-4 transition hover:shadow-panel ${
                 i === 0 ? 'border-transparent bg-acento text-sobre-acento' : 'border-borde bg-superficie hover:border-acento/60'
               }`}
             >

@@ -20,7 +20,7 @@ export function SelectorPeriodo({ ruta, periodo }: { ruta: string; periodo: stri
           type="month"
           name="periodo"
           defaultValue={periodo}
-          className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+          className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
         />
         <button className="h-9 rounded-md border border-borde px-2 text-sm hover:bg-superficie-2">Ir</button>
       </form>
