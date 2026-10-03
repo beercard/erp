@@ -27,7 +27,7 @@ export default async function LayoutApp({ children }: LayoutProps<'/'>) {
   return (
     <div className="flex min-h-full flex-col">
       {/* Barra superior oscura de lado a lado: marca, búsqueda, aplicaciones y la persona. */}
-      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 bg-barra px-3 text-sobre-barra sm:px-4">
+      <header className="no-imprimir sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 bg-barra px-3 text-sobre-barra sm:px-4">
         <MenuMovil funciones={sesion.suscripcion.funciones} permisos={sesion.permisos} />
         <Link href="/" className="flex shrink-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-white/10 lg:w-[232px]">
           <Isotipo className="size-7" />
@@ -51,8 +51,8 @@ export default async function LayoutApp({ children }: LayoutProps<'/'>) {
         </div>
       </header>
 
-      <div className="grid flex-1 grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="hidden bg-lateral lg:block">
+      <div className="grid flex-1 grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] print:block">
+        <aside className="no-imprimir hidden bg-lateral lg:block">
           <div className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col">
             <Link
               href="/empresas"

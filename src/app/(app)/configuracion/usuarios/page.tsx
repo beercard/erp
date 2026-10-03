@@ -1,4 +1,5 @@
 import { ChevronLeft, Plus } from 'lucide-react'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -26,7 +27,11 @@ export default async function Usuarios({ searchParams }: PageProps<'/configuraci
       <Link href="/configuracion" className="mb-2 inline-flex items-center gap-1 text-xs text-texto-2 hover:text-acento">
         <ChevronLeft aria-hidden className="size-3.5" /> Configuración
       </Link>
-      <EncabezadoPagina titulo="Usuarios y roles" bajada="Quién entra a esta empresa y qué puede hacer cada uno." />
+      <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="usuarios" />}
+        titulo="Usuarios y roles"
+        bajada="Quién entra a esta empresa y qué puede hacer cada uno."
+      />
       {typeof error === 'string' && (
         <div className="mb-4">
           <Aviso>{error}</Aviso>

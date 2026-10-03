@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 
 import { planQueIncluye } from '@/lib/planes'
 
-import { COLOR_APP, CONFIGURACION, rutaActiva, type Seccion, seccionesDe, seccionesVisibles } from './menu'
+import { AYUDA, COLOR_APP, CONFIGURACION, rutaActiva, type Seccion, seccionesDe, seccionesVisibles } from './menu'
 
 const CLAVE_CERRADAS = 'erp:menu-cerradas'
 
@@ -118,6 +118,17 @@ export function Navegacion({ funciones, permisos }: { funciones: string[]; permi
         )
       })}
       <div className="mt-auto border-t border-texto/10 pt-3">
+        <Link
+          href={AYUDA.href}
+          aria-current={ruta.startsWith(AYUDA.href) ? 'page' : undefined}
+          className={claseItem(ruta.startsWith(AYUDA.href))}
+        >
+          <AYUDA.icono
+            aria-hidden
+            className={`size-4 shrink-0 ${ruta.startsWith(AYUDA.href) ? 'text-acento' : 'text-texto-3'}`}
+          />
+          {AYUDA.texto}
+        </Link>
         <Link
           href={CONFIGURACION.href}
           aria-current={ruta.startsWith(CONFIGURACION.href) ? 'page' : undefined}

@@ -610,6 +610,41 @@
       "when": 1791065250551,
       "tag": "0086_rubro_empresa",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1791066707615,
+      "tag": "0087_marca_empresa",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1791066710435,
+      "tag": "0088_marca_empresa_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1791068035715,
+      "tag": "0089_facturacion_automatica",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1791068038674,
+      "tag": "0090_facturacion_automatica_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1791069607877,
+      "tag": "0091_baja_suscripcion",
+      "breakpoints": true
     }
   ]
 }

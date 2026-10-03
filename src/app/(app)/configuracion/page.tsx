@@ -7,9 +7,11 @@ import {
   Landmark,
   Newspaper,
   Percent,
+  Palette,
   Plug,
   ShieldCheck,
 } from 'lucide-react'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -36,6 +38,13 @@ export default async function Configuracion() {
       titulo: 'Datos de la empresa',
       texto: 'Razón social, domicilio fiscal, Ingresos Brutos e inicio de actividades.',
       icono: Building2,
+      permiso: 'empresa.datos',
+    },
+    {
+      href: '/configuracion/factura',
+      titulo: 'Logo y diseño de factura',
+      texto: 'Tu logo y uno de tres diseños para las facturas, impresas, en PDF y en el enlace al cliente.',
+      icono: Palette,
       permiso: 'empresa.datos',
     },
     {
@@ -92,6 +101,7 @@ export default async function Configuracion() {
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="primeros-pasos" />}
         titulo="Configuración"
         bajada="Los datos que usan todas las pantallas: depósitos, puntos de venta, listas, condiciones y más."
       />

@@ -18,6 +18,7 @@ import {
 } from '../../db/schema'
 import { codigoLibre } from './codigos'
 import { PREPARAR_RUBRO } from './rubros'
+import { encolarFacturaSuscripcion } from './facturasSuscripcion'
 import { rubroPorId } from '../../lib/rubros'
 import { mensajeDeBase } from '../../lib/errores'
 import { auditar } from '../../lib/auditoria'
@@ -49,6 +50,7 @@ export async function suscripcionDe(empresaId: string): Promise<
     precioAcordado: string | null
     observaciones: string | null
     mpEstado: string | null
+    mpSuscripcion?: string | null
   }
 > {
   const [s] = await comoPlataforma((tx) => tx.select().from(suscripciones).where(eq(suscripciones.empresaId, empresaId)))
@@ -438,12 +440,22 @@ export async function registrarPago(
     await comoPlataforma(async (tx) => {
       // Primero el evento: un índice único sobre la referencia de Mercado Pago
       // hace que el mismo cobro avisado dos veces a la vez se registre una sola.
-      await tx
+      const [evento] = await tx
         .insert(eventosSuscripcion)
         .values({ empresaId, tipo: 'pago', detalle: { ...entrada, hasta: fin, meses }, usuarioId: adminId })
+        .returning({ id: eventosSuscripcion.id })
+      // Vektra se factura sola: la factura del pago queda pendiente para la tarea periódica.
+      await encolarFacturaSuscripcion(tx, {
+        empresaId,
+        eventoId: evento.id,
+        importe: Number(entrada.importe),
+        plan: s.plan,
+        desde,
+        hasta: sumarDias(fin, -1),
+      })
       await tx
         .update(suscripciones)
-        .set({ estado: 'activa', pagadoHasta: fin, pruebaHasta: null, actualizado: new Date() })
+        .set({ estado: 'activa', pagadoHasta: fin, pruebaHasta: null, bajaDesde: null, actualizado: new Date() })
         .where(eq(suscripciones.empresaId, empresaId))
     })
   } catch (e) {

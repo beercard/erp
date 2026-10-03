@@ -2,16 +2,19 @@
 
 import { headers } from 'next/headers'
 
+import { controlarEnvio, MENSAJE_BOT } from '@/lib/antibots'
 import { ipDe } from '@/lib/auth/servidor'
 import { registrarConsulta } from '@/modulos/plataforma/consultas'
 
 export type EstadoContacto = { error?: string; ok?: boolean; codigo?: string } | undefined
 
 export async function enviarConsultaAccion(_: EstadoContacto, fd: FormData): Promise<EstadoContacto> {
-  // Trampa para robots: un campo que una persona no ve ni completa.
-  if (String(fd.get('sitio_web') ?? '')) return { ok: true }
   const h = await headers()
   const ip = ipDe(h)
+  // Robots (trampa, tiempo, Turnstile): la trampa se contesta como si hubiera salido, para no darles pistas.
+  const bot = await controlarEnvio(fd, ip)
+  if (bot === 'trampa') return { ok: true }
+  if (bot) return { error: MENSAJE_BOT }
   const dato = (k: string) => String(fd.get(k) ?? '')
   const r = await registrarConsulta(
     {

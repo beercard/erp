@@ -35,9 +35,12 @@ export default function Privacidad() {
       <p>No vendemos ni alquilamos datos personales.</p>
       <h2>3. Con quién se comparten</h2>
       <p>
-        Solo con proveedores necesarios para prestar el Servicio (alojamiento, correo, cobro) y con los organismos y plataformas
-        que el Cliente conecta (ARCA, Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento, PrestaShop, Mercado Pago), en la
-        medida de esa conexión.
+        Solo con proveedores necesarios para prestar el Servicio (alojamiento, correo, cobro, la verificación antibots de
+        Cloudflare en los formularios públicos y, si la empresa activa las funciones de inteligencia artificial, el proveedor que
+        las procesa, que no usa esos datos para entrenar sus modelos) y con los organismos y plataformas que el Cliente conecta
+        (ARCA, ARBA, Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento, PrestaShop, Mercado Pago, WhatsApp), en la medida
+        de esa conexión. Algunos de estos proveedores pueden alojar datos fuera de la Argentina; en ese caso se les exige un nivel
+        de protección adecuado.
       </p>
       <h2>4. Seguridad</h2>
       <ul>

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 
 import { datosDelPedido, guardarCookieDeSesion, tokenDeSesion } from '@/lib/auth/servidor'
 import { elegirEmpresa, iniciarSesion } from '@/lib/auth/sesiones'
+import { controlarEnvio, correoDescartable, MENSAJE_BOT } from '@/lib/antibots'
 import { anotar, claveIp, superado } from '@/lib/frenos'
 import { registrarCuenta } from '@/modulos/plataforma/registro'
 import { crearEmpresa } from '@/modulos/plataforma/suscripciones'
@@ -17,13 +18,24 @@ const HORA = 60 * 60_000
 
 export async function registrarse(_: EstadoRegistro, formData: FormData): Promise<EstadoRegistro> {
   const valores = Object.fromEntries([...formData.entries()].filter(([, v]) => typeof v === 'string')) as Record<string, string>
-  const sinClaves = { ...valores, clave: '', repetir: '' }
+  const sinClaves = { ...valores, clave: '', repetir: '', 'cf-turnstile-response': '' }
   const meta = await datosDelPedido()
   const ip = claveIp('registro', meta.ip)
   if (await superado([ip], 5, HORA))
     return { error: 'Se intentaron muchas altas desde esta conexión. Probá de nuevo en una hora.', valores: sinClaves }
   // Se cuenta cada intento, no solo los buenos: así tampoco sirve para averiguar qué emails o CUIT están.
   await anotar([ip])
+  const bot = await controlarEnvio(formData, meta.ip)
+  if (bot) {
+    console.warn('[registro] rechazado por', bot, meta.ip)
+    return { error: MENSAJE_BOT, valores: sinClaves }
+  }
+  if (correoDescartable(valores.email ?? '')) {
+    return {
+      error: 'Usá un email permanente: ahí llegan los avisos, las facturas y la recuperación de la clave.',
+      valores: sinClaves,
+    }
+  }
   const r = await registrarCuenta(valores)
   if (!r.ok) return { error: r.error, valores: sinClaves }
   // Con subdominios, la empresa se usa en su dirección: se ingresa ahí.

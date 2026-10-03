@@ -1,4 +1,5 @@
 import { ChevronLeft } from 'lucide-react'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -18,6 +19,7 @@ export default async function Importar() {
         <ChevronLeft aria-hidden className="size-3.5" /> Compras
       </Link>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="mis-comprobantes" />}
         titulo="Mis Comprobantes de ARCA"
         bajada="Bajá de ARCA los comprobantes recibidos del período y compará: qué falta cargar y qué cargaste que ARCA no tiene."
       />

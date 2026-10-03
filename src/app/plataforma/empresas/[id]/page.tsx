@@ -11,9 +11,17 @@ import { MINUTOS_DE_SOPORTE } from '@/lib/auth/sesiones'
 import { dominioEmpresas } from '@/lib/subdominio'
 import { FUNCIONES, MESES_COBRADOS_EN_ANUAL, planPorId, precioDeLista, situacion, type Funcion } from '@/lib/planes'
 import { fichaEmpresa, listarAuditoria } from '@/modulos/plataforma/consola'
+import { empresaVektra, facturasDeSuscripcion } from '@/modulos/plataforma/facturasSuscripcion'
 import { historial, suscripcionDe, usoDe } from '@/modulos/plataforma/suscripciones'
 
-import { agregarNotaAccion, bajaEmpresaAccion, entrarSoporteAccion, extenderPruebaAccion, suspenderAccion } from '../../acciones'
+import {
+  agregarNotaAccion,
+  bajaEmpresaAccion,
+  reintentarFacturasAccion,
+  entrarSoporteAccion,
+  extenderPruebaAccion,
+  suspenderAccion,
+} from '../../acciones'
 import { exigirAdmin } from '../../admin'
 import { ChipEstado, ETIQUETA_ACCION, fechaHora, hace, Indicador, Indicadores, TituloPanel } from '../../componentes'
 import { BotonAccion, FormularioExtenderPrueba, FormularioNota } from '../../Formularios'
@@ -53,12 +61,14 @@ export default async function FichaEmpresa({ params, searchParams }: PageProps<'
   const ficha = await fichaEmpresa(id)
   if (!ficha) notFound()
   const hoy = hoyArgentina()
-  const [s, uso, eventos, acciones] = await Promise.all([
+  const [s, uso, eventos, acciones, facturas] = await Promise.all([
     suscripcionDe(id),
     usoDe(id, hoy),
     historial(id),
     listarAuditoria({ empresaId: id, limite: 30 }),
+    facturasDeSuscripcion(id, 24),
   ])
+  const conError = facturas.filter((f) => f.estado === 'error').map((f) => f.id)
   const sit = situacion(s, hoy)
   const mensual = s.precioAcordado ? Number(s.precioAcordado) : precioDeLista(s)
   const periodo = s.ciclo === 'anual' ? mensual * MESES_COBRADOS_EN_ANUAL : mensual
@@ -220,6 +230,46 @@ export default async function FichaEmpresa({ params, searchParams }: PageProps<'
                     ))}
                   </tbody>
                 </table>
+              )}
+            </Panel>
+
+            <Panel className="overflow-x-auto">
+              <TituloPanel>Facturas de Vektra</TituloPanel>
+              {!empresaVektra() ? (
+                <p className="px-4 py-4 text-sm text-texto-2">
+                  La facturación automática de las suscripciones está apagada: falta VEKTRA_EMPRESA_ID (la empresa de Vektra en
+                  este ERP, con su certificado de ARCA).
+                </p>
+              ) : facturas.length === 0 ? (
+                <p className="px-4 py-4 text-sm text-texto-2">Todavía no hay pagos facturados.</p>
+              ) : (
+                <>
+                  <table className="w-full min-w-[560px] text-sm">
+                    <tbody className="divide-y divide-borde">
+                      {facturas.map((f) => (
+                        <tr key={f.id}>
+                          <td className="cifras px-4 py-2 align-top text-xs whitespace-nowrap text-texto-2">
+                            {fechaHora(f.creado)}
+                          </td>
+                          <td className="px-4 py-2">
+                            {f.numero ?? 'Sin número'} · {pesos(Number(f.importe))}
+                            {f.error && <span className="block text-xs text-error">{f.error}</span>}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            <Chip tono={f.estado === 'emitida' ? 'ok' : f.estado === 'error' ? 'error' : 'neutro'}>
+                              {f.estado === 'emitida' ? 'Emitida' : f.estado === 'error' ? `Error (${f.intentos})` : 'Pendiente'}
+                            </Chip>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {conError.length > 0 && (
+                    <div className="border-t border-borde p-3">
+                      <BotonAccion accion={reintentarFacturasAccion.bind(null, conError)} texto="Reintentar las que fallaron" />
+                    </div>
+                  )}
+                </>
               )}
             </Panel>
           </div>

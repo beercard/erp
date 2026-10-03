@@ -39,3 +39,7 @@ export function leerEnlace(token: string, tipo: string, ahora = Date.now()) {
     return null
   }
 }
+
+/** Dirección pública de una factura (para el email al cliente): vale un año. */
+export const enlaceDeComprobante = (empresaId: string, id: string) =>
+  `${(process.env.APP_URL ?? 'http://localhost:3000').replace(/\/+$/, '')}/comprobante/${firmarEnlace('factura', empresaId, id, 365)}`

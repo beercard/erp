@@ -206,6 +206,8 @@ export const suscripciones = pgTable(
     /** Débito automático de Mercado Pago (preapproval): su id y su estado. */
     mpSuscripcion: text('mp_suscripcion'),
     mpEstado: text('mp_estado'),
+    /** Baja pedida por la empresa: desde esta fecha queda en modo consulta (antes, se puede deshacer). */
+    bajaDesde: date('baja_desde'),
     observaciones: text('observaciones'),
     ...marcasDeTiempo(),
   },

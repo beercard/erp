@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import Link from 'next/link'
 
 import { ComparativaPlanes, pesos } from '@/components/planes/TarjetasPlanes'
@@ -10,7 +11,7 @@ import { APLICACIONES, FUNCIONES, planPorId, planQueIncluye, precioDeLista, situ
 import { ESTADOS_DEBITO, mpConfigurado } from '@/modulos/plataforma/mercadopago'
 import { historial, suscripcionDe, usoDe } from '@/modulos/plataforma/suscripciones'
 
-import { FormularioSuscripcion, PagarConMercadoPago } from './FormularioSuscripcion'
+import { DarDeBaja, FormularioSuscripcion, PagarConMercadoPago } from './FormularioSuscripcion'
 
 export const metadata: Metadata = { title: 'Suscripción' }
 
@@ -62,7 +63,11 @@ export default async function Suscripcion({ searchParams }: PageProps<'/configur
 
   return (
     <>
-      <EncabezadoPagina titulo="Suscripción" bajada="Plan, aplicaciones y uso de la empresa en el sistema." />
+      <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="suscripcion" />}
+        titulo="Suscripción"
+        bajada="Plan, aplicaciones y uso de la empresa en el sistema."
+      />
       {falta && !sit.funciones.includes(falta) && (
         <div className="mb-4">
           <Aviso tono="info">
@@ -169,6 +174,16 @@ export default async function Suscripcion({ searchParams }: PageProps<'/configur
         </div>
         <ComparativaPlanes />
       </section>
+
+      {tienePermiso(sesion.permisos, 'empresa.suscripcion') && s.estado !== 'cancelada' && (
+        <Panel id="baja" className="mb-4 p-4">
+          <h2 className="mb-2 text-sm font-semibold">Dar de baja</h2>
+          <DarDeBaja
+            bajaDesde={s.bajaDesde ?? null}
+            hastaFuncionando={s.estado !== 'prueba' && s.pagadoHasta && s.pagadoHasta >= hoy ? s.pagadoHasta : hoy}
+          />
+        </Panel>
+      )}
 
       {eventos.length > 0 && (
         <Panel className="overflow-x-auto">

@@ -1,4 +1,5 @@
 import { desc } from 'drizzle-orm'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import { headers } from 'next/headers'
 import { Send } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -41,6 +42,7 @@ export default async function Configuracion({ searchParams }: PageProps<'/servic
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="portal-clientes" />}
         titulo="Configuración del servicio técnico"
         bajada="Tiempos comprometidos, avisos al cliente, portal de clientes y correos."
       />

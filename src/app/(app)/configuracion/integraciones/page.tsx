@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import { BotonConfirmar } from '@/components/BotonConfirmar'
 import { Boton, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { conEmpresa } from '@/db/empresa'
@@ -23,6 +24,15 @@ const ENDPOINTS = [
   ['GET', '/api/v1/ordenes/{id}', 'Una orden con instrucciones, informe, visitas e insumos'],
   ['POST', '/api/v1/ordenes', 'Abrir una orden: { cliente, equipo?, tipo?, falla, prioridad?, instrucciones? }'],
   ['POST', '/api/v1/lecturas', 'Contadores: { lecturas: [{ serie, contador, fecha?, creditos? }] }'],
+  ['GET', '/api/v1/facturas', 'Facturas (desde, hasta, cliente, estado, referencia)'],
+  ['GET', '/api/v1/facturas/{id}', 'Una factura con su CAE y el enlace público'],
+  [
+    'POST',
+    '/api/v1/facturas',
+    'Facturar, autorizar en ARCA y mandar: { referencia?, cliente: { documento, razonSocial?, condicionIva?, email? }, concepto?, renglones: [{ descripcion, cantidad, precioUnitario, iva }], autorizar?, enviar? }',
+  ],
+  ['POST', '/api/v1/lotes', 'Hasta 500 facturas: { nombre?, autorizar?, enviar?, facturas: [ …como arriba ] }'],
+  ['GET', '/api/v1/lotes/{id}', 'Avance del lote y estado de cada factura'],
 ]
 
 export default async function Integraciones() {
@@ -34,6 +44,7 @@ export default async function Integraciones() {
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="api" />}
         titulo="API e integraciones"
         bajada="Para conectar una tienda, un sistema de lecturas (MPS Monitor) u otro sistema: claves de la API y avisos por webhook."
       />

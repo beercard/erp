@@ -1,4 +1,5 @@
 import { ChevronLeft } from 'lucide-react'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -40,6 +41,7 @@ export default async function ConfiguracionArca() {
         <ChevronLeft aria-hidden className="size-3.5" /> Configuración
       </Link>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="arca" />}
         titulo="ARCA y factura electrónica"
         bajada={`CUIT ${formatearCuit(cuit)} · ${sesion.empresa.razonSocial}`}
       />

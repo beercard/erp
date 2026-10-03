@@ -15,7 +15,7 @@ import {
   type PlanId,
 } from '@/lib/planes'
 
-import { cambiarSuscripcionAccion, pagarConMercadoPagoAccion } from './acciones'
+import { anularBajaAccion, cambiarSuscripcionAccion, pagarConMercadoPagoAccion, pedirBajaAccion } from './acciones'
 
 const pesos = (n: number) => `$ ${Math.round(n).toLocaleString('es-AR')}`
 
@@ -169,6 +169,69 @@ export function PagarConMercadoPago() {
         {enviando || estado?.irA ? 'Abriendo Mercado Pago…' : 'Pagar con Mercado Pago'}
       </Boton>
       {estado?.error && <Aviso>{estado.error}</Aviso>}
+    </form>
+  )
+}
+
+/** Botón de baja: con confirmación explícita y, antes de que rija, la opción de deshacerla. */
+export function DarDeBaja({ bajaDesde, hastaFuncionando }: { bajaDesde: string | null; hastaFuncionando: string }) {
+  const [estado, pedir, pidiendo] = useActionState(pedirBajaAccion, undefined)
+  const [anulado, anular, anulando] = useActionState(anularBajaAccion, undefined)
+  const [abierto, setAbierto] = useState(false)
+  const dma = (f: string) => f.split('-').reverse().join('/')
+  const resultado = anulado ?? estado
+  if (bajaDesde) {
+    return (
+      <div className="flex flex-col gap-3 text-sm">
+        <p>
+          Pediste la baja. El sistema funciona normalmente hasta el día anterior al <strong>{dma(bajaDesde)}</strong>; desde ahí
+          queda en modo consulta y podés exportar todo durante 12 meses.
+        </p>
+        <form action={anular}>
+          <Boton type="submit" disabled={anulando}>
+            Deshacer la baja
+          </Boton>
+        </form>
+        {resultado?.error && <Aviso>{resultado.error}</Aviso>}
+        {resultado?.ok && <Aviso tono="ok">{resultado.ok}</Aviso>}
+      </div>
+    )
+  }
+  if (!abierto) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <p className="text-texto-2">Podés darte de baja cuando quieras, sin costo ni permanencia.</p>
+        <Boton type="button" variante="fantasma" onClick={() => setAbierto(true)}>
+          Dar de baja la suscripción
+        </Boton>
+      </div>
+    )
+  }
+  return (
+    <form action={pedir} className="flex flex-col gap-3 text-sm">
+      <ul className="list-disc pl-5 text-texto-2">
+        <li>Se cancela en el acto el débito automático de Mercado Pago, si lo tenés.</li>
+        <li>El sistema sigue funcionando normalmente hasta el {dma(hastaFuncionando)}.</li>
+        <li>Después queda en modo consulta: ves y exportás todo durante 12 meses. No se borra nada antes.</li>
+        <li>Hasta esa fecha podés deshacer la baja desde acá.</li>
+      </ul>
+      <label className="flex flex-col gap-1">
+        <span className="text-[13px] font-medium text-texto-2">¿Nos contás por qué? (opcional)</span>
+        <textarea name="motivo" rows={2} maxLength={500} className="rounded-lg border border-borde-fuerte/80 bg-superficie p-2" />
+      </label>
+      <label className="flex items-start gap-2">
+        <input type="checkbox" name="confirmo" value="si" className="mt-0.5 accent-acento" required />
+        Entiendo lo que pasa con la baja y quiero darla.
+      </label>
+      {estado?.error && <Aviso>{estado.error}</Aviso>}
+      <div className="flex gap-2">
+        <Boton type="submit" variante="peligro" disabled={pidiendo}>
+          {pidiendo ? 'Procesando…' : 'Confirmar la baja'}
+        </Boton>
+        <Boton type="button" variante="fantasma" onClick={() => setAbierto(false)}>
+          Cancelar
+        </Boton>
+      </div>
     </form>
   )
 }

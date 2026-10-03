@@ -1,4 +1,5 @@
 import {
+  LifeBuoy,
   Banknote,
   BellRing,
   BookOpen,
@@ -34,6 +35,7 @@ import {
   Percent,
   Printer,
   Receipt,
+  Repeat,
   ReceiptText,
   RefreshCw,
   Scale,
@@ -169,6 +171,20 @@ export const SECCIONES: Seccion[] = [
     icono: Receipt,
     items: [
       { href: '/facturas', permiso: 'ventas.ver', texto: 'Facturas y notas', icono: Receipt, funcion: 'facturacion' },
+      {
+        href: '/facturas/recurrentes',
+        permiso: 'ventas.ver',
+        texto: 'Facturas recurrentes',
+        icono: Repeat,
+        funcion: 'facturacion',
+      },
+      {
+        href: '/facturas/masiva',
+        permiso: 'ventas.facturar',
+        texto: 'Facturación masiva',
+        icono: FileSpreadsheet,
+        funcion: 'facturacion',
+      },
       { href: '/cobranzas', permiso: 'ventas.ver', texto: 'Cobranzas', icono: Wallet, funcion: 'facturacion' },
       { href: '/cobranzas/caja', permiso: 'ventas.ver', texto: 'Cierre de caja', icono: Calculator, funcion: 'facturacion' },
       {
@@ -301,6 +317,7 @@ export function rutaActiva(ruta: string, secciones: { items: Item[] }[]): string
 
 /** Ítem de configuración: va al pie del menú y como aplicación en el lanzador. */
 export const CONFIGURACION: Item = { href: '/configuracion', texto: 'Configuración', icono: Settings }
+export const AYUDA: Item = { href: '/ayuda', texto: 'Ayuda y guías', icono: LifeBuoy }
 
 /** Todas las secciones que corresponden a la empresa, en orden. */
 export function seccionesDe(funciones: string[]): Seccion[] {

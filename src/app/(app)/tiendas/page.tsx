@@ -1,4 +1,5 @@
 import { Boxes, ShoppingBag, ShoppingCart, Store, Tag, Warehouse } from 'lucide-react'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -34,6 +35,7 @@ export default async function Tiendas({ searchParams }: PageProps<'/tiendas'>) {
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="tiendas" />}
         titulo="Tiendas online"
         bajada="Conectá Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento o PrestaShop: el stock y los precios se mantienen al día y los pedidos pagados entran solos."
       />

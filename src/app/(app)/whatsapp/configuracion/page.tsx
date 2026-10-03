@@ -1,4 +1,5 @@
 import { Trash2 } from 'lucide-react'
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
 
 import { BotonConfirmar } from '@/components/BotonConfirmar'
@@ -30,6 +31,7 @@ export default async function ConfiguracionWhatsapp() {
   return (
     <>
       <EncabezadoPagina
+        acciones={<EnlaceAyuda guia="whatsapp" />}
         titulo="WhatsApp Business"
         bajada="Conectá el número de la empresa con la API oficial de WhatsApp (Meta). Las claves se guardan cifradas."
       />
