@@ -48,7 +48,7 @@ export function Encabezado() {
           </Link>
           <Link
             href="/registro"
-            className="rounded-md bg-acento px-3.5 py-2 text-sm font-medium text-sobre-acento shadow-sm hover:bg-acento-hover"
+            className="boton-lleno rounded-lg bg-acento px-3.5 py-2 text-sm font-semibold text-sobre-acento hover:bg-acento-hover"
           >
             Probar gratis
           </Link>

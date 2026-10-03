@@ -9,6 +9,19 @@ El sitio comercial de Vektra ERP vive en la misma aplicación que el sistema:
 
 Variables: `SITIO_URL` (la dirección pública del sitio; si falta, se usa `APP_URL`), `CONTACTO_EMAIL` y `CONTACTO_WHATSAPP` (opcionales: si no están, el sitio no muestra esos datos).
 
+## Portada
+
+Estructura (`src/app/(sitio)/sitio/page.tsx`, piezas visuales en `src/components/sitio/Portada.tsx`), en el estilo de las portadas de software de gestión argentino actuales:
+
+1. Portada en dos columnas: título grande con degradado, bajada, dos botones (empezar gratis y ver cómo funciona) y, a la derecha, la pantalla del sistema con el celular y avisos que flotan.
+2. Cinta animada de integraciones.
+3. Cifras **del producto** (módulos, días de prueba, plan gratis), nunca métricas de clientes inventadas.
+4. Funciones en mosaico ("bento") con mini pantallas de ejemplo.
+5. Cómo funciona en tres pasos, para quién (dueño, ventas, contador), rubros, planes, preguntas frecuentes y llamado final oscuro.
+6. Botón flotante de WhatsApp si está configurado `CONTACTO_WHATSAPP`.
+
+Las animaciones se apagan cuando el sistema pide reducir movimiento. Cuando haya clientes reales que lo autoricen, sumar una sección de testimonios y logos con sus datos verdaderos.
+
 ## SEO técnico (hecho)
 
 | Qué                                                                                                                                     | Dónde                                              |

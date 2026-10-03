@@ -9,14 +9,18 @@ export function Contenedor({ children, className = '' }: { children: ReactNode; 
 }
 
 export function Rotulo({ children }: { children: ReactNode }) {
-  return <p className="text-sm font-semibold tracking-wide text-acento uppercase">{children}</p>
+  return (
+    <p className="inline-flex w-fit items-center gap-2 rounded-full bg-acento-suave px-3 py-1 text-xs font-bold tracking-wide text-acento uppercase">
+      {children}
+    </p>
+  )
 }
 
 export function TituloSeccion({ rotulo, titulo, bajada }: { rotulo?: string; titulo: string; bajada?: string }) {
   return (
-    <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center">
+    <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 text-center">
       {rotulo && <Rotulo>{rotulo}</Rotulo>}
-      <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{titulo}</h2>
+      <h2 className="text-3xl font-extrabold tracking-[-0.03em] text-balance sm:text-[2.75rem] sm:leading-[1.1]">{titulo}</h2>
       {bajada && <p className="text-lg text-pretty text-texto-2">{bajada}</p>}
     </div>
   )

@@ -30,7 +30,7 @@ export function Maqueta() {
     <div
       role="img"
       aria-label="Vista del panel de Vektra ERP con ventas del mes, facturas emitidas y stock"
-      className="overflow-hidden rounded-xl border border-borde bg-fondo text-left shadow-[0_24px_60px_-20px_rgb(0_0_0/0.35)]"
+      className="@container overflow-hidden rounded-xl border border-borde bg-fondo text-left shadow-[0_24px_60px_-20px_rgb(0_0_0/0.35)]"
     >
       <div className="flex items-center gap-1.5 border-b border-borde bg-superficie px-4 py-2.5">
         <span className="size-2.5 rounded-full bg-error/60" />
@@ -38,12 +38,18 @@ export function Maqueta() {
         <span className="size-2.5 rounded-full bg-ok/60" />
         <span className="ml-3 truncate rounded bg-superficie-2 px-3 py-0.5 text-[11px] text-texto-3">app.vektra · Inicio</span>
       </div>
+      <div className="flex items-center gap-3 bg-barra px-4 py-2">
+        <span className="grid size-5 place-items-center rounded-md bg-acento text-[10px] font-black text-sobre-acento">V</span>
+        <span className="hidden text-[11px] font-semibold text-sobre-barra @md:inline">Vektra</span>
+        <span className="mx-auto h-5 w-2/5 rounded-md bg-barra-2" />
+        <span className="size-5 rounded-full bg-acento" />
+      </div>
       <div className="flex">
-        <aside className="hidden w-44 shrink-0 flex-col gap-0.5 border-r border-borde bg-superficie p-3 sm:flex">
+        <aside className="hidden w-40 shrink-0 flex-col gap-0.5 bg-lateral p-3 @xl:flex">
           {MENU.map(({ icono: I, texto, activo }) => (
             <span
               key={texto}
-              className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs ${activo ? 'bg-acento-suave font-medium text-acento' : 'text-texto-2'}`}
+              className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs ${activo ? 'bg-superficie font-semibold text-texto shadow-suave ring-1 ring-borde' : 'text-texto-2'}`}
             >
               <I aria-hidden className="size-3.5" />
               {texto}
@@ -51,7 +57,7 @@ export function Maqueta() {
           ))}
         </aside>
         <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 @4xl:grid-cols-4">
             {[
               ['Ventas del mes', '$ 18,4 M', '+12 %'],
               ['A cobrar', '$ 3,1 M', '27 clientes'],
@@ -65,19 +71,19 @@ export function Maqueta() {
               </div>
             ))}
           </div>
-          <div className="grid gap-3 lg:grid-cols-[1fr_200px]">
+          <div className="grid gap-3 @4xl:grid-cols-[1fr_200px]">
             <div className="tarjeta">
               <p className="border-b border-borde px-3 py-2 text-xs font-semibold">Últimas facturas</p>
               {FACTURAS.map((f) => (
                 <div key={f.n} className="flex items-center gap-3 border-b border-borde px-3 py-2 text-[11px] last:border-0">
-                  <span className="cifras hidden w-28 text-texto-3 sm:block">{f.n}</span>
+                  <span className="cifras hidden w-28 text-texto-3 @2xl:block">{f.n}</span>
                   <span className="min-w-0 flex-1 truncate">{f.cliente}</span>
                   <span className="cifras">{f.total}</span>
                   <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${TONO[f.tono]}`}>{f.estado}</span>
                 </div>
               ))}
             </div>
-            <div className="hidden tarjeta p-3 lg:block">
+            <div className="hidden tarjeta p-3 @4xl:block">
               <p className="text-xs font-semibold">Ventas por mes</p>
               <div className="mt-3 flex h-24 items-end gap-1">
                 {BARRAS.map((h, i) => (
