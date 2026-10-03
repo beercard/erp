@@ -407,6 +407,20 @@
       "when": 1790988899819,
       "tag": "0057_recuperar_clave",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1790999441839,
+      "tag": "0058_crm",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1790999444297,
+      "tag": "0059_crm_seguridad",
+      "breakpoints": true
     }
   ]
 }

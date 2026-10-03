@@ -22,7 +22,10 @@ export const FUNCIONES: Record<Funcion, { nombre: string; detalle: string }> = {
     nombre: 'Facturación electrónica',
     detalle: 'Facturas, notas de crédito y débito con CAE de ARCA, cobranzas y cuentas corrientes.',
   },
-  comercial: { nombre: 'Ventas', detalle: 'Presupuestos, pedidos y remitos con entregas parciales.' },
+  comercial: {
+    nombre: 'Ventas y CRM',
+    detalle: 'Embudo de oportunidades, presupuestos, pedidos y remitos con entregas parciales.',
+  },
   stock: { nombre: 'Stock', detalle: 'Depósitos, ajustes, transferencias y movimientos.' },
   compras: {
     nombre: 'Compras y pagos',
@@ -176,6 +179,7 @@ const FUNCION_DE_MODULO: Record<string, Funcion> = {
   contratos: 'contratos',
   servicio: 'contratos',
   tienda: 'tienda',
+  crm: 'comercial',
 }
 
 export function funcionDePermiso(permiso: string): Funcion | null {

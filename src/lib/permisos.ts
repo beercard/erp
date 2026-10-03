@@ -89,6 +89,15 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     },
   },
   {
+    modulo: 'crm',
+    titulo: 'CRM',
+    permisos: {
+      'crm.ver': 'Ver el embudo, las oportunidades, las actividades y el pronóstico',
+      'crm.oportunidades': 'Cargar y mover oportunidades, agendar actividades y pasarlas a presupuesto',
+      'crm.configurar': 'Definir las etapas del embudo y los motivos de pérdida',
+    },
+  },
+  {
     modulo: 'tienda',
     titulo: 'Tiendas online',
     permisos: {
