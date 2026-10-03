@@ -1,0 +1,2 @@
+ALTER TABLE "ordenes_servicio" DROP CONSTRAINT "ordenes_servicio_origen";--> statement-breakpoint
+ALTER TABLE "ordenes_servicio" ADD CONSTRAINT "ordenes_servicio_origen" CHECK ("ordenes_servicio"."origen" in ('oficina', 'portal', 'api', 'preventivo', 'persat', 'whatsapp'));

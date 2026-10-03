@@ -1,4 +1,4 @@
-import { Building2, BookLock, ChevronRight, CreditCard, Landmark, Percent, Plug, ShieldCheck } from 'lucide-react'
+import { Building2, BookLock, ChevronRight, CreditCard, Landmark, Newspaper, Percent, Plug, ShieldCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -54,6 +54,13 @@ export default async function Configuracion() {
       texto: 'Bloquear por fecha ventas, compras y tesorería para que nadie toque lo ya cerrado.',
       icono: BookLock,
       permiso: 'empresa.bloqueos',
+    },
+    {
+      href: '/configuracion/resumen',
+      titulo: 'Resumen para el dueño',
+      texto: 'Ventas, cobranzas, deuda, caja y alertas, por correo o WhatsApp cada día o cada semana.',
+      icono: Newspaper,
+      permiso: 'empresa.datos',
     },
     {
       href: '/configuracion/integraciones',

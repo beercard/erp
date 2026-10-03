@@ -15,6 +15,7 @@ import { latido, registrarError } from '@/modulos/plataforma/monitoreo'
 import { revisarPendientes } from '@/modulos/cobros/cobros'
 import { recordatoriosDelDia } from '@/modulos/facturacion/cobranza'
 import { resumenDiario } from '@/modulos/crm/extras'
+import { enviarResumenDueno } from '@/modulos/informes/resumenDueno'
 import { facturarPedidosPagados } from '@/modulos/tiendas/facturar'
 import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
 import { clienteArca } from '@/modulos/arca/cliente'
@@ -25,7 +26,7 @@ import { clienteArca } from '@/modulos/arca/cliente'
  * día vencimientos, preventivos, avisos, alertas de SLA y recordatorios de
  * todas las empresas, avisa los vencimientos impositivos que se acercan o
  * se pasaron, asienta las operaciones nuevas (si la contabilidad está en
- * marcha), arma el resumen diario del CRM, manda los correos y los webhooks, y sincroniza las tiendas online.
+ * marcha), arma el resumen diario del CRM y el del dueño, manda los correos y los webhooks, y sincroniza las tiendas online.
  * Sin CRON_SECRET no hace nada.
  */
 const horaArgentina = () =>
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
     pagosOnline: 0,
     facturasTiendas: 0,
     recordatoriosDeuda: 0,
+    resumenesDueno: 0,
     errores: 0,
   }
   await limpiarFrenos().catch(() => undefined)
@@ -74,6 +76,8 @@ export async function POST(request: Request) {
       })
       // CRM: resumen diario de actividades, desde las 8 de la mañana (hora argentina).
       if (horaArgentina() >= 8) resultado.resumenesCrm += (await conEmpresa(e.id, (tx) => resumenDiario(tx, e.id))).enviados
+      // Resumen para el dueño (diario o semanal), desde las 7 (hora argentina).
+      if (horaArgentina() >= 7) resultado.resumenesDueno += (await enviarResumenDueno(e.id)).enviados
       // Recordatorios de deuda: una vuelta por día, desde las 9 (hora argentina).
       if (horaArgentina() >= 9) resultado.recordatoriosDeuda += (await recordatoriosDelDia(e.id)).clientes
       // Links de pago: vence los viejos y confirma los que se pagaron sin aviso.

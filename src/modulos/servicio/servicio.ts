@@ -171,7 +171,7 @@ const EsquemaOrden = z.object({
     .or(z.literal('').transform(() => null)),
   observaciones: texto,
   /** Quién la abre (solo cuenta al crearla). */
-  origen: z.enum(['oficina', 'portal', 'api', 'preventivo']).default('oficina'),
+  origen: z.enum(['oficina', 'portal', 'api', 'preventivo', 'whatsapp']).default('oficina'),
 })
 
 /** Abre una orden nueva o corrige los datos de una que no está facturada ni cancelada. */

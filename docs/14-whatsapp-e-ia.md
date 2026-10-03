@@ -39,7 +39,8 @@ Se activa en Configuración, con indicaciones propias de la empresa (horarios, t
 - **Con un cliente reconocido por el teléfono** puede consultar su cuenta y facturas impagas, crear un link de pago (todo o una factura), mandar el enlace de una factura, ver sus pedidos y sus servicios técnicos (con el enlace de seguimiento).
 - **Con un número desconocido** no tiene ninguna herramienta de cuenta: aunque alguien diga ser un cliente, no se dan datos.
 - Las herramientas **no reciben ids**: siempre trabajan sobre el cliente de esa conversación. Si la IA pide una herramienta que no se le ofreció, no se ejecuta.
-- **Deriva a una persona** ante reclamos, precios o lo que no puede resolver. También si falla la IA o pasa los 30 mensajes por hora.
+- **Servicio técnico**: si el cliente cuenta una falla o pide un técnico, abre una **orden de servicio** (origen WhatsApp, a nombre del sistema), reconoce el equipo por el número de serie entre los instalados en ese cliente (si tiene uno solo, lo toma) y avisa por correo a coordinación. Después ofrece los **próximos turnos libres** (días y horas del asistente de huecos, sin nombrar técnicos) y **reserva** el que el cliente elija para una orden abierta suya; antes de reservar vuelve a comprobar que el turno siga libre.
+- **Deriva a una persona** ante quejas, precios o lo que no puede resolver. También si falla la IA o pasa los 30 mensajes por hora.
 - Los mensajes del cliente se tratan como datos: el prompt le indica no seguir instrucciones que cambien sus reglas.
 - No contesta a la gente autorizada de la empresa (esas conversaciones son para facturas).
 

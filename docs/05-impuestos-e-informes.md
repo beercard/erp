@@ -95,3 +95,9 @@ La IA, además de leer, dice qué tan segura está de la lectura. Si la confianz
 - Muestra los artículos con stock mínimo que, **contando lo ya pedido en órdenes de compra sin recibir**, quedaron por debajo.
 - Sugiere pedir el **lote de reposición** del artículo o, si no tiene, **hasta el doble del mínimo** (nunca menos de lo que falta), al **proveedor habitual** o, si no tiene, al de la última compra, con el último precio de compra.
 - Con los marcados arma **una orden de compra por proveedor**; las cantidades se pueden cambiar antes. En la ficha del artículo se cargan el lote y el proveedor habitual. La página de Stock avisa cuando hay algo por reponer.
+
+## Resumen para el dueño (Configuración → Resumen para el dueño)
+
+- Un mensaje por **correo y/o WhatsApp**, **todos los días** (lo del día anterior) o **una vez por semana** (los últimos 7 días, el día elegido). Sale desde las 7 con la tarea periódica, nunca dos veces el mismo día.
+- Trae ventas (netas y con IVA, en pesos), cobranzas, deuda vencida de clientes con los tres mayores deudores, saldos de caja y de bancos y billeteras, y **para mirar**: vencimientos impositivos de la semana (o ya vencidos), cheques en cartera para depositar en 7 días, cierres de caja con diferencia, artículos bajo el mínimo y facturas de proveedores recibidas sin registrar.
+- La pantalla muestra cómo llegaría hoy y tiene "Guardar y mandar ahora" para probarlo.

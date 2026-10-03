@@ -547,6 +547,27 @@
       "when": 1791049727796,
       "tag": "0077_cobranza_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1791050409601,
+      "tag": "0078_origen_whatsapp",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1791050709996,
+      "tag": "0079_resumen_dueno",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1791050712798,
+      "tag": "0080_resumen_dueno_rls",
+      "breakpoints": true
     }
   ]
 }
