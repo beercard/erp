@@ -3,7 +3,16 @@
 import { redirect } from 'next/navigation'
 import * as z from 'zod'
 
-import { borrarCookieDeSesion, datosDelPedido, guardarCookieDeSesion, tokenDeSesion } from '@/lib/auth/servidor'
+import {
+  borrarCookieDeSesion,
+  codigoDelPedido,
+  datosDelPedido,
+  empresaDelPedido,
+  guardarCookieDeSesion,
+  sesionActual,
+  tokenDeSesion,
+} from '@/lib/auth/servidor'
+import { dominioEmpresas, urlDeEmpresa } from '@/lib/subdominio'
 import { cerrarSesion, elegirEmpresa, iniciarSesion } from '@/lib/auth/sesiones'
 import { anotar, claveIp, olvidar, superado } from '@/lib/frenos'
 
@@ -52,7 +61,11 @@ export async function ingresar(_: EstadoIngreso, formData: FormData): Promise<Es
     return { error: 'Demasiados intentos fallidos. Esperá 15 minutos y probá de nuevo.', email }
   }
 
-  const resultado = await iniciarSesion(datos.data.email, datos.data.clave, meta)
+  // En el subdominio de una empresa, se entra solo a esa empresa.
+  const codigo = await codigoDelPedido()
+  const empresa = codigo ? await empresaDelPedido() : null
+  if (codigo && !empresa) return { error: 'Esta dirección no corresponde a ninguna empresa.', email }
+  const resultado = await iniciarSesion(datos.data.email, datos.data.clave, meta, empresa?.id)
   if (!resultado.ok) {
     await anotar([porEmail, porIp])
     return { error: resultado.error, email }
@@ -66,6 +79,14 @@ export async function elegir(formData: FormData) {
   const token = await tokenDeSesion()
   const empresaId = String(formData.get('empresa') ?? '')
   if (!token) redirect('/ingresar')
+  // Con subdominios, cada empresa se usa en su dirección (con su propia sesión).
+  if (dominioEmpresas()) {
+    const destino = (await sesionActual())?.empresas.find((e) => e.id === empresaId)
+    const propia = await empresaDelPedido()
+    if (destino?.codigo && propia?.id !== destino.id) {
+      redirect(urlDeEmpresa(destino.codigo, `/ingresar?email=${encodeURIComponent((await sesionActual())!.usuario.email)}`))
+    }
+  }
   await elegirEmpresa(token, empresaId, await datosDelPedido())
   redirect('/')
 }

@@ -16,6 +16,7 @@ import {
   registrarAccion,
   type Admin,
 } from '@/modulos/plataforma/consola'
+import { cambiarCodigo } from '@/modulos/plataforma/codigos'
 import { marcarAtendida } from '@/modulos/plataforma/consultas'
 import { actualizarSuscripcion, registrarPago, resolverPedido } from '@/modulos/plataforma/suscripciones'
 
@@ -154,4 +155,13 @@ export async function atenderConsultaAccion(id: string) {
   await marcarAtendida(id)
   await registrarAccion(admin, 'consulta.atendida', { detalle: { consultaId: id } })
   revalidar()
+}
+
+export async function cambiarCodigoAccion(empresaId: string, _: EstadoAdmin, formData: FormData): Promise<EstadoAdmin> {
+  const admin = await quienAdministra()
+  const r = await cambiarCodigo(empresaId, valor(formData, 'codigo'))
+  if (!r.ok) return { error: r.error }
+  await registrarAccion(admin, 'empresa.codigo', { empresaId, detalle: { codigo: r.codigo } })
+  revalidar()
+  return { ok: `Código guardado: ${r.codigo}. La empresa entra ahora por su nueva dirección.` }
 }

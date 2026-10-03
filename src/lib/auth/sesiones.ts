@@ -20,7 +20,7 @@ import { hashearClave, verificarClave } from './clave'
 
 export const DIAS_DE_SESION = 14
 
-export type EmpresaDeUsuario = { id: string; razonSocial: string; cuit: string; rol: string }
+export type EmpresaDeUsuario = { id: string; razonSocial: string; cuit: string; rol: string; codigo: string | null }
 
 export type SesionActiva = {
   sesionId: string
@@ -61,7 +61,13 @@ let hashFicticio: Promise<string> | null = null
 async function empresasDe(usuarioId: string): Promise<EmpresaDeUsuario[]> {
   return comoPlataforma((tx) =>
     tx
-      .select({ id: empresas.id, razonSocial: empresas.razonSocial, cuit: empresas.cuit, rol: roles.nombre })
+      .select({
+        id: empresas.id,
+        razonSocial: empresas.razonSocial,
+        cuit: empresas.cuit,
+        rol: roles.nombre,
+        codigo: empresas.codigo,
+      })
       .from(membresias)
       .innerJoin(empresas, eq(empresas.id, membresias.empresaId))
       .innerJoin(roles, eq(roles.id, membresias.rolId))
@@ -72,7 +78,16 @@ async function empresasDe(usuarioId: string): Promise<EmpresaDeUsuario[]> {
 
 export type ResultadoIngreso = { ok: true; token: string; vence: Date } | { ok: false; error: string }
 
-export async function iniciarSesion(email: string, clave: string, meta: Meta = {}): Promise<ResultadoIngreso> {
+/**
+ * Con empresa (el ingreso desde su subdominio): solo entra quien es usuario
+ * de esa empresa, y la sesión queda en ella.
+ */
+export async function iniciarSesion(
+  email: string,
+  clave: string,
+  meta: Meta = {},
+  empresaId?: string,
+): Promise<ResultadoIngreso> {
   const usuario = await comoPlataforma(async (tx) => {
     const [u] = await tx
       .select()
@@ -88,6 +103,10 @@ export async function iniciarSesion(email: string, clave: string, meta: Meta = {
   }
 
   const disponibles = await empresasDe(usuario.id)
+  if (empresaId && !disponibles.some((e) => e.id === empresaId)) {
+    return { ok: false, error: 'Ese usuario no tiene acceso a esta empresa.' }
+  }
+  const elegida = empresaId ?? (disponibles.length === 1 ? disponibles[0].id : null)
   const token = randomBytes(32).toString('base64url')
   const vence = new Date(Date.now() + DIAS_DE_SESION * 86_400_000)
 
@@ -96,16 +115,14 @@ export async function iniciarSesion(email: string, clave: string, meta: Meta = {
       hashToken: hashDe(token),
       usuarioId: usuario.id,
       // Con una sola empresa no hay nada que elegir.
-      empresaId: disponibles.length === 1 ? disponibles[0].id : null,
+      empresaId: elegida,
       vence,
       ip: meta.ip ?? null,
       navegador: meta.navegador?.slice(0, 300) ?? null,
     })
     await tx.update(usuarios).set({ ultimoIngreso: new Date() }).where(eq(usuarios.id, usuario.id))
   })
-  if (disponibles.length === 1) {
-    await registrarIngreso(disponibles[0].id, usuario.id, meta)
-  }
+  if (elegida) await registrarIngreso(elegida, usuario.id, meta)
   return { ok: true, token, vence }
 }
 

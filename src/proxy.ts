@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { codigoDelHost } from '@/lib/subdominio'
+
 /**
  * Chequeo optimista: sin cookie de sesión no hay nada que mostrar, así que
  * se manda a ingresar sin tocar la base. La verificación real (token válido,
@@ -11,7 +13,8 @@ export function proxy(request: NextRequest) {
   if (ruta === '/sitio') return NextResponse.redirect(new URL('/', request.url), 308)
   if (!request.cookies.has('erp_sesion')) {
     // Sin sesión, "/" es el sitio comercial (con sesión, el inicio del sistema).
-    if (ruta === '/') return NextResponse.rewrite(new URL('/sitio', request.url))
+    // En el subdominio de una empresa no hay sitio: se va a ingresar.
+    if (ruta === '/' && !codigoDelHost(request.headers.get('host'))) return NextResponse.rewrite(new URL('/sitio', request.url))
     const destino = new URL('/ingresar', request.url)
     if (request.nextUrl.pathname !== '/') destino.searchParams.set('volver', request.nextUrl.pathname)
     return NextResponse.redirect(destino)
@@ -22,6 +25,6 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Todo menos la pantalla de ingreso, los archivos estáticos y los internos de Next.
   matcher: [
-    '/((?!ingresar|invitacion|registro|precios|funciones|integraciones|soluciones|contacto|legal|robots.txt|sitemap.xml|opengraph-image|icon.svg|encuesta|seguimiento|portal|api/cron|api/crm/formulario|api/cobros|api/whatsapp|pago/|comprobante/|cierre/|deuda/|api/v1|api/salud|api/padrones|api/pagos/mercadopago|api/tiendas/mercadolibre/avisos|api/tiendas/tiendanube/avisos|api/tiendas/woocommerce/claves|api/tiendas/woocommerce/avisos|api/tiendas/shopify/avisos|manifest.webmanifest|sw.js|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp)$).*)',
+    '/((?!ingresar|invitacion|registro|precios|funciones|integraciones|soluciones|contacto|legal|robots.txt|sitemap.xml|opengraph-image|icon.svg|encuesta|seguimiento|portal|api/cron|api/crm/formulario|api/cobros|api/whatsapp|pago/|comprobante/|cierre/|deuda/|api/v1|api/salud|api/dominio|api/padrones|api/pagos/mercadopago|api/tiendas/mercadolibre/avisos|api/tiendas/tiendanube/avisos|api/tiendas/woocommerce/claves|api/tiendas/woocommerce/avisos|api/tiendas/shopify/avisos|manifest.webmanifest|sw.js|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp)$).*)',
   ],
 }

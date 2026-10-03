@@ -104,6 +104,7 @@ export const ETIQUETA_ACCION: Record<string, string> = {
   'empresa.baja': 'Dio de baja la empresa',
   'empresa.alta': 'Habilitó la empresa',
   'empresa.soporte': 'Entró como soporte',
+  'empresa.codigo': 'Cambió la dirección de ingreso',
   'usuario.desactivar': 'Desactivó un usuario',
   'usuario.activar': 'Activó un usuario',
   'usuario.cerrar_sesiones': 'Cerró las sesiones de un usuario',

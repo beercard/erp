@@ -7,6 +7,8 @@ import { cache } from 'react'
 import type { Transaccion } from '../../db/conexion'
 import { conEmpresa } from '../../db/empresa'
 import { tienePermiso } from '../permisos'
+import { codigoDelHost, dominioEmpresas } from '../subdominio'
+import { empresaPorCodigo } from '../../modulos/plataforma/codigos'
 import { FUNCIONES, funcionDePermiso, permisoDeLectura, type Funcion } from '../planes'
 import { DIAS_DE_SESION, leerSesion, type SesionActiva } from './sesiones'
 
@@ -51,10 +53,30 @@ export async function datosDelPedido() {
   return { ip: ipDe(h), navegador: h.get('user-agent') }
 }
 
-/** Una sola lectura de la sesión por pedido, aunque la pidan varios componentes. */
+/** El código de empresa del subdominio por el que entró el pedido (null en el dominio base o sin subdominios). */
+export const codigoDelPedido = cache(async (): Promise<string | null> => codigoDelHost((await headers()).get('host')))
+
+/** La empresa del subdominio del pedido, o null. */
+export const empresaDelPedido = cache(async () => {
+  const codigo = await codigoDelPedido()
+  return codigo ? empresaPorCodigo(codigo) : null
+})
+
+/**
+ * Una sola lectura de la sesión por pedido, aunque la pidan varios componentes.
+ * Con subdominios, la sesión solo trabaja en la empresa del subdominio: en el
+ * dominio base o en el de otra empresa queda sin empresa elegida.
+ */
 export const sesionActual = cache(async (): Promise<SesionActiva | null> => {
   const token = await tokenDeSesion()
-  return token ? leerSesion(token) : null
+  const sesion = token ? await leerSesion(token) : null
+  if (!sesion || !sesion.empresa || !dominioEmpresas()) return sesion
+  // El acceso de soporte (solo lectura, de quien administra la plataforma) se
+  // usa en el dominio base, donde vive su sesión; nunca en el subdominio de otra empresa.
+  if (sesion.soporte && !(await codigoDelPedido())) return sesion
+  const delHost = await empresaDelPedido()
+  if (delHost?.id === sesion.empresa.id) return sesion
+  return { ...sesion, empresa: null, suscripcion: null, rol: null, permisos: [] }
 })
 
 export async function requerirSesion(): Promise<SesionActiva> {

@@ -8,6 +8,7 @@ import { Aviso, Boton, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { formatearCuit } from '@/lib/cuit'
 import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 import { MINUTOS_DE_SOPORTE } from '@/lib/auth/sesiones'
+import { dominioEmpresas } from '@/lib/subdominio'
 import { FUNCIONES, MESES_COBRADOS_EN_ANUAL, planPorId, precioDeLista, situacion, type Funcion } from '@/lib/planes'
 import { fichaEmpresa, listarAuditoria } from '@/modulos/plataforma/consola'
 import { historial, suscripcionDe, usoDe } from '@/modulos/plataforma/suscripciones'
@@ -16,7 +17,7 @@ import { agregarNotaAccion, bajaEmpresaAccion, entrarSoporteAccion, extenderPrue
 import { exigirAdmin } from '../../admin'
 import { ChipEstado, ETIQUETA_ACCION, fechaHora, hace, Indicador, Indicadores, TituloPanel } from '../../componentes'
 import { BotonAccion, FormularioExtenderPrueba, FormularioNota } from '../../Formularios'
-import { FormularioPago, FormularioSuscripcionAdmin } from './FormulariosAdmin'
+import { FormularioCodigo, FormularioPago, FormularioSuscripcionAdmin } from './FormulariosAdmin'
 
 export const metadata: Metadata = { title: 'Empresa · Plataforma' }
 
@@ -300,6 +301,13 @@ export default async function FichaEmpresa({ params, searchParams }: PageProps<'
                   ))}
                 </ul>
               )}
+            </Panel>
+
+            <Panel>
+              <TituloPanel>Dirección de ingreso</TituloPanel>
+              <div className="p-4">
+                <FormularioCodigo key={empresa.codigo ?? ''} empresaId={id} codigo={empresa.codigo} dominio={dominioEmpresas()} />
+              </div>
             </Panel>
 
             <Panel>

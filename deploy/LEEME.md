@@ -45,6 +45,17 @@ El instalador:
    - cuándo fue la última copia, si salió bien y si se envió fuera del servidor;
    - cuándo fue la última prueba de restauración.
 
+## Un subdominio por empresa (komsa.erp.tuempresa.com.ar)
+
+Cada empresa entra por su dirección, con su propia pantalla de ingreso y su propia sesión. El dominio de `DOMINIO` queda para el sitio comercial, el ingreso con el código de empresa y el panel de la plataforma.
+
+1. **DNS comodín:** en el DNS del dominio, un registro `A` con nombre `*.erp` (para `*.erp.tuempresa.com.ar`) apuntando al IP de la VPS. En Hostinger: Dominios → DNS / Nameservers → Agregar registro → Tipo A, Nombre `*.erp`, Apunta a el IP.
+2. **Activar:** en `deploy/.env`, `DOMINIO_EMPRESAS=erp.tuempresa.com.ar` (normalmente igual a `DOMINIO`), y aplicar con `git pull && docker compose up -d --build`.
+3. **Certificados:** Caddy saca uno por subdominio la primera vez que alguien entra (tarda unos segundos), solo si el ERP confirma que esa empresa existe (`/api/dominio`).
+4. **Códigos:** las empresas que ya estaban recibieron uno a partir de su nombre; las nuevas, al darse de alta. Se ven y se cambian en el panel de la plataforma → la empresa → "Dirección de ingreso".
+
+Sin `DOMINIO_EMPRESAS` todo sigue como antes: todas las empresas entran por `DOMINIO` y eligen con cuál trabajar.
+
 ## Operación
 
 | Qué                                  | Comando (en `~/erp/deploy`)                                                                                                                                                                           |

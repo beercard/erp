@@ -56,3 +56,10 @@ Cómo está protegido el sistema y qué salió de la revisión de seguridad de o
 - **node-forge** (firma para ARCA) tiene un aviso sin corrección publicada. Afecta la verificación de firmas, que el sistema no usa. Se puede reemplazar por la firma CMS de `openssl` cuando haya tiempo.
 - **Enlaces de seguimiento** que no vencen, avisos de Mercado Libre sin deduplicar y sin tope de fotos por formulario del portal: riesgo bajo; quedan anotados.
 - **CSP sin `unsafe-inline`:** requiere nonces (render dinámico en todo el sitio) o SRI. Hoy el riesgo es bajo porque React escapa todo.
+
+## Subdominio por empresa
+
+- Con `DOMINIO_EMPRESAS`, cada empresa trabaja en `<código>.<DOMINIO_EMPRESAS>`. La cookie de sesión no lleva `Domain`: queda atada a ese subdominio, así que cada empresa tiene su propia sesión.
+- En el subdominio solo inicia sesión quien es usuario de esa empresa (`iniciarSesion(…, empresaId)`), y `sesionActual` descarta la empresa de la sesión si no coincide con la del subdominio (o si el pedido llega por el dominio base): aunque se copie una cookie de un subdominio a otro, no da acceso. El aislamiento por RLS sigue igual por debajo.
+- El ingreso por código en el dominio base (`/ingresar/empresa`) tiene freno por IP para que no se puedan enumerar empresas probando códigos.
+- Caddy solo saca certificados para subdominios de empresas existentes (`on_demand_tls` con `ask` a `/api/dominio`).

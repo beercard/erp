@@ -52,6 +52,7 @@ export type AccionPlataforma =
   | 'empresa.baja'
   | 'empresa.alta'
   | 'empresa.soporte'
+  | 'empresa.codigo'
   | 'usuario.desactivar'
   | 'usuario.activar'
   | 'usuario.cerrar_sesiones'

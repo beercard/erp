@@ -6,7 +6,7 @@ import { Aviso, Boton, Campo } from '@/components/ui'
 
 import { ingresar } from './acciones'
 
-export function FormularioIngreso({ volver }: { volver?: string }) {
+export function FormularioIngreso({ volver, email }: { volver?: string; email?: string }) {
   const [estado, accion, enviando] = useActionState(ingresar, undefined)
   return (
     <form action={accion} className="flex flex-col gap-4">
@@ -18,7 +18,7 @@ export function FormularioIngreso({ volver }: { volver?: string }) {
         type="email"
         etiqueta="Email"
         autoComplete="username"
-        defaultValue={estado?.email}
+        defaultValue={estado?.email ?? email}
         required
         autoFocus
       />
