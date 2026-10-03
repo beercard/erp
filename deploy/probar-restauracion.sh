@@ -6,7 +6,7 @@
 #   bash deploy/probar-restauracion.sh archivo.dump    # una en particular
 #
 # SIN_DOCKER=1 usa psql y pg_restore locales con PGHOST, PGPORT y PGUSER.
-set -euo pipefail
+set -Eeuo pipefail
 cd "$(dirname "$0")"
 [ -f .env ] && set -a && . ./.env && set +a
 
@@ -24,6 +24,17 @@ restaurar() {
   else docker compose exec -T db pg_restore --no-owner --exit-on-error -U erp -d "$PRUEBA" <"$ARCHIVO"; fi
 }
 
+# El resultado queda en la base de verdad (tabla latidos) para la consola de la plataforma.
+# Sin Docker, la base de verdad es la de DATABASE_URL (como en copia.sh), si está.
+# El -E de "set" hace que la trampa ERR también salte dentro de las funciones (pg_restore).
+latido() {
+  local base=erp
+  if [ -n "${SIN_DOCKER:-}" ] && [ -n "${DATABASE_URL:-}" ]; then base="$DATABASE_URL"; fi
+  sql "insert into latidos (nombre, ultimo, ok, detalle) values ('restauracion', now(), $1, '$2'::jsonb)
+    on conflict (nombre) do update set ultimo = excluded.ultimo, ok = excluded.ok, detalle = excluded.detalle" "$base" >/dev/null || true
+}
+trap 'latido false "{\"error\": \"falló en la línea $LINENO\"}"' ERR
+
 echo "Restaurando $ARCHIVO en $PRUEBA…"
 sql "drop database if exists $PRUEBA"
 sql "create database $PRUEBA"
@@ -39,6 +50,8 @@ POLITICAS=$(sql "select count(*) from pg_policies where schemaname = 'public'" "
 echo "Migraciones: $MIGRACIONES · empresas: $EMPRESAS · usuarios: $USUARIOS · comprobantes: $COMPROBANTES · políticas: $POLITICAS"
 if [ "$MIGRACIONES" -lt 1 ] || [ "$EMPRESAS" -lt 1 ] || [ "$POLITICAS" -lt 10 ]; then
   echo "LA COPIA NO SIRVE: faltan datos. Revisar ya."
+  latido false "{\"error\": \"faltan datos\", \"empresas\": $EMPRESAS, \"politicas\": $POLITICAS}"
   exit 2
 fi
+latido true "{\"archivo\": \"$(basename "$ARCHIVO")\", \"empresas\": $EMPRESAS, \"usuarios\": $USUARIOS, \"comprobantes\": $COMPROBANTES}"
 echo "Restauración correcta."

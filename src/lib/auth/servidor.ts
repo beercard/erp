@@ -71,6 +71,9 @@ export const sesionActual = cache(async (): Promise<SesionActiva | null> => {
   const token = await tokenDeSesion()
   const sesion = token ? await leerSesion(token) : null
   if (!sesion || !sesion.empresa || !dominioEmpresas()) return sesion
+  // El acceso de soporte (solo lectura, de quien administra la plataforma) se
+  // usa en el dominio base, donde vive su sesión; nunca en el subdominio de otra empresa.
+  if (sesion.soporte && !(await codigoDelPedido())) return sesion
   const delHost = await empresaDelPedido()
   if (delHost?.id === sesion.empresa.id) return sesion
   return { ...sesion, empresa: null, suscripcion: null, rol: null, permisos: [] }

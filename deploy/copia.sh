@@ -10,7 +10,7 @@
 #   RCLONE_DESTINO     destino externo de rclone (ej.: b2:vektra-copias); recomendado
 #   COPIA_AVISO_URL    URL a la que se avisa que la copia salió bien (Healthchecks.io, UptimeRobot heartbeat)
 #   SIN_DOCKER=1       usar pg_dump local con DATABASE_URL (pruebas o Postgres administrado)
-set -euo pipefail
+set -Eeuo pipefail
 cd "$(dirname "$0")"
 [ -f .env ] && set -a && . ./.env && set +a
 
@@ -18,6 +18,17 @@ DIR="${COPIAS_DIR:-/var/backups/vektra}"
 DIAS="${COPIAS_DIAS:-14}"
 mkdir -p "$DIR"
 ARCHIVO="$DIR/erp-$(date +%F-%H%M).dump"
+
+# Deja el resultado en la base (tabla latidos) para la consola de la plataforma
+# (Operación). Si no se puede, la copia sigue igual. El -E de "set" hace que
+# la trampa ERR también salte cuando falla algo dentro de una función (pg_dump).
+latido() {
+  local q="insert into latidos (nombre, ultimo, ok, detalle) values ('copia', now(), $1, '$2'::jsonb)
+    on conflict (nombre) do update set ultimo = excluded.ultimo, ok = excluded.ok, detalle = excluded.detalle"
+  if [ -n "${SIN_DOCKER:-}" ]; then psql -qtA "$DATABASE_URL" -c "$q" >/dev/null
+  else docker compose exec -T db psql -qtA -U erp -d erp -c "$q" >/dev/null; fi
+}
+trap 'latido false "{\"error\": \"falló en la línea $LINENO\"}" || true' ERR
 
 volcar() {
   if [ -n "${SIN_DOCKER:-}" ]; then
@@ -42,5 +53,6 @@ else
 fi
 
 find "$DIR" -name 'erp-*.dump' -mtime "+$DIAS" -delete
+latido true "{\"archivo\": \"$(basename "$ARCHIVO")\", \"tamano\": \"$(du -h "$ARCHIVO" | cut -f1)\", \"externa\": $([ -n "${RCLONE_DESTINO:-}" ] && echo true || echo false)}" || true
 [ -n "${COPIA_AVISO_URL:-}" ] && curl -fsS -m 20 "$COPIA_AVISO_URL" >/dev/null || true
 echo "[$(date -Is)] Listo."

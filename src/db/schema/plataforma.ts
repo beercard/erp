@@ -141,9 +141,36 @@ export const sesiones = pgTable(
     vence: timestamp('vence', { withTimezone: true }).notNull(),
     ip: inet('ip'),
     navegador: text('navegador'),
+    /**
+     * Acceso de soporte de la plataforma: quien administra entra a una
+     * empresa sin ser miembro, solo para consultar, hasta esta hora.
+     */
+    soporteHasta: timestamp('soporte_hasta', { withTimezone: true }),
     creada: timestamp('creada', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index().on(t.usuarioId)],
+)
+
+/**
+ * Lo que hace quien administra la plataforma (cambios de plan, suspensiones,
+ * accesos de soporte, permisos). La auditoría de cada empresa vive en su
+ * propia tabla; esta es la de la plataforma y no lleva RLS.
+ */
+export const auditoriaPlataforma = pgTable(
+  'auditoria_plataforma',
+  {
+    id: id(),
+    usuarioId: uuid('usuario_id').references(() => usuarios.id),
+    accion: text('accion').notNull(),
+    /** Empresa afectada, si la hay. */
+    empresaId: uuid('empresa_id').references(() => empresas.id),
+    /** Usuario afectado (permisos, bajas), si lo hay. */
+    sobreUsuarioId: uuid('sobre_usuario_id').references(() => usuarios.id),
+    detalle: jsonb('detalle').$type<Record<string, unknown>>(),
+    ip: inet('ip'),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.creado), index().on(t.empresaId, t.creado)],
 )
 
 /**

@@ -40,7 +40,10 @@ El instalador:
    - `https://dominio/api/salud`: servidor y base (cada 5 minutos).
    - `https://dominio/api/salud?cron=1`: la tarea periódica; da 503 si no corre hace 45 minutos.
    - Opcional: un "heartbeat" para las copias, con su URL en `COPIA_AVISO_URL`.
-6. **Errores del servidor:** se agrupan en el panel de la plataforma (Salud del servicio) y se avisan por correo a `AVISOS_ADMIN` (o a quienes administran la plataforma), como mucho cada 6 horas por error.
+6. **Errores del servidor:** se agrupan en la consola de la plataforma (`https://dominio/plataforma`, sección Operación). Se avisan por correo a `AVISOS_ADMIN` (o a quienes administran la plataforma), como mucho cada 6 horas por error.
+7. **Copias en la consola:** `copia.sh` y `probar-restauracion.sh` dejan su resultado en la base. Así, en Operación se ve:
+   - cuándo fue la última copia, si salió bien y si se envió fuera del servidor;
+   - cuándo fue la última prueba de restauración.
 
 ## Un subdominio por empresa (komsa.erp.tuempresa.com.ar)
 
