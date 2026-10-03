@@ -12,7 +12,7 @@ import {
   whatsappMensajes,
 } from '../../db/schema'
 import { firmarEnlace } from '../../lib/enlaces'
-import { hoyArgentina } from '../../lib/fechas'
+import { hoyArgentina, sumarDias } from '../../lib/fechas'
 import { crearPago, hayPasarelas, urlPago } from '../cobros/cobros'
 import { formatearNumero } from '../comercial/formato'
 import { cuentaCorriente } from '../facturacion/cuentas'
@@ -216,7 +216,7 @@ async function ejecutar(c: Contexto, nombre: string, entrada: Record<string, unk
         .join('\n')
     }
     case 'estado_servicios': {
-      const desde = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)
+      const desde = sumarDias(hoyArgentina(), -30)
       const lista = await conEmpresa(c.empresaId, (tx) =>
         tx
           .select({

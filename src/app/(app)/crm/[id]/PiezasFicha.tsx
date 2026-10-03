@@ -4,6 +4,7 @@ import { CalendarPlus, Check, ThumbsDown, Trash2 } from 'lucide-react'
 import { useActionState, useEffect, useRef, useState } from 'react'
 
 import { Aviso, Boton } from '@/components/ui'
+import { sumarDias } from '@/lib/fechas'
 
 import { agendarAccion, borrarActividadAccion, completarAccion, perderAccion } from '../acciones'
 import { ICONO_ACTIVIDAD, TONO_VENCIMIENTO } from '../componentes'
@@ -88,11 +89,9 @@ export function Agendar({
   useEffect(() => {
     if (estado?.ok) form.current?.reset()
   }, [estado])
-  const manana = new Date(`${hoy}T12:00:00`)
-  manana.setDate(manana.getDate() + 1)
   const atajos = [
     ['Hoy', hoy],
-    ['Mañana', manana.toISOString().slice(0, 10)],
+    ['Mañana', sumarDias(hoy, 1)],
   ]
   return (
     <form ref={form} action={accion} className="flex flex-col gap-3">

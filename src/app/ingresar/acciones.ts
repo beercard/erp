@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import * as z from 'zod'
 
+import { destinoSeguro } from '@/lib/auth/destino'
 import {
   borrarCookieDeSesion,
   codigoDelPedido,
@@ -29,21 +30,6 @@ const Datos = z.object({
 const VENTANA = 15 * 60_000
 const POR_EMAIL = 8
 const POR_IP = 30
-
-/**
- * Solo rutas internas: evita que ?volver= mande a otro sitio. Se rechazan
- * "//otro.com" y "/\\otro.com" (los navegadores toman la barra invertida
- * como "/") y cualquier control.
- */
-export async function destinoSeguro(volver: string | undefined): Promise<string> {
-  if (!volver || !/^\/(?![/\\])/.test(volver) || /[\\\s]/.test(volver)) return '/'
-  try {
-    const u = new URL(volver, 'http://local.invalido')
-    return u.origin === 'http://local.invalido' ? `${u.pathname}${u.search}${u.hash}` : '/'
-  } catch {
-    return '/'
-  }
-}
 
 export async function ingresar(_: EstadoIngreso, formData: FormData): Promise<EstadoIngreso> {
   const datos = Datos.safeParse({
@@ -72,7 +58,7 @@ export async function ingresar(_: EstadoIngreso, formData: FormData): Promise<Es
   }
   await olvidar(porEmail)
   await guardarCookieDeSesion(resultado.token, resultado.vence)
-  redirect(await destinoSeguro(datos.data.volver))
+  redirect(destinoSeguro(datos.data.volver))
 }
 
 export async function elegir(formData: FormData) {
