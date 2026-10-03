@@ -159,10 +159,12 @@ describe('empresas', () => {
 
 describe('usuarios', () => {
   it('lista con sus empresas y filtra', async () => {
-    const todos = await listarUsuarios()
+    const todos = (await listarUsuarios()).filas
     expect(todos.find((u) => u.email === 'duena@alfa.com')?.empresas.map((e) => e.razonSocial)).toEqual(['Alfa S.A.'])
-    expect((await listarUsuarios({ tipo: 'admin' })).map((u) => u.email)).toEqual(['admin@plataforma.com'])
-    expect((await listarUsuarios({ q: 'DUEÑA' })).map((u) => u.email)).toEqual(['duena@alfa.com'])
+    const admins = await listarUsuarios({ tipo: 'admin' })
+    expect(admins.filas.map((u) => u.email)).toEqual(['admin@plataforma.com'])
+    expect(admins.total).toBe(todos.length)
+    expect((await listarUsuarios({ q: 'DUEÑA' })).filas.map((u) => u.email)).toEqual(['duena@alfa.com'])
   })
 
   it('no deja que uno se desactive a sí mismo', async () => {

@@ -9,13 +9,8 @@ import { listarConsultas } from '@/modulos/plataforma/consultas'
 import { erroresRecientes } from '@/modulos/plataforma/monitoreo'
 
 import { exigirAdmin } from './admin'
+import { erroresDelDia } from './componentes'
 import { NavPlataforma } from './NavPlataforma'
-
-/** Errores que pasaron en las últimas 24 horas (el aviso del menú). */
-function erroresDelDia(errores: { ultimo: Date }[]) {
-  const desde = Date.now() - 86_400_000
-  return errores.filter((e) => e.ultimo.getTime() > desde).length
-}
 
 /**
  * Consola de la plataforma: barra propia y menú lateral con sus secciones.

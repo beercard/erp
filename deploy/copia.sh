@@ -10,7 +10,7 @@
 #   RCLONE_DESTINO     destino externo de rclone (ej.: b2:vektra-copias); recomendado
 #   COPIA_AVISO_URL    URL a la que se avisa que la copia salió bien (Healthchecks.io, UptimeRobot heartbeat)
 #   SIN_DOCKER=1       usar pg_dump local con DATABASE_URL (pruebas o Postgres administrado)
-set -euo pipefail
+set -Eeuo pipefail
 cd "$(dirname "$0")"
 [ -f .env ] && set -a && . ./.env && set +a
 
@@ -20,7 +20,8 @@ mkdir -p "$DIR"
 ARCHIVO="$DIR/erp-$(date +%F-%H%M).dump"
 
 # Deja el resultado en la base (tabla latidos) para la consola de la plataforma
-# (Operación). Si no se puede, la copia sigue igual.
+# (Operación). Si no se puede, la copia sigue igual. El -E de "set" hace que
+# la trampa ERR también salte cuando falla algo dentro de una función (pg_dump).
 latido() {
   local q="insert into latidos (nombre, ultimo, ok, detalle) values ('copia', now(), $1, '$2'::jsonb)
     on conflict (nombre) do update set ultimo = excluded.ultimo, ok = excluded.ok, detalle = excluded.detalle"

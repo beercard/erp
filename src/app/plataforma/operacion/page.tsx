@@ -9,7 +9,7 @@ import { estadoOperacion } from '@/modulos/plataforma/consola'
 
 import { archivarErrorAccion } from '../acciones'
 import { exigirAdmin } from '../admin'
-import { fechaHora, hace, Indicador, Indicadores, TituloPanel } from '../componentes'
+import { erroresDelDia, fechaHora, hace, Indicador, Indicadores, TituloPanel } from '../componentes'
 
 export const metadata: Metadata = { title: 'Operación · Plataforma' }
 
@@ -46,7 +46,6 @@ export default async function Operacion() {
   const o = await estadoOperacion()
   const ahora = new Date()
   const correoConErrores = o.correo.filter((c) => c.errores > 0)
-  const recientes = o.errores.filter((e) => ahora.getTime() - e.ultimo.getTime() < 86_400_000)
 
   return (
     <>
@@ -57,7 +56,11 @@ export default async function Operacion() {
 
       <div className="flex flex-col gap-5">
         <Indicadores>
-          <Indicador rotulo="Errores en 24 h" valor={recientes.length} detalle={`${o.errores.length} distintos registrados`} />
+          <Indicador
+            rotulo="Errores en 24 h"
+            valor={erroresDelDia(o.errores, ahora)}
+            detalle={`${o.errores.length} distintos registrados`}
+          />
           <Indicador rotulo="Sesiones abiertas" valor={o.sesionesActivas} detalle={`${o.soportesAbiertos} en modo soporte`} />
           <Indicador rotulo="Base de datos" valor={megas(o.tamanoBase)} detalle="tamaño en disco" />
           <Indicador

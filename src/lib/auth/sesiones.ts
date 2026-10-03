@@ -237,9 +237,8 @@ export async function abrirSoporte(
   const [empresa] = await comoPlataforma((tx) => tx.select({ id: empresas.id }).from(empresas).where(eq(empresas.id, empresaId)))
   if (!empresa) return { ok: false, error: 'No existe esa empresa.' }
   const hasta = new Date(ahora.getTime() + MINUTOS_DE_SOPORTE * 60_000)
-  await comoPlataforma((tx) =>
-    tx.update(sesiones).set({ empresaId, soporteHasta: hasta }).where(eq(sesiones.id, sesion.sesionId)),
-  )
+  // Primero queda registrado en la empresa; recién después se abre el acceso.
+  // Así no hay forma de entrar sin que la empresa lo vea en su auditoría.
   await conEmpresa(empresaId, (tx) =>
     tx.insert(auditoria).values({
       usuarioId: sesion.usuario.id,
@@ -248,6 +247,9 @@ export async function abrirSoporte(
       despues: { hasta: hasta.toISOString(), email: sesion.usuario.email },
       ip: meta.ip ?? null,
     }),
+  )
+  await comoPlataforma((tx) =>
+    tx.update(sesiones).set({ empresaId, soporteHasta: hasta }).where(eq(sesiones.id, sesion.sesionId)),
   )
   return { ok: true, hasta }
 }

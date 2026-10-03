@@ -13,6 +13,12 @@ export const fechaHora = (d: Date | null | undefined) =>
       })
     : '—'
 
+/** Cuántos errores pasaron en las últimas 24 horas (el aviso del menú y Operación). */
+export function erroresDelDia(errores: { ultimo: Date }[], ahora = new Date()) {
+  const desde = ahora.getTime() - 86_400_000
+  return errores.filter((e) => e.ultimo.getTime() > desde).length
+}
+
 /** "hace 3 h", "hace 2 días": para últimos ingresos y latidos. */
 export function hace(d: Date | null | undefined, ahora = new Date()) {
   if (!d) return 'nunca'

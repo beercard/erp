@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, gte, inArray, isNull, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, inArray, isNull, ne, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
 import { conEmpresa, comoPlataforma } from '../../db/empresa'
@@ -280,6 +280,11 @@ export async function pedirCambio(
   return { ok: true, aplicado: aplicarYa }
 }
 
+/**
+ * Historial de la suscripción (lo ve también la empresa). Sin las notas: son
+ * internas de la plataforma (la ficha de la consola las lee aparte) y no
+ * tienen que ocupar el lugar de los pagos, cambios y pedidos.
+ */
 export async function historial(empresaId: string) {
   return comoPlataforma((tx) =>
     tx
@@ -293,7 +298,7 @@ export async function historial(empresaId: string) {
       })
       .from(eventosSuscripcion)
       .leftJoin(usuarios, eq(usuarios.id, eventosSuscripcion.usuarioId))
-      .where(eq(eventosSuscripcion.empresaId, empresaId))
+      .where(and(eq(eventosSuscripcion.empresaId, empresaId), ne(eventosSuscripcion.tipo, 'nota')))
       .orderBy(desc(eventosSuscripcion.creado))
       .limit(30),
   )
@@ -426,7 +431,11 @@ export async function registrarPago(
 }
 
 /** Aplica un pedido pendiente (después de cobrar) o lo rechaza. */
-export async function resolverPedido(adminId: string | null, pedidoId: string, aceptar: boolean): Promise<Resultado> {
+export async function resolverPedido(
+  adminId: string | null,
+  pedidoId: string,
+  aceptar: boolean,
+): Promise<{ ok: true; empresaId: string } | { ok: false; error: string }> {
   const [pedido] = await comoPlataforma((tx) =>
     tx
       .select()
@@ -454,7 +463,7 @@ export async function resolverPedido(adminId: string | null, pedidoId: string, a
       await tx.insert(eventosSuscripcion).values({ empresaId: pedido.empresaId, tipo: 'cambio', detalle: d, usuarioId: adminId })
     }
   })
-  return { ok: true }
+  return { ok: true, empresaId: pedido.empresaId }
 }
 
 /** Suscripciones que vencieron la prueba o el pago (para avisar y para el panel). */

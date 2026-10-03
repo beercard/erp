@@ -49,7 +49,7 @@ export default async function FichaEmpresa({ params, searchParams }: PageProps<'
   await exigirAdmin()
   const { id } = await params
   const { error } = (await searchParams) as { error?: string }
-  const ficha = await fichaEmpresa(id).catch(() => null)
+  const ficha = await fichaEmpresa(id)
   if (!ficha) notFound()
   const hoy = hoyArgentina()
   const [s, uso, eventos, acciones] = await Promise.all([
@@ -200,25 +200,23 @@ export default async function FichaEmpresa({ params, searchParams }: PageProps<'
 
             <Panel className="overflow-x-auto">
               <TituloPanel>Historial de la suscripción</TituloPanel>
-              {eventos.filter((e) => e.tipo !== 'nota').length === 0 ? (
+              {eventos.length === 0 ? (
                 <p className="px-4 py-4 text-sm text-texto-2">Sin movimientos.</p>
               ) : (
                 <table className="w-full min-w-[560px] text-sm">
                   <tbody className="divide-y divide-borde">
-                    {eventos
-                      .filter((e) => e.tipo !== 'nota')
-                      .map((e) => (
-                        <tr key={e.id}>
-                          <td className="cifras px-4 py-2 align-top text-xs whitespace-nowrap text-texto-2">
-                            {fechaHora(e.creado)}
-                          </td>
-                          <td className="px-4 py-2">
-                            {describirEvento(e.tipo, e.detalle)}
-                            {e.estado && <span className="text-texto-3"> · {e.estado}</span>}
-                          </td>
-                          <td className="px-4 py-2 text-right text-xs text-texto-3">{e.usuario ?? 'Sistema'}</td>
-                        </tr>
-                      ))}
+                    {eventos.map((e) => (
+                      <tr key={e.id}>
+                        <td className="cifras px-4 py-2 align-top text-xs whitespace-nowrap text-texto-2">
+                          {fechaHora(e.creado)}
+                        </td>
+                        <td className="px-4 py-2">
+                          {describirEvento(e.tipo, e.detalle)}
+                          {e.estado && <span className="text-texto-3"> · {e.estado}</span>}
+                        </td>
+                        <td className="px-4 py-2 text-right text-xs text-texto-3">{e.usuario ?? 'Sistema'}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               )}

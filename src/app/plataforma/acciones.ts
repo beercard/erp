@@ -73,7 +73,8 @@ export async function registrarPagoAccion(empresaId: string, _: EstadoAdmin, for
 export async function resolverPedidoAccion(pedidoId: string, aceptar: boolean) {
   const admin = await quienAdministra()
   const r = await resolverPedido(admin.id, pedidoId, aceptar)
-  if (r.ok) await registrarAccion(admin, 'suscripcion.pedido', { detalle: { pedidoId, aceptado: aceptar } })
+  if (r.ok)
+    await registrarAccion(admin, 'suscripcion.pedido', { empresaId: r.empresaId, detalle: { pedidoId, aceptado: aceptar } })
   revalidar()
 }
 

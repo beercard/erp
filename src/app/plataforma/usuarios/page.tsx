@@ -24,8 +24,7 @@ export default async function Usuarios({ searchParams }: PageProps<'/plataforma/
   const sesion = await exigirAdmin()
   const p = (await searchParams) as { q?: string; tipo?: string }
   const filtro = { q: p.q ?? '', tipo: p.tipo ?? '' }
-  const [lista, todos] = await Promise.all([listarUsuarios(filtro), filtro.q || filtro.tipo ? listarUsuarios() : null])
-  const total = (todos ?? lista).length
+  const { total, filas: lista } = await listarUsuarios(filtro)
   const enlace = (tipo: string) => {
     const q = new URLSearchParams(Object.entries({ ...filtro, tipo }).filter(([, v]) => v) as [string, string][])
     return `/plataforma/usuarios${q.size ? `?${q}` : ''}`

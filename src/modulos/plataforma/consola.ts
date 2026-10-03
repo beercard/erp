@@ -247,8 +247,11 @@ export async function buscarEmpresas(filtro: FiltroEmpresas, hoy = hoyArgentina(
   return { total: filas.length, filas: visibles.sort(orden[filtro.orden ?? 'alta'] ?? orden.alta) }
 }
 
-/** Todo lo que la plataforma sabe de una empresa, para su ficha. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Todo lo que la plataforma sabe de una empresa, para su ficha. Nulo si no existe. */
 export async function fichaEmpresa(empresaId: string) {
+  if (!UUID.test(empresaId)) return null
   const datos = await comoPlataforma(async (tx) => {
     const [empresa] = await tx.select().from(empresas).where(eq(empresas.id, empresaId))
     if (!empresa) return null
@@ -416,6 +419,7 @@ export async function cambiarBajaEmpresa(admin: Admin, empresaId: string, activa
 
 // ---------------------------------------------------------------- Usuarios
 
+/** Las cuentas con sus empresas y sesiones; `total` es antes de filtrar (una sola lectura). */
 export async function listarUsuarios(filtro: { q?: string; tipo?: string } = {}) {
   const q = (filtro.q ?? '').trim().toLowerCase()
   const filas = await comoPlataforma((tx) =>
@@ -436,9 +440,10 @@ export async function listarUsuarios(filtro: { q?: string; tipo?: string } = {})
         sesiones: sql<number>`(select count(*)::int from sesiones s where s.usuario_id = "usuarios"."id" and s.vence > now())`,
       })
       .from(usuarios)
-      .orderBy(desc(usuarios.ultimoIngreso), usuarios.nombre),
+      // Quien nunca entró, al final (en Postgres, desc pone los nulos primero).
+      .orderBy(sql`${usuarios.ultimoIngreso} desc nulls last`, usuarios.nombre),
   )
-  return filas.filter(
+  const visibles = filas.filter(
     (u) =>
       (!q || u.nombre.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) &&
       (!filtro.tipo ||
@@ -447,6 +452,7 @@ export async function listarUsuarios(filtro: { q?: string; tipo?: string } = {})
         (filtro.tipo === 'sin_empresa' && u.empresas.length === 0) ||
         (filtro.tipo === 'nunca' && !u.ultimoIngreso)),
   )
+  return { total: filas.length, filas: visibles }
 }
 
 /** Desactivar a alguien le cierra todas las sesiones; no se puede con uno mismo. */
@@ -483,6 +489,20 @@ export async function cerrarSesionesDe(admin: Admin, usuarioId: string): Promise
 
 // ---------------------------------------------------------------- Operación
 
+/** Aplica `trabajo` a cada elemento con a lo sumo `cuantas` tareas a la vez, conservando el orden. */
+async function deAPocas<T, R>(lista: T[], cuantas: number, trabajo: (x: T) => Promise<R>): Promise<R[]> {
+  const resultados: R[] = new Array(lista.length)
+  let siguiente = 0
+  const obrero = async () => {
+    while (siguiente < lista.length) {
+      const i = siguiente++
+      resultados[i] = await trabajo(lista[i])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(cuantas, lista.length) }, obrero))
+  return resultados
+}
+
 /** Copias y pruebas de restauración: las dejan deploy/copia.sh y deploy/probar-restauracion.sh. */
 const COPIA_ATRASADA_MS = 26 * 3_600_000
 const RESTAURACION_ATRASADA_MS = 8 * 86_400_000
@@ -511,8 +531,8 @@ export async function estadoOperacion(ahora = new Date()) {
   ])
 
   // Correo saliente: lo pendiente y lo que falló, empresa por empresa (sus correos tienen RLS).
-  const correo = []
-  for (const e of filas.empresas) {
+  // De a pocas a la vez, para no ocupar todas las conexiones de la base.
+  const porEmpresa = await deAPocas(filas.empresas, 4, async (e) => {
     const [c] = await conEmpresa(e.id, (tx) =>
       tx
         .select({
@@ -525,8 +545,9 @@ export async function estadoOperacion(ahora = new Date()) {
         })
         .from(correos),
     )
-    if (c.pendientes || c.errores || c.enviados) correo.push({ empresaId: e.id, empresa: e.razonSocial, ...c })
-  }
+    return { empresaId: e.id, empresa: e.razonSocial, ...c }
+  })
+  const correo = porEmpresa.filter((c) => c.pendientes || c.errores || c.enviados)
 
   const latido = (nombre: string, atraso: number) => {
     const l = filas.latidos.find((x) => x.nombre === nombre)
