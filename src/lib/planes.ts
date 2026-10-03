@@ -220,6 +220,8 @@ export type DatosSuscripcion = {
   usuariosAdicionales: number
   pruebaHasta: string | null
   pagadoHasta: string | null
+  /** Baja pedida: desde esa fecha, solo consulta. */
+  bajaDesde?: string | null
 }
 
 export type Situacion = {
@@ -237,6 +239,25 @@ const dias = (desde: string, hasta: string) => Math.round((Date.parse(hasta) - D
 
 /** Qué puede hacer hoy una empresa según su suscripción. */
 export function situacion(s: DatosSuscripcion, hoy: string): Situacion {
+  const sit = situacionSinBaja(s, hoy)
+  if (!s.bajaDesde) return sit
+  const fecha = s.bajaDesde.split('-').reverse().join('/')
+  if (hoy >= s.bajaDesde) {
+    return {
+      ...sit,
+      soloLectura: true,
+      aviso: {
+        tono: 'error',
+        texto: `La suscripción se dio de baja el ${fecha}: se pueden consultar y exportar los datos. Para volver, elegí un plan.`,
+      },
+    }
+  }
+  return sit.aviso?.tono === 'error'
+    ? sit
+    : { ...sit, aviso: { tono: 'aviso', texto: `Pediste la baja: el sistema funciona normalmente hasta el ${fecha}.` } }
+}
+
+function situacionSinBaja(s: DatosSuscripcion, hoy: string): Situacion {
   const plan = planPorId(s.plan)
   const aplicaciones = plan.admiteAplicaciones ? APLICACIONES.filter((a) => s.aplicaciones.includes(a.id)).map((a) => a.id) : []
   const funciones = [...plan.funciones, ...aplicaciones]

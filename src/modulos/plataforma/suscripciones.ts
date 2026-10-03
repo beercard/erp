@@ -50,6 +50,7 @@ export async function suscripcionDe(empresaId: string): Promise<
     precioAcordado: string | null
     observaciones: string | null
     mpEstado: string | null
+    mpSuscripcion?: string | null
   }
 > {
   const [s] = await comoPlataforma((tx) => tx.select().from(suscripciones).where(eq(suscripciones.empresaId, empresaId)))
@@ -454,7 +455,7 @@ export async function registrarPago(
       })
       await tx
         .update(suscripciones)
-        .set({ estado: 'activa', pagadoHasta: fin, pruebaHasta: null, actualizado: new Date() })
+        .set({ estado: 'activa', pagadoHasta: fin, pruebaHasta: null, bajaDesde: null, actualizado: new Date() })
         .where(eq(suscripciones.empresaId, empresaId))
     })
   } catch (e) {

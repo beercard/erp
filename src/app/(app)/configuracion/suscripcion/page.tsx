@@ -10,7 +10,7 @@ import { APLICACIONES, FUNCIONES, planPorId, planQueIncluye, precioDeLista, situ
 import { ESTADOS_DEBITO, mpConfigurado } from '@/modulos/plataforma/mercadopago'
 import { historial, suscripcionDe, usoDe } from '@/modulos/plataforma/suscripciones'
 
-import { FormularioSuscripcion, PagarConMercadoPago } from './FormularioSuscripcion'
+import { DarDeBaja, FormularioSuscripcion, PagarConMercadoPago } from './FormularioSuscripcion'
 
 export const metadata: Metadata = { title: 'Suscripción' }
 
@@ -169,6 +169,16 @@ export default async function Suscripcion({ searchParams }: PageProps<'/configur
         </div>
         <ComparativaPlanes />
       </section>
+
+      {tienePermiso(sesion.permisos, 'empresa.suscripcion') && s.estado !== 'cancelada' && (
+        <Panel id="baja" className="mb-4 p-4">
+          <h2 className="mb-2 text-sm font-semibold">Dar de baja</h2>
+          <DarDeBaja
+            bajaDesde={s.bajaDesde ?? null}
+            hastaFuncionando={s.estado !== 'prueba' && s.pagadoHasta && s.pagadoHasta >= hoy ? s.pagadoHasta : hoy}
+          />
+        </Panel>
+      )}
 
       {eventos.length > 0 && (
         <Panel className="overflow-x-auto">

@@ -6,6 +6,7 @@ import { codigoDelPedido, requerirEmpresa } from '@/lib/auth/servidor'
 import { urlDeEmpresa } from '@/lib/subdominio'
 import { tienePermiso } from '@/lib/permisos'
 import { crearDebito, mpConfigurado } from '@/modulos/plataforma/mercadopago'
+import { anularBaja, pedirBaja } from '@/modulos/plataforma/baja'
 import { historial, pedirCambio, suscripcionDe } from '@/modulos/plataforma/suscripciones'
 
 /** irA: dirección externa a la que va el navegador (Mercado Pago). */
@@ -74,4 +75,26 @@ export async function pagarConMercadoPagoAccion(): Promise<EstadoSuscripcion> {
   }
   // Va el navegador (otro sitio): una redirección desde la acción no siempre la sigue.
   return { irA: url }
+}
+
+/** Botón de baja: corta el débito automático y deja el sistema en consulta al terminar el período pagado. */
+export async function pedirBajaAccion(_: EstadoSuscripcion, formData: FormData): Promise<EstadoSuscripcion> {
+  const sesion = await requerirEmpresa()
+  if (!tienePermiso(sesion.permisos, 'empresa.suscripcion')) {
+    return { error: 'Solo quien administra la empresa puede dar de baja la suscripción.' }
+  }
+  if (formData.get('confirmo') !== 'si') return { error: 'Marcá que entendés lo que pasa con la baja.' }
+  const r = await pedirBaja(sesion.empresa.id, sesion.usuario, String(formData.get('motivo') ?? ''))
+  if (!r.ok) return { error: r.error }
+  revalidatePath('/', 'layout')
+  return { ok: `Baja pedida. Te mandamos la confirmación por email; rige desde el ${r.desde.split('-').reverse().join('/')}.` }
+}
+
+export async function anularBajaAccion(): Promise<EstadoSuscripcion> {
+  const sesion = await requerirEmpresa()
+  if (!tienePermiso(sesion.permisos, 'empresa.suscripcion')) return { error: 'Solo quien administra la empresa puede hacerlo.' }
+  const r = await anularBaja(sesion.empresa.id, sesion.usuario.id)
+  if (!r.ok) return { error: r.error }
+  revalidatePath('/', 'layout')
+  return { ok: 'Listo: la baja quedó sin efecto. Si pagabas con débito automático, volvé a activarlo arriba.' }
 }

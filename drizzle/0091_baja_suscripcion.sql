@@ -1,0 +1,1 @@
+ALTER TABLE "suscripciones" ADD COLUMN "baja_desde" date;
