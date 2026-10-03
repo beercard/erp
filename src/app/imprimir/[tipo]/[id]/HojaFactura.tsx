@@ -13,6 +13,7 @@ import { fechaCorta } from '@/lib/fechas'
 import { TASAS_IVA } from '@/modulos/comercial/calculo'
 import { formatearNumero } from '@/modulos/comercial/formato'
 import { datosEmpresa } from '@/modulos/empresa/datos'
+import { obtenerMarca } from '@/modulos/empresa/marca'
 import { obtenerComprobante } from '@/modulos/facturacion/comprobantes'
 import { abreviatura, datosTipo, LEYENDA_CBU_INFORMADA, urlQr } from '@/modulos/facturacion/tipos'
 
@@ -49,11 +50,18 @@ export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: s
           .where(inArray(condicionesPago.id, [c.condicionPagoId]))
       : []
     const [arca] = await tx.select({ cbu: arcaConfiguracion.cbuInformada }).from(arcaConfiguracion)
-    return { c, ivas: new Map(ivas.map((i) => [i.codigo, i.nombre])), condicion, cbu: arca?.cbu ?? null }
+    const marca = await obtenerMarca(tx)
+    return { c, ivas: new Map(ivas.map((i) => [i.codigo, i.nombre])), condicion, cbu: arca?.cbu ?? null, marca }
   })
   // Solo se imprimen los emitidos por el ERP: los migrados están en PYMEXIS y los internos no son fiscales.
   if (!datos || !empresa || datos.c.estado !== 'autorizado' || !datos.c.numero || datos.c.origen !== 'erp') notFound()
-  const { c, ivas, condicion, cbu } = datos
+  const { c, ivas, condicion, cbu, marca } = datos
+  // Tres diseños con los mismos datos (los que exige la RG 1415): cambia la presentación.
+  const moderno = marca.diseno === 'moderno'
+  const compacto = marca.diseno === 'compacto'
+  const borde = compacto ? 'border-texto/40' : 'border-texto'
+  const caja = compacto ? 'border-b border-texto/40' : `border-x border-b ${borde}`
+  const conColor = moderno ? { borderColor: marca.color } : undefined
   const { letra, clase, fce } = datosTipo(c.tipo)
   const discrimina = letra === 'A'
   const simbolo = SIMBOLO[c.moneda] ?? c.moneda
@@ -91,11 +99,30 @@ export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: s
         </span>
         <BotonImprimir />
       </div>
-      <article className="mx-auto flex max-w-[190mm] flex-col gap-0 px-6 py-8 text-[11.5px] print:max-w-none print:p-0">
+      <article
+        data-diseno={marca.diseno}
+        className={`mx-auto flex max-w-[190mm] flex-col gap-0 px-6 py-8 print:max-w-none print:p-0 ${compacto ? 'text-[10px]' : 'text-[11.5px]'}`}
+      >
         <p className="mb-1 text-center text-[10px] tracking-widest text-texto-2">ORIGINAL</p>
-        <header className="grid grid-cols-[1fr_auto_1fr] border border-texto">
-          <div className="flex flex-col gap-0.5 p-3">
-            <p className="text-base font-bold">{empresa.nombreFantasia || empresa.razonSocial}</p>
+        <header
+          className={`grid grid-cols-[1fr_auto_1fr] ${compacto ? `border-y ${borde}` : `border ${borde}`} ${moderno ? 'overflow-hidden rounded-lg border-2' : ''}`}
+          style={conColor}
+        >
+          <div
+            className={`flex flex-col gap-0.5 ${compacto ? 'p-2' : 'p-3'}`}
+            style={moderno ? { backgroundColor: `${marca.color}14` } : undefined}
+          >
+            {marca.logo && (
+              // eslint-disable-next-line @next/next/no-img-element -- imagen en base64 de la base, para imprimir y PDF
+              <img
+                src={marca.logo}
+                alt={`Logo de ${empresa.nombreFantasia || empresa.razonSocial}`}
+                className={`mb-1 w-auto object-contain object-left ${moderno ? 'max-h-20 max-w-56' : compacto ? 'max-h-10 max-w-36' : 'max-h-14 max-w-44'}`}
+              />
+            )}
+            <p className={`font-bold ${moderno ? 'text-lg' : 'text-base'}`} style={moderno ? { color: marca.color } : undefined}>
+              {empresa.nombreFantasia || empresa.razonSocial}
+            </p>
             <p>
               <b>Razón social:</b> {empresa.razonSocial}
             </p>
@@ -106,12 +133,19 @@ export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: s
               <b>Condición frente al IVA:</b> {ivas.get(empresa.condicionIva)}
             </p>
           </div>
-          <div className="flex flex-col items-center border-x border-texto px-3 pt-0">
-            <span className="grid size-14 place-items-center border-x border-b border-texto text-4xl font-bold">{letra}</span>
+          <div className={`flex flex-col items-center border-x ${borde} px-3 pt-0`} style={conColor}>
+            <span
+              className={`grid place-items-center border-x border-b ${borde} font-bold ${compacto ? 'size-10 text-2xl' : 'size-14 text-4xl'}`}
+              style={moderno ? { borderColor: marca.color, backgroundColor: marca.color, color: '#fff' } : undefined}
+            >
+              {letra}
+            </span>
             <span className="mt-1 text-[10px] font-semibold">COD. {String(c.tipo).padStart(2, '0')}</span>
           </div>
-          <div className="flex flex-col gap-0.5 p-3">
-            <p className="text-base font-bold">{fce ? `${TITULO[clase]} DE CRÉDITO ELECTRÓNICA MiPyME` : TITULO[clase]}</p>
+          <div className={`flex flex-col gap-0.5 ${compacto ? 'p-2' : 'p-3'}`}>
+            <p className="text-base font-bold" style={moderno ? { color: marca.color } : undefined}>
+              {fce ? `${TITULO[clase]} DE CRÉDITO ELECTRÓNICA MiPyME` : TITULO[clase]}
+            </p>
             {c.leyenda && (
               <p className="border border-texto px-1.5 py-0.5 text-[11px] font-bold">
                 {c.leyenda}
@@ -138,7 +172,7 @@ export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: s
         </header>
 
         {(c.concepto !== 1 || c.vencimiento) && (
-          <section className="flex flex-wrap gap-x-6 border-x border-b border-texto px-3 py-1.5">
+          <section className={`flex flex-wrap gap-x-6 px-3 py-1.5 ${caja}`}>
             {c.concepto !== 1 && c.servicioDesde && c.servicioHasta && (
               <span>
                 <b>Período facturado:</b> del {fechaCorta(c.servicioDesde)} al {fechaCorta(c.servicioHasta)}
@@ -152,7 +186,7 @@ export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: s
           </section>
         )}
 
-        <section className="grid grid-cols-2 gap-x-6 gap-y-0.5 border-x border-b border-texto px-3 py-2">
+        <section className={`grid grid-cols-2 gap-x-6 gap-y-0.5 px-3 ${compacto ? 'py-1' : 'py-2'} ${caja}`}>
           <Dato etiqueta={c.receptorDocTipo === 80 ? 'CUIT' : c.receptorDocTipo === 99 ? 'Documento' : 'Doc.'}>
             <span className="cifras">
               {c.receptorDocTipo === 80
@@ -184,7 +218,10 @@ export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: s
 
         <table className="mt-3 w-full">
           <thead>
-            <tr className="border-y border-texto bg-superficie-2 text-left">
+            <tr
+              className={`text-left ${compacto ? `border-b ${borde}` : `border-y ${borde} bg-superficie-2`}`}
+              style={moderno ? { backgroundColor: marca.color, color: '#fff', borderColor: marca.color } : undefined}
+            >
               <th className="px-2 py-1 font-semibold">Descripción</th>
               <th className="px-2 py-1 text-right font-semibold">Cantidad</th>
               <th className="px-2 py-1 text-right font-semibold">
@@ -212,7 +249,10 @@ export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: s
         {c.observaciones && <p className="mt-3 whitespace-pre-line">{c.observaciones}</p>}
 
         <section className="mt-4 flex break-inside-avoid justify-end">
-          <dl className="cifras grid min-w-72 grid-cols-[1fr_auto] gap-x-6 gap-y-0.5 border border-texto px-3 py-2">
+          <dl
+            className={`cifras grid min-w-72 grid-cols-[1fr_auto] gap-x-6 gap-y-0.5 px-3 py-2 ${compacto ? `border-t ${borde}` : `border ${borde}`} ${moderno ? 'rounded-lg border-2' : ''}`}
+            style={conColor}
+          >
             {discrimina ? (
               <>
                 <dt className="font-sans">Importe neto gravado: {simbolo}</dt>

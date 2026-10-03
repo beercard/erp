@@ -7,6 +7,7 @@ import {
   Landmark,
   Newspaper,
   Percent,
+  Palette,
   Plug,
   ShieldCheck,
 } from 'lucide-react'
@@ -36,6 +37,13 @@ export default async function Configuracion() {
       titulo: 'Datos de la empresa',
       texto: 'Razón social, domicilio fiscal, Ingresos Brutos e inicio de actividades.',
       icono: Building2,
+      permiso: 'empresa.datos',
+    },
+    {
+      href: '/configuracion/factura',
+      titulo: 'Logo y diseño de factura',
+      texto: 'Tu logo y uno de tres diseños para las facturas, impresas, en PDF y en el enlace al cliente.',
+      icono: Palette,
       permiso: 'empresa.datos',
     },
     {

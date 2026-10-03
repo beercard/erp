@@ -610,6 +610,20 @@
       "when": 1791065250551,
       "tag": "0086_rubro_empresa",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1791066707615,
+      "tag": "0087_marca_empresa",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1791066710435,
+      "tag": "0088_marca_empresa_rls",
+      "breakpoints": true
     }
   ]
 }
