@@ -1,4 +1,4 @@
-import { ArrowDownToLine, History } from 'lucide-react'
+import { ArrowDownToLine, History, Settings2 } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -6,9 +6,10 @@ import { Aviso, BotonEnlace, EncabezadoPagina, Panel } from '@/components/ui'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
 import { formatearMonto } from '@/lib/dinero'
 import { tienePermiso } from '@/lib/permisos'
-import { cajas, inicioTurno, listarCierres, resumenTurno } from '@/modulos/tesoreria/cierres'
+import { arqueables, cajas, listarCierres, turnoEnCurso } from '@/modulos/tesoreria/cierres'
+import { saldoCuenta } from '@/modulos/tesoreria/cuentas'
 
-import { CerrarCaja } from './Piezas'
+import { AbrirCaja, CerrarCaja, ConfigurarCaja } from './Piezas'
 import { ResumenCaja } from './Resumen'
 
 export const metadata: Metadata = { title: 'Cierre de caja' }
@@ -27,27 +28,47 @@ export default async function CierreDeCaja({ searchParams }: PageProps<'/cobranz
   const sesion = await requerirEmpresa()
   const { c } = await searchParams
   const lista = await enLaEmpresa('ventas.ver', (tx) => cajas(tx))
-  const cajaId = (typeof c === 'string' && lista.find((x) => x.id === c)?.id) || lista[0]?.id
+  const elegida = (typeof c === 'string' && lista.find((x) => x.id === c)) || lista[0]
+  const cajaId = elegida?.id
   const datos = cajaId
     ? await enLaEmpresa('ventas.ver', async (tx) => {
-        const desde = await inicioTurno(tx, cajaId)
-        return { desde, resumen: await resumenTurno(tx, cajaId, desde), cierres: await listarCierres(tx, { cuentaId: cajaId }) }
+        const { turno, desde, resumen } = await turnoEnCurso(tx, cajaId)
+        return {
+          turno,
+          desde,
+          resumen,
+          saldo: await saldoCuenta(tx, cajaId),
+          abrio: turno?.usuarioId === sesion.usuario.id ? 'vos' : null,
+          cierres: await listarCierres(tx, { cuentaId: cajaId }),
+        }
       })
     : null
   const cerrar = tienePermiso(sesion.permisos, 'ventas.cobrar')
+  const supervisar = tienePermiso(sesion.permisos, 'ventas.supervisar_caja')
+  // Caja por turnos sin turno abierto: lo primero es abrirla.
+  const cerrada = !!elegida?.exigeTurno && !datos?.turno
   return (
     <>
       <EncabezadoPagina
         titulo="Cierre de caja"
         bajada={
-          datos
-            ? `Turno abierto desde el ${hora(datos.desde)}: lo cobrado, por qué medio y quién, y cuánto efectivo debería haber.`
-            : 'Resumen del turno y arqueo de la caja.'
+          !datos
+            ? 'Resumen del turno y arqueo de la caja.'
+            : cerrada
+              ? 'La caja está cerrada: abrila contando el fondo inicial para empezar a cobrar.'
+              : datos.turno
+                ? `Caja abierta desde el ${hora(datos.desde)} con ${formatearMonto(datos.turno.fondoContado, '$')} de fondo: lo cobrado, por qué medio y quién, y cuánto efectivo debería haber.`
+                : `Turno desde el ${hora(datos.desde)}: lo cobrado, por qué medio y quién, y cuánto efectivo debería haber.`
         }
         acciones={
-          <BotonEnlace href="/tesoreria/movimiento" variante="secundario">
-            Registrar un retiro o gasto
-          </BotonEnlace>
+          <>
+            <BotonEnlace href="/tesoreria/vales" variante="secundario">
+              Vales a rendir
+            </BotonEnlace>
+            <BotonEnlace href="/tesoreria/movimiento" variante="secundario">
+              Registrar un retiro o gasto
+            </BotonEnlace>
+          </>
         }
       />
       {!lista.length && (
@@ -75,12 +96,43 @@ export default async function CierreDeCaja({ searchParams }: PageProps<'/cobranz
       )}
       {datos && cajaId && (
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <ResumenCaja r={datos.resumen} />
+          {cerrada ? (
+            <Panel className="p-5">
+              <h2 className="mb-4 font-semibold">Abrir la caja</h2>
+              {cerrar ? (
+                <AbrirCaja cuentaId={cajaId} esperado={Number(datos.saldo)} />
+              ) : (
+                <p className="text-sm text-texto-3">No tenés permiso para abrir la caja.</p>
+              )}
+            </Panel>
+          ) : (
+            <ResumenCaja r={datos.resumen} />
+          )}
           <div className="flex flex-col gap-5">
-            {cerrar && (
+            {cerrar && !cerrada && (
               <Panel className="p-5">
-                <h2 className="mb-4 font-semibold">Cerrar el turno</h2>
-                <CerrarCaja cuentaId={cajaId} esperado={Number(datos.resumen.esperado)} />
+                <h2 className="mb-4 font-semibold">{datos.turno ? 'Cerrar la caja' : 'Cerrar el turno'}</h2>
+                <CerrarCaja
+                  cuentaId={cajaId}
+                  esperado={Number(datos.resumen.esperado)}
+                  medios={arqueables(datos.resumen)}
+                  maxima={elegida.diferenciaMaxima != null && !supervisar ? Number(elegida.diferenciaMaxima) : null}
+                />
+              </Panel>
+            )}
+            {supervisar && (
+              <Panel className="p-5">
+                <h2 className="mb-4 flex items-center gap-2 font-semibold">
+                  <Settings2 aria-hidden className="size-4 text-texto-3" /> Configuración de la caja
+                </h2>
+                <ConfigurarCaja
+                  key={`${elegida.exigeTurno}-${elegida.diferenciaMaxima}-${JSON.stringify(elegida.avisoCierre)}`}
+                  cuentaId={cajaId}
+                  exigeTurno={elegida.exigeTurno}
+                  diferenciaMaxima={elegida.diferenciaMaxima}
+                  correos={elegida.avisoCierre?.correos ?? []}
+                  telefonos={elegida.avisoCierre?.telefonos ?? []}
+                />
               </Panel>
             )}
             <Panel>

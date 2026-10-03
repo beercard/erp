@@ -1,5 +1,17 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, foreignKey, index, jsonb, pgTable, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  check,
+  foreignKey,
+  index,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
 
 import { empresaId, id, importe, marcasDeTiempo } from './comunes'
 import { recibos } from './facturacion'
@@ -59,7 +71,10 @@ export const pagosOnline = pgTable(
     concepto: text('concepto').notNull(),
     importe: importe('importe').notNull(),
     /** Facturas a las que se imputa el pago (en este orden, hasta su saldo). */
-    comprobanteIds: uuid('comprobante_ids').array().notNull().default(sql`'{}'::uuid[]`),
+    comprobanteIds: uuid('comprobante_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
     /** pendiente | aprobado | rechazado | cancelado | vencido */
     estado: text('estado').notNull().default('pendiente'),
     /** Pasarela con la que eligió pagar el cliente (la última que intentó). */

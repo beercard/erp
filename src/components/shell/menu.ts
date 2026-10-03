@@ -1,11 +1,11 @@
 import {
   Banknote,
-  CalendarCheck,
   BellRing,
   BookOpen,
   BookOpenCheck,
-  Calculator,
   Boxes,
+  Calculator,
+  CalendarCheck,
   CalendarClock,
   CalendarDays,
   CalendarOff,
@@ -21,14 +21,13 @@ import {
   HandCoins,
   Inbox,
   Landmark,
-  Link2,
-  MessageCircle,
   LayoutDashboard,
-  Map,
+  Link2,
   ListChecks,
   ListTree,
-  type LucideIcon,
+  Map,
   MapPinned,
+  MessageCircle,
   Network,
   Package,
   Percent,
@@ -44,11 +43,13 @@ import {
   ShoppingCart,
   Smartphone,
   Target,
+  TicketCheck,
   TrendingUp,
   Truck,
   Users,
   Wallet,
   Wrench,
+  type LucideIcon,
 } from 'lucide-react'
 
 import { tienePermiso } from '@/lib/permisos'
@@ -191,6 +192,7 @@ export const SECCIONES: Seccion[] = [
     items: [
       { href: '/tesoreria', permiso: 'tesoreria.ver', texto: 'Cajas y bancos', icono: Landmark, funcion: 'tesoreria' },
       { href: '/tesoreria/cheques', permiso: 'tesoreria.ver', texto: 'Cheques', icono: Banknote, funcion: 'tesoreria' },
+      { href: '/tesoreria/vales', permiso: 'tesoreria.ver', texto: 'Vales a rendir', icono: TicketCheck, funcion: 'tesoreria' },
     ],
   },
   {

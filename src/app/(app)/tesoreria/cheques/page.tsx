@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import { ChevronLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -38,6 +38,17 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
       .from(cuentasTesoreria)
       .where(and(eq(cuentasTesoreria.tipo, 'banco'), eq(cuentasTesoreria.moneda, 'PES'), eq(cuentasTesoreria.activa, true)))
       .orderBy(asc(cuentasTesoreria.nombre)),
+    fondos: await tx
+      .select({ id: cuentasTesoreria.id, nombre: cuentasTesoreria.nombre })
+      .from(cuentasTesoreria)
+      .where(
+        and(
+          inArray(cuentasTesoreria.tipo, ['caja', 'banco', 'billetera']),
+          eq(cuentasTesoreria.moneda, 'PES'),
+          eq(cuentasTesoreria.activa, true),
+        ),
+      )
+      .orderBy(asc(cuentasTesoreria.tipo), asc(cuentasTesoreria.nombre)),
   }))
   const total = datos.cheques.reduce((s, c) => s + Number(c.importe), 0)
   return (
@@ -47,7 +58,7 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
       </Link>
       <EncabezadoPagina
         titulo="Cheques y ECHEQ de terceros"
-        bajada={`${datos.cheques.length} cheques por ${formatearMonto(total.toFixed(2), '$')}. Entran con las cobranzas; salen depositados o entregados en pagos.`}
+        bajada={`${datos.cheques.length} cheques por ${formatearMonto(total.toFixed(2), '$')}. Entran con las cobranzas; salen depositados, canjeados o entregados en pagos.`}
       />
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <form role="search" className="w-full max-w-xs">
@@ -80,6 +91,7 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
       <Cheques
         cheques={datos.cheques}
         bancos={datos.bancos}
+        fondos={datos.fondos}
         hoy={hoyArgentina()}
         puede={tienePermiso(sesion.permisos, 'tesoreria.mover')}
       />

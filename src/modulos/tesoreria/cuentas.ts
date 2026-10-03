@@ -2,7 +2,7 @@ import { and, asc, eq, ne, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
 import type { Transaccion } from '../../db/conexion'
-import { cuentasTesoreria } from '../../db/schema'
+import { cuentasTesoreria, turnosCaja } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { aImporte, D, monto } from '../../lib/dinero'
 import { primerError } from '../comercial/documentos'
@@ -198,7 +198,8 @@ export async function saldoCuenta(tx: Transaccion, cuentaId: string, hasta?: str
 export async function resolverCuenta(
   tx: Transaccion,
   v: { medio: string; cuentaId?: string | null },
-  o: { moneda: string; medios: string[] },
+  /** sinTurno: lo carga el sistema (pagos online), no un cajero. */
+  o: { moneda: string; medios: string[]; sinTurno?: boolean },
 ): Promise<{ ok: true; cuentaId: string | null } | { ok: false; error: string }> {
   if (!o.medios.includes(v.medio)) return { ok: true, cuentaId: null }
   const c = v.cuentaId
@@ -219,5 +220,18 @@ export async function resolverCuenta(
     return { ok: false, error: 'Los cheques propios salen de una cuenta bancaria.' }
   }
   if (v.medio === 'tarjeta' && c.tipo !== 'tarjeta') return { ok: false, error: 'Elegí la tarjeta de crédito de la empresa.' }
+  const cerrada = o.sinTurno ? null : await cajaCerrada(tx, c)
+  if (cerrada) return { ok: false, error: cerrada }
   return { ok: true, cuentaId: c.id }
+}
+
+/** Si la caja trabaja por turnos y no hay uno abierto, el mensaje para quien quiere mover efectivo. */
+export async function cajaCerrada(tx: Transaccion, c: { id: string; nombre: string; tipo: string; exigeTurno: boolean }) {
+  if (c.tipo !== 'caja' || !c.exigeTurno) return null
+  const [t] = await tx
+    .select({ id: turnosCaja.id })
+    .from(turnosCaja)
+    .where(and(eq(turnosCaja.cuentaId, c.id), eq(turnosCaja.estado, 'abierto')))
+  if (t) return null
+  return `La caja ${c.nombre} está cerrada: abrila en Cobranzas → Cierre de caja para cobrar o pagar en efectivo.`
 }

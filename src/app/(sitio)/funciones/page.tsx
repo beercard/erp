@@ -69,8 +69,10 @@ const AREAS = [
     texto: 'Sabé cuánta plata hay y dónde, todos los días.',
     items: [
       'Cajas y cuentas bancarias en pesos y dólares',
-      'Cheques y ECHEQ en cartera, depositados y rechazados',
+      'Cheques y ECHEQ en cartera, depositados, canjeados y rechazados',
       'Conciliación bancaria y arqueos de caja',
+      'Caja por turnos: apertura con fondo, cierre por medio de pago y reporte por correo o WhatsApp',
+      'Vales a rendir y cierre de períodos por módulo',
     ],
   },
   {

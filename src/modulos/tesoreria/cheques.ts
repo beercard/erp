@@ -1,6 +1,9 @@
-import { eq, sql } from 'drizzle-orm'
+import { randomUUID } from 'node:crypto'
+
+import { and, eq, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
+import { controlarBloqueo } from '../empresa/bloqueos'
 import type { Transaccion } from '../../db/conexion'
 import { chequesRechazados, compras, comprobantes, cuentasTesoreria, movimientosTesoreria, terceros } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
@@ -9,6 +12,7 @@ import { decimal, primerError } from '../comercial/documentos'
 import { siguienteNumero } from '../comercial/numeracion'
 import { filasDe } from '../compras/compras'
 import { TIPO_DEBITO_INTERNO } from '../facturacion/tipos'
+import { cajaCerrada } from './cuentas'
 import type { EstadoCheque } from './medios'
 
 /**
@@ -17,6 +21,7 @@ import type { EstadoCheque } from './medios'
  * - en cartera: nadie los usó;
  * - entregado: se usaron en un pago emitido;
  * - depositado: hay un depósito vigente en un banco;
+ * - canjeado: se cambió por fondos (a una financiera, a otro comercio);
  * - rechazado: el banco lo rechazó (la deuda vuelve al cliente);
  * - anulado: se anuló el recibo por el que entraron.
  */
@@ -53,6 +58,7 @@ export async function listarCheques(tx: Transaccion, filtro: { estado?: EstadoCh
           case
             when r.estado = 'anulado' then 'anulado'
             when cr.id is not null then 'rechazado'
+            when dep.tipo = 'canje_cheque' then 'canjeado'
             when dep.id is not null then 'depositado'
             when pg.id is not null then 'entregado'
             else 'cartera'
@@ -64,8 +70,8 @@ export async function listarCheques(tx: Transaccion, filtro: { estado?: EstadoCh
         join terceros t on t.id = r.tercero_id
         left join cheques_rechazados cr on cr.cheque_id = rv.id
         left join lateral (
-          select m.id, m.cuenta_id from movimientos_tesoreria m
-          where m.cheque_id = rv.id and m.tipo = 'deposito_cheque' and m.estado = 'vigente' limit 1
+          select m.id, m.cuenta_id, m.tipo from movimientos_tesoreria m
+          where m.cheque_id = rv.id and m.tipo in ('deposito_cheque', 'canje_cheque') and m.estado = 'vigente' limit 1
         ) dep on true
         left join cuentas_tesoreria cu on cu.id = dep.cuenta_id
         left join lateral (
@@ -102,6 +108,8 @@ export async function depositarCheques(tx: Transaccion, usuarioId: string, entra
   const p = EsquemaDeposito.safeParse(entrada)
   if (!p.success) return { ok: false as const, error: primerError(p.error) }
   const d = p.data
+  const cerrado = await controlarBloqueo(tx, 'tesoreria', d.fecha)
+  if (cerrado) return { ok: false as const, error: cerrado }
   const [cuenta] = await tx.select().from(cuentasTesoreria).where(eq(cuentasTesoreria.id, d.cuentaId))
   if (!cuenta || cuenta.tipo !== 'banco') return { ok: false as const, error: 'Los cheques se depositan en una cuenta bancaria.' }
   if (cuenta.moneda !== 'PES') return { ok: false as const, error: 'Los cheques son en pesos: elegí una cuenta en pesos.' }
@@ -129,14 +137,26 @@ export async function depositarCheques(tx: Transaccion, usuarioId: string, entra
   return { ok: true as const, cantidad: cheques.length, total: aImporte(cheques.reduce((s, c) => s.plus(c.importe), new D(0))) }
 }
 
-/** Anula el depósito de un cheque (se cargó en el banco equivocado): vuelve a la cartera. */
+/**
+ * Anula el depósito de un cheque (se cargó en el banco equivocado): vuelve a
+ * la cartera. Si fue un canje, se anula el canje entero (todos sus cheques y
+ * el costo).
+ */
 export async function anularDeposito(tx: Transaccion, usuarioId: string, chequeId: string) {
   const [c] = await listarCheques(tx, { ids: [chequeId] })
-  if (!c || c.estado !== 'depositado') return { ok: false as const, error: 'El cheque no está depositado.' }
+  if (!c || (c.estado !== 'depositado' && c.estado !== 'canjeado'))
+    return { ok: false as const, error: 'El cheque no está depositado ni canjeado.' }
+  const [m] = await tx.select().from(movimientosTesoreria).where(eq(movimientosTesoreria.id, c.destinoId!))
+  const cerrado = await controlarBloqueo(tx, 'tesoreria', m.fecha)
+  if (cerrado) return { ok: false as const, error: cerrado }
   await tx
     .update(movimientosTesoreria)
     .set({ estado: 'anulado', anulado: new Date(), anuladoPor: usuarioId })
-    .where(eq(movimientosTesoreria.id, c.destinoId!))
+    .where(
+      c.estado === 'canjeado' && m.transferenciaId
+        ? and(eq(movimientosTesoreria.transferenciaId, m.transferenciaId), eq(movimientosTesoreria.estado, 'vigente'))
+        : eq(movimientosTesoreria.id, m.id),
+    )
   await auditar(tx, { usuarioId, accion: 'anulacion', entidad: 'deposito_cheque', entidadId: chequeId })
   return { ok: true as const }
 }
@@ -167,6 +187,8 @@ export async function rechazarCheque(tx: Transaccion, usuarioId: string, entrada
   const p = EsquemaRechazo.safeParse(entrada)
   if (!p.success) return { ok: false as const, error: primerError(p.error) }
   const d = p.data
+  const cerrado = await controlarBloqueo(tx, 'tesoreria', d.fecha)
+  if (cerrado) return { ok: false as const, error: cerrado }
   const [c] = await listarCheques(tx, { ids: [d.chequeId] })
   if (!c) return { ok: false as const, error: 'Ese cheque ya no existe.' }
   if (c.estado === 'rechazado' || c.estado === 'anulado')
@@ -177,7 +199,8 @@ export async function rechazarCheque(tx: Transaccion, usuarioId: string, entrada
     ' ',
   )
 
-  if (c.estado === 'depositado') {
+  // Depositado o canjeado: el banco (o quien lo cambió) lo devuelve y debita la cuenta.
+  if (c.estado === 'depositado' || c.estado === 'canjeado') {
     await tx.insert(movimientosTesoreria).values({
       cuentaId: c.depositoCuentaId!,
       fecha: d.fecha,
@@ -272,4 +295,85 @@ export async function rechazarCheque(tx: Transaccion, usuarioId: string, entrada
     despues: { ...d, estadoAnterior: c.estado },
   })
   return { ok: true as const, notaDebitoClienteId: ndCliente.id, notaDebitoProveedorId }
+}
+
+const EsquemaCanje = z.object({
+  cuentaId: z.uuid({ error: 'Elegí dónde entra la plata.' }),
+  fecha: z.iso.date({ error: 'Fecha inválida.' }),
+  cheques: z.array(z.uuid()).min(1, { error: 'Elegí los cheques que se canjean.' }),
+  /** Lo que se recibió. La diferencia con los cheques es el costo del canje (descuento, comisión). */
+  neto: decimal('Escribí lo que se recibió.'),
+  /** A quién se le entregaron (financiera, mutual, otro comercio). */
+  entidad: z.string().trim().min(2, { error: 'Escribí a quién se le entregaron los cheques.' }),
+  comprobante: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((v) => v || null),
+})
+
+/**
+ * Canje de valores: cheques de la cartera que se cambian por efectivo o una
+ * transferencia (a una financiera, a otro comercio). Entra el importe de
+ * cada cheque y sale el costo del canje, así la cuenta queda con lo recibido.
+ */
+export async function canjearCheques(tx: Transaccion, usuarioId: string, entrada: unknown) {
+  const p = EsquemaCanje.safeParse(entrada)
+  if (!p.success) return { ok: false as const, error: primerError(p.error) }
+  const d = p.data
+  const cerrado = await controlarBloqueo(tx, 'tesoreria', d.fecha)
+  if (cerrado) return { ok: false as const, error: cerrado }
+  const [cuenta] = await tx.select().from(cuentasTesoreria).where(eq(cuentasTesoreria.id, d.cuentaId))
+  if (!cuenta || !cuenta.activa) return { ok: false as const, error: 'Esa cuenta no existe o está inactiva.' }
+  if (cuenta.moneda !== 'PES') return { ok: false as const, error: 'Los cheques son en pesos: elegí una cuenta en pesos.' }
+  const cerrada = await cajaCerrada(tx, cuenta)
+  if (cerrada) return { ok: false as const, error: cerrada }
+  const cheques = await listarCheques(tx, { ids: d.cheques })
+  if (cheques.length !== d.cheques.length || cheques.some((c) => c.estado !== 'cartera')) {
+    return { ok: false as const, error: 'Alguno de los cheques ya no está en cartera.' }
+  }
+  const bruto = cheques.reduce((s, c) => s.plus(c.importe), new D(0))
+  const costo = bruto.minus(d.neto)
+  if (monto(d.neto).lte(0)) return { ok: false as const, error: 'Escribí lo que se recibió.' }
+  if (costo.lt(0)) return { ok: false as const, error: 'Lo recibido no puede ser más que los cheques.' }
+  const grupo = randomUUID()
+  await tx.insert(movimientosTesoreria).values(
+    cheques.map((c) => ({
+      cuentaId: d.cuentaId,
+      fecha: d.fecha,
+      importe: aImporte(c.importe),
+      tipo: 'canje_cheque',
+      concepto: `Canje con ${d.entidad}`,
+      detalle: `${c.medio === 'echeq' ? 'ECHEQ' : 'Cheque'} ${c.banco ?? ''} N° ${c.numeroValor ?? ''} de ${c.cliente}`.replace(
+        /\s+/g,
+        ' ',
+      ),
+      comprobante: d.comprobante,
+      chequeId: c.id,
+      transferenciaId: grupo,
+      usuarioId,
+    })),
+  )
+  if (costo.gt(0)) {
+    await tx.insert(movimientosTesoreria).values({
+      cuentaId: d.cuentaId,
+      fecha: d.fecha,
+      importe: aImporte(costo.negated()),
+      tipo: 'comision',
+      concepto: 'Costo del canje de cheques',
+      detalle: `Canje con ${d.entidad} (${cheques.length} ${cheques.length === 1 ? 'cheque' : 'cheques'})`,
+      comprobante: d.comprobante,
+      transferenciaId: grupo,
+      usuarioId,
+    })
+  }
+  await auditar(tx, {
+    usuarioId,
+    accion: 'alta',
+    entidad: 'canje_cheques',
+    entidadId: grupo,
+    despues: { ...d, bruto: aImporte(bruto) },
+  })
+  return { ok: true as const, bruto: aImporte(bruto), costo: aImporte(costo) }
 }

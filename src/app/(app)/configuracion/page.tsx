@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, CreditCard, Landmark, Percent, Plug, ShieldCheck } from 'lucide-react'
+import { Building2, BookLock, ChevronRight, CreditCard, Landmark, Percent, Plug, ShieldCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -47,6 +47,13 @@ export default async function Configuracion() {
       texto: 'Retención de Ganancias (RG 830): regímenes, mínimos y escala.',
       icono: Percent,
       permiso: 'empresa.datos',
+    },
+    {
+      href: '/configuracion/cierres',
+      titulo: 'Cierre de períodos',
+      texto: 'Bloquear por fecha ventas, compras y tesorería para que nadie toque lo ya cerrado.',
+      icono: BookLock,
+      permiso: 'empresa.bloqueos',
     },
     {
       href: '/configuracion/integraciones',

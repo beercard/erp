@@ -166,6 +166,7 @@ const FUNCION_DE_PERMISO: Record<string, Funcion> = {
   'ventas.anular': 'facturacion',
   'ventas.cobrar': 'facturacion',
   'ventas.pasarelas': 'facturacion',
+  'ventas.supervisar_caja': 'facturacion',
   'ventas.presupuestos': 'comercial',
   'ventas.pedidos': 'comercial',
   'ventas.remitos': 'comercial',

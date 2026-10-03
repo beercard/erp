@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, ilike, lt, or, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
+import { controlarBloqueo } from '../empresa/bloqueos'
 import type { Transaccion } from '../../db/conexion'
 import {
   escalaGanancias,
@@ -264,6 +265,8 @@ export async function emitirPago(
     return { ok: false, error: donde + (donde ? i.message : primerError(p.error)) }
   }
   const d = p.data
+  const cerrado = await controlarBloqueo(tx, 'compras', d.fecha)
+  if (cerrado) return { ok: false, error: cerrado }
   const r = await liquidarPago(tx, d)
   if (!r.ok) return r
   const l = r.liquidacion
@@ -364,6 +367,8 @@ export async function anularPago(tx: Transaccion, usuarioId: string, id: string)
   const [pg] = await tx.select().from(pagos).where(eq(pagos.id, id)).for('update')
   if (!pg) return { ok: false as const, error: 'Ese pago ya no existe.' }
   if (pg.estado === 'anulado') return { ok: false as const, error: 'El pago ya está anulado.' }
+  const cerrado = await controlarBloqueo(tx, 'compras', pg.fecha)
+  if (cerrado) return { ok: false as const, error: cerrado }
   await tx.update(pagos).set({ estado: 'anulado', anulado: new Date(), anuladoPor: usuarioId }).where(eq(pagos.id, id))
   await auditar(tx, { usuarioId, accion: 'anulacion', entidad: 'pago', entidadId: id, antes: { estado: pg.estado } })
   return { ok: true as const }

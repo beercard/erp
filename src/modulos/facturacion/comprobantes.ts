@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
+import { controlarBloqueo } from '../empresa/bloqueos'
 import type { Transaccion } from '../../db/conexion'
 import { conEmpresa } from '../../db/empresa'
 import {
@@ -468,7 +469,7 @@ export async function emitirComprobante(
     if (!c) return { error: 'Ese comprobante ya no existe.' }
     if (c.estado === 'autorizado') return { error: 'El comprobante ya está autorizado.' }
     if (c.estado === 'pendiente_verificacion') return { verificar: true as const }
-    const cerrado = await controlarPeriodoIva(tx, c.fecha.slice(0, 7))
+    const cerrado = (await controlarBloqueo(tx, 'ventas', c.fecha)) ?? (await controlarPeriodoIva(tx, c.fecha.slice(0, 7)))
     if (cerrado) return { error: cerrado }
     // La ficha del cliente pudo cambiar desde que se armó el borrador.
     const [tercero] = await tx.select().from(terceros).where(eq(terceros.id, c.terceroId))

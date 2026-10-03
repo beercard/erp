@@ -291,6 +291,8 @@ export const recibos = pgTable(
     estado: text('estado').notNull().default('emitido'),
     observaciones: text('observaciones'),
     usuarioId: uuid('usuario_id'),
+    /** Turno de caja en que se cobró (si había uno abierto). */
+    turnoId: uuid('turno_id'),
     anulado: timestamp('anulado', { withTimezone: true }),
     anuladoPor: uuid('anulado_por'),
     ...marcasDeTiempo(),
@@ -298,6 +300,7 @@ export const recibos = pgTable(
   (t) => [
     uniqueIndex().on(t.empresaId, t.puntoVenta, t.numero),
     index().on(t.empresaId, t.terceroId),
+    index().on(t.empresaId, t.turnoId),
     unique('recibos_empresa_id').on(t.empresaId, t.id),
     check('recibos_estado', sql`${t.estado} in ('emitido', 'anulado')`),
     deLaEmpresa('recibos_tercero_fk', t.empresaId, t.terceroId, terceros),

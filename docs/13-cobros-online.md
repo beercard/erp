@@ -56,3 +56,35 @@ Inspirado en el cierre de un POS (como el de cobrando.app):
 - **Cierre:** conteo por billete y moneda (o el total), con la diferencia en el momento ("Cuadra", "Sobran", "Faltan") y observaciones. Si no cuadra, queda un **arqueo con su ajuste** y la caja sigue con lo contado. El próximo turno arranca desde ese cierre.
 - **Historial** de cierres con su diferencia, detalle imprimible y **Excel** (un cierre con sus hojas, o la lista de cierres de la caja).
 - Ver: `ventas.ver`. Cerrar: `ventas.cobrar`. Código: `src/modulos/tesoreria/cierres.ts` y `src/app/(app)/cobranzas/caja/`.
+
+### Caja por turnos (como un punto de venta)
+
+En Cobranzas → Cierre de caja → Configuración de la caja (permiso `ventas.supervisar_caja`):
+
+- **Trabajar por turnos:** la caja se **abre** contando el fondo inicial (billetes o total) con una nota opcional. Si no coincide con lo que quedó del cierre anterior, queda un arqueo con su ajuste. Con la caja cerrada no se cobra, no se paga, no se da un vale ni se registra un movimiento en efectivo por ella.
+- Los **recibos quedan en el turno**: el de la caja donde entró el efectivo o, si el cobro no pasó por una caja (transferencia, tarjeta), el turno que abrió quien cobra. El resumen del turno muestra esas cobranzas.
+- **Arqueo de los demás medios:** al cerrar, además del efectivo, el cajero rinde lo de cada medio (cupones, comprobantes de transferencia, cheques) con "Copiar lo esperado". Las diferencias quedan en el cierre; solo el efectivo genera ajuste.
+- **Diferencia máxima:** si el efectivo o algún medio difiere más que eso, el cajero no puede cerrar; lo cierra alguien con `ventas.supervisar_caja`, y queda quién aprobó.
+- Las cajas que no trabajan por turnos siguen como antes (del último cierre o del comienzo del día).
+
+### Reporte del cierre (tipo "Z")
+
+- PDF con el turno, el efectivo (fondo, esperado, contado, diferencia), cobranzas por medio y cajero, otros medios rendidos, cobros online, ventas, movimientos, conteo y notas. Botón **PDF** en el detalle del cierre.
+- **Envío automático** al cerrar, a los correos (con el PDF adjunto) y celulares (resumen por WhatsApp con un enlace firmado al reporte, válido 90 días) que se configuran en la caja. Lo que salió y lo que no queda en el cierre. Sin correo saliente configurado, el correo queda en la bandeja de salida; sin WhatsApp conectado, se avisa.
+- Código: `src/modulos/tesoreria/reporteCierre.ts`, `src/lib/pdf.ts` (PDF de texto sin dependencias), página pública `src/app/cierre/[token]/`.
+
+## Vales a rendir (Tesorería → Vales a rendir)
+
+- Plata que sale de una caja para una persona (compras chicas, viáticos, trámites), numerada. Sale de la caja en el momento.
+- **Rendición:** se cargan los gastos (concepto, importe, comprobante). Lo que sobró vuelve a la caja; si gastó de más, se le reintegra. Los gastos rendidos del mes se ven por concepto con su porcentaje.
+- Un vale sin rendir se anula y la plata vuelve. Permiso `tesoreria.mover`. Código: `src/modulos/tesoreria/vales.ts`.
+
+## Canje de cheques (Tesorería → Cheques → Canjear por fondos)
+
+- Cheques de la cartera que se cambian por efectivo o transferencia (financiera, mutual, otro comercio). Entra el importe de cada cheque en la caja, banco o billetera elegida y sale el **costo del canje** (la diferencia con lo recibido) como gasto.
+- El cheque queda **Canjeado**. "Deshacer canje" anula el canje entero. Si rebota, se debita de la cuenta donde entró y vuelve la deuda del cliente, como un depositado.
+
+## Cierre de períodos por módulo (Configuración → Cierre de períodos)
+
+- Ventas y cobranzas, Compras y pagos, y Tesorería se cierran **hasta una fecha** (permiso `empresa.bloqueos`): nada con fecha hasta ese día se emite, carga ni anula (facturas, recibos, compras, órdenes de pago, movimientos, depósitos, rechazos, canjes, arqueos y vales).
+- Se reabre corriendo la fecha para atrás o con "Reabrir". Es aparte del cierre de períodos de IVA presentados y del cierre del ejercicio contable. Código: `src/modulos/empresa/bloqueos.ts`.

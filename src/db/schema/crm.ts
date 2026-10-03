@@ -185,7 +185,10 @@ export const crmAjustes = pgTable(
     /** ninguna | rotativa: cómo se asignan las oportunidades que entran solas (formulario web). */
     asignacion: text('asignacion').notNull().default('ninguna'),
     /** Vendedores entre los que se reparte, en orden. */
-    vendedores: uuid('vendedores').array().notNull().default(sql`'{}'::uuid[]`),
+    vendedores: uuid('vendedores')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
     ultimoAsignado: integer('ultimo_asignado').notNull().default(-1),
     /** Resumen diario por email con las actividades vencidas y de hoy. */
     resumenDiario: boolean('resumen_diario').notNull().default(true),

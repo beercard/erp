@@ -65,6 +65,12 @@ export const cuentasTesoreria = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     activa: boolean('activa').notNull().default(true),
+    /** Caja que trabaja por turnos: para cobrar o pagar en efectivo tiene que estar abierta. */
+    exigeTurno: boolean('exige_turno').notNull().default(false),
+    /** Diferencia de cierre que puede aceptar el cajero; más que esto lo cierra un supervisor. */
+    diferenciaMaxima: importe('diferencia_maxima'),
+    /** A quién se manda el reporte del cierre (correos y celulares). */
+    avisoCierre: jsonb('aviso_cierre').$type<{ correos: string[]; telefonos: string[] }>(),
     ...marcasDeTiempo(),
   },
   (t) => [
@@ -89,7 +95,8 @@ export const movimientosTesoreria = pgTable(
     importe: importe('importe').notNull(),
     /**
      * saldo_inicial | ingreso | egreso | transferencia | deposito_cheque |
-     * rechazo_cheque | acreditacion | comision | ajuste_arqueo
+     * rechazo_cheque | acreditacion | comision | ajuste_arqueo | canje_cheque |
+     * vale | rendicion_vale
      */
     tipo: text('tipo').notNull(),
     /** Para qué fue (gastos bancarios, retiro, sueldos…): agrupa los informes. */
@@ -113,7 +120,7 @@ export const movimientosTesoreria = pgTable(
     unique('movimientos_tesoreria_empresa_id').on(t.empresaId, t.id),
     check(
       'movimientos_tesoreria_tipo',
-      sql`${t.tipo} in ('saldo_inicial', 'ingreso', 'egreso', 'transferencia', 'deposito_cheque', 'rechazo_cheque', 'acreditacion', 'comision', 'ajuste_arqueo')`,
+      sql`${t.tipo} in ('saldo_inicial', 'ingreso', 'egreso', 'transferencia', 'deposito_cheque', 'rechazo_cheque', 'acreditacion', 'comision', 'ajuste_arqueo', 'canje_cheque', 'vale', 'rendicion_vale')`,
     ),
     check('movimientos_tesoreria_estado', sql`${t.estado} in ('vigente', 'anulado')`),
     check('movimientos_tesoreria_no_cero', sql`${t.importe} <> 0`),
@@ -166,6 +173,44 @@ export const arqueos = pgTable(
 )
 
 /**
+ * Turno de una caja (sesión, como en un punto de venta): se abre contando el
+ * fondo inicial y se cierra con el cierre de caja. Mientras está abierto, los
+ * recibos que se cargan quedan en el turno.
+ */
+export const turnosCaja = pgTable(
+  'turnos_caja',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    cuentaId: uuid('cuenta_id').notNull(),
+    /** abierto | cerrado */
+    estado: text('estado').notNull().default('abierto'),
+    abierto: timestamp('abierto', { withTimezone: true }).notNull().defaultNow(),
+    /** Quien lo abrió (el cajero). */
+    usuarioId: uuid('usuario_id'),
+    /** Saldo del sistema al abrir y lo que se contó. */
+    fondoEsperado: importe('fondo_esperado').notNull(),
+    fondoContado: importe('fondo_contado').notNull(),
+    conteoApertura: jsonb('conteo_apertura').$type<Record<string, number>>(),
+    /** Si el fondo no coincidía, el arqueo con el ajuste. */
+    arqueoAperturaId: uuid('arqueo_apertura_id'),
+    nota: text('nota'),
+    cierreId: uuid('cierre_id'),
+    cerrado: timestamp('cerrado', { withTimezone: true }),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    unique('turnos_caja_empresa_id').on(t.empresaId, t.id),
+    index().on(t.empresaId, t.cuentaId, t.abierto),
+    uniqueIndex('turnos_caja_uno_abierto')
+      .on(t.empresaId, t.cuentaId)
+      .where(sql`${t.estado} = 'abierto'`),
+    check('turnos_caja_estado', sql`${t.estado} in ('abierto', 'cerrado')`),
+    deLaEmpresa('turnos_caja_cuenta_fk', t.empresaId, t.cuentaId, cuentasTesoreria),
+  ],
+)
+
+/**
  * Cierre de caja de un turno o del día: lo que entró y salió de la caja
  * desde el cierre anterior, el efectivo esperado contra el contado, la
  * diferencia y un resumen de las cobranzas del período (por medio y por
@@ -192,6 +237,14 @@ export const cierresCaja = pgTable(
     arqueoId: uuid('arqueo_id'),
     observaciones: text('observaciones'),
     usuarioId: uuid('usuario_id'),
+    /** El turno que cierra (si la caja trabaja por turnos). */
+    turnoId: uuid('turno_id'),
+    /** Arqueo de los demás medios: lo cobrado según el sistema contra lo que rindió el cajero. */
+    medios: jsonb('medios').$type<{ medio: string; nombre: string; esperado: string; contado: string; diferencia: string }[]>(),
+    /** Supervisor que aprobó una diferencia mayor a la permitida. */
+    aprobadoPor: uuid('aprobado_por'),
+    /** Envío del reporte: a quién y cómo salió. */
+    envio: jsonb('envio').$type<{ destino: string; via: 'correo' | 'whatsapp'; ok: boolean; error?: string }[]>(),
     creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -267,5 +320,45 @@ export const conciliaciones = pgTable(
     index().on(t.empresaId, t.lineaId),
     check('conciliaciones_origen', sql`${t.origen} in ('recibo_valor', 'pago_valor', 'movimiento')`),
     deLaEmpresa('conciliaciones_linea_fk', t.empresaId, t.lineaId, extractosLineas).onDelete('cascade'),
+  ],
+)
+
+/**
+ * Vale a rendir: plata que sale de la caja para una persona (compras chicas,
+ * viáticos). Al rendir, se detallan los gastos y vuelve lo que sobró (o se
+ * le reintegra lo que puso de más).
+ */
+export const vales = pgTable(
+  'vales',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    numero: integer('numero').notNull(),
+    cuentaId: uuid('cuenta_id').notNull(),
+    /** A quién se le entregó. */
+    persona: text('persona').notNull(),
+    fecha: date('fecha').notNull(),
+    importe: importe('importe').notNull(),
+    motivo: text('motivo'),
+    /** abierto | rendido | anulado */
+    estado: text('estado').notNull().default('abierto'),
+    movimientoId: uuid('movimiento_id'),
+    /** Gastos rendidos: concepto, importe y comprobante. */
+    gastos: jsonb('gastos').$type<{ concepto: string; importe: string; comprobante: string | null }[]>(),
+    gastado: importe('gastado'),
+    /** Positivo: lo que devolvió; negativo: lo que se le reintegró. */
+    devuelto: importe('devuelto'),
+    movimientoRendicionId: uuid('movimiento_rendicion_id'),
+    fechaRendicion: date('fecha_rendicion'),
+    usuarioId: uuid('usuario_id'),
+    rendidoPor: uuid('rendido_por'),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    uniqueIndex().on(t.empresaId, t.numero),
+    index().on(t.empresaId, t.estado),
+    check('vales_estado', sql`${t.estado} in ('abierto', 'rendido', 'anulado')`),
+    check('vales_positivo', sql`${t.importe} > 0`),
+    deLaEmpresa('vales_cuenta_fk', t.empresaId, t.cuentaId, cuentasTesoreria),
   ],
 )

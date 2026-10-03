@@ -40,6 +40,7 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
       'ventas.anular': 'Anular comprobantes',
       'ventas.cobrar': 'Cargar cobranzas y mandar links de pago',
       'ventas.pasarelas': 'Conectar Mercado Pago, Payway, GoCuotas y Clover',
+      'ventas.supervisar_caja': 'Configurar los turnos de caja y cerrar cajas con diferencias mayores a la permitida',
     },
   },
   {
@@ -136,6 +137,7 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     titulo: 'Empresa',
     permisos: {
       'empresa.datos': 'Modificar los datos fiscales de la empresa',
+      'empresa.bloqueos': 'Cerrar y reabrir períodos por módulo (bloqueo por fecha)',
       'empresa.usuarios': 'Administrar usuarios, invitaciones y roles',
       'empresa.suscripcion': 'Ver y cambiar el plan de la suscripción',
       'empresa.integraciones': 'Claves de la API y webhooks',
