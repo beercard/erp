@@ -13,6 +13,7 @@ import {
   vinculosExternos,
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { hoyArgentina } from '../../lib/fechas'
 import { siguienteNumero } from '../comercial/numeracion'
 import type { Campo, Columna, TipoCampo, Valores } from '../servicio/formularios'
 import { guardarTipo, plantillaVigente } from '../servicio/tiposOrden'
@@ -226,7 +227,7 @@ const aHora = (m: unknown) => {
 }
 
 /** Fecha y hora de Buenos Aires de un instante ISO. */
-const fechaArgentina = (iso: string) => new Date(new Date(iso).getTime() - 3 * 3_600_000).toISOString().slice(0, 10)
+const fechaArgentina = (iso: string) => hoyArgentina(new Date(iso))
 
 /** Momento a partir de una fecha (AAAA-MM-DD) y minutos del día en Buenos Aires. */
 const momento = (fecha: string, minutos: number) => new Date(`${fecha}T00:00:00-03:00`).getTime() + minutos * 60_000

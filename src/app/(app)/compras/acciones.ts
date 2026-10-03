@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 
 import { articulos, terceros } from '@/db/schema'
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
+import { hoyArgentina } from '@/lib/fechas'
 import { aplicarNotaCredito, anularCompra, CompraInvalida, pendientesCompras, registrarCompra } from '@/modulos/compras/compras'
 import { conciliar, leerMisComprobantes, registrarFaltantes, type FilaArca } from '@/modulos/compras/misComprobantes'
 import { cancelarOrden, guardarOrden } from '@/modulos/compras/ordenes'
@@ -124,7 +125,7 @@ export async function aplicarNotaCreditoAccion(
         s.usuario.id,
         notaCreditoId,
         destinos.filter((x) => esUuid(x?.compraId)).map((x) => ({ compraId: x.compraId, importe: String(x.importe) })),
-        new Date().toISOString().slice(0, 10),
+        hoyArgentina(),
       ),
     ),
   )

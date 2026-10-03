@@ -114,7 +114,7 @@ export default async function Suscripcion({ searchParams }: PageProps<'/configur
           {pendiente && (
             <Aviso tono="aviso">
               Hay un pedido de cambio al plan {planPorId((pendiente.detalle as { plan: string }).plan).nombre} del{' '}
-              {fechaCorta(pendiente.creado.toISOString().slice(0, 10))}, esperando el pago.
+              {fechaCorta(hoyArgentina(pendiente.creado))}, esperando el pago.
             </Aviso>
           )}
           {mp === '1' && s.mpEstado !== 'authorized' && (
@@ -180,7 +180,7 @@ export default async function Suscripcion({ searchParams }: PageProps<'/configur
                 const planDe = d.plan ?? d.despues?.plan
                 return (
                   <tr key={e.id}>
-                    <td className="cifras px-4 py-2 text-texto-2">{fechaCorta(e.creado.toISOString().slice(0, 10))}</td>
+                    <td className="cifras px-4 py-2 text-texto-2">{fechaCorta(hoyArgentina(e.creado))}</td>
                     <td className="px-4 py-2">
                       {EVENTOS[e.tipo] ?? e.tipo}
                       {planDe && ` · plan ${planPorId(planDe).nombre}`}
