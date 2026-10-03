@@ -63,8 +63,8 @@ export default function Terminos() {
       </p>
       <h2>7. Integraciones con terceros</h2>
       <p>
-        Las conexiones con Mercado Libre, Tienda Nube, WooCommerce, Mercado Pago y otros servicios dependen de esas plataformas y
-        de sus condiciones. El Cliente las autoriza y puede desconectarlas cuando quiera.
+        Las conexiones con Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento, PrestaShop, Mercado Pago y otros servicios
+        dependen de esas plataformas y de sus condiciones. El Cliente las autoriza y puede desconectarlas cuando quiera.
       </p>
       <h2>8. Responsabilidad</h2>
       <p>

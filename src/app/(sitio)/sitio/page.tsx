@@ -91,7 +91,7 @@ const MODULOS = [
   {
     icono: ShoppingBag,
     titulo: 'Tiendas online',
-    texto: 'Mercado Libre, Tienda Nube y WooCommerce con stock y pedidos sincronizados.',
+    texto: 'Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento y PrestaShop con stock y pedidos sincronizados.',
     ancla: 'tiendas',
   },
   {
@@ -123,7 +123,7 @@ const PREGUNTAS = [
   },
   {
     p: '¿Puedo conectar mi tienda de Mercado Libre?',
-    r: 'Sí: también Tienda Nube y WooCommerce. El stock y los precios se actualizan solos y los pedidos entran al sistema.',
+    r: 'Sí: también Tienda Nube, WooCommerce, Shopify, Magento y PrestaShop. El stock y los precios se actualizan solos y los pedidos entran al sistema.',
   },
   {
     p: '¿Mis datos están seguros?',
@@ -148,6 +148,7 @@ const INTEGRACIONES = [
   { nombre: 'Mercado Libre', icono: ShoppingBag },
   { nombre: 'Tienda Nube', icono: Store },
   { nombre: 'WooCommerce', icono: ShoppingCart },
+  { nombre: 'Shopify', icono: ShoppingCart },
   { nombre: 'Mercado Pago', icono: Wallet },
   { nombre: 'Excel', icono: FileSpreadsheet },
   { nombre: 'WhatsApp', icono: MessageCircle },

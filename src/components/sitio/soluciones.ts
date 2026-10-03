@@ -144,7 +144,7 @@ export const SOLUCIONES: Solucion[] = [
     preguntas: [
       {
         p: '¿Qué plataformas se pueden conectar?',
-        r: 'Mercado Libre, Tienda Nube y WooCommerce. Para otras tiendas está la API del sistema.',
+        r: 'Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento y PrestaShop. Para otras tiendas está la API del sistema.',
       },
       {
         p: '¿Tiene costo aparte?',

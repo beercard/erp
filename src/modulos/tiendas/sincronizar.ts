@@ -17,6 +17,9 @@ import { ErrorCanal } from './http'
 import { conectorML, renovar, type CredencialesML } from './mercadolibre'
 import { conectorTN, type CredencialesTN } from './tiendanube'
 import { NOMBRES_CANAL, type Conector, type Fetch, type PedidoCanal, type TipoCanal } from './tipos'
+import { conectorMagento, type CredencialesMagento } from './magento'
+import { conectorPrestashop, type CredencialesPrestashop } from './prestashop'
+import { conectorShopify, type CredencialesShopify } from './shopify'
 import { conectorWoo, type CredencialesWoo } from './woocommerce'
 
 /**
@@ -57,6 +60,22 @@ export async function conectorDe(empresaId: string, canal: Canal, f: Fetch = fet
       const problema = await direccionPermitida(c.url)
       if (problema) throw new ErrorCanal(`La dirección de la tienda no se puede usar: ${problema}`)
       return conectorWoo(f, c)
+    }
+    case 'shopify': {
+      const c = credencialesDe<CredencialesShopify>(canal)
+      // La ubicación del stock se elige una vez y se recuerda.
+      return conectorShopify(f, c, (ubicacion) =>
+        conEmpresa(empresaId, (tx) => guardarCredenciales(tx, canal.id, { ...c, ubicacion })),
+      )
+    }
+    case 'magento':
+    case 'prestashop': {
+      const c = credencialesDe<CredencialesMagento | CredencialesPrestashop>(canal)
+      const problema = await direccionPermitida(c.url)
+      if (problema) throw new ErrorCanal(`La dirección de la tienda no se puede usar: ${problema}`)
+      return canal.tipo === 'magento'
+        ? conectorMagento(f, c as CredencialesMagento)
+        : conectorPrestashop(f, c as CredencialesPrestashop)
     }
   }
   throw new ErrorCanal('Tipo de canal desconocido.')

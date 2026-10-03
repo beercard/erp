@@ -5,7 +5,15 @@ import { useActionState, useState, useTransition } from 'react'
 
 import { Aviso, Boton } from '@/components/ui'
 
-import { configurarAccion, conectarWooAccion, sincronizarAccion, vincularAccion, type Estado } from './acciones'
+import {
+  conectarClaveAccion,
+  conectarShopifyAccion,
+  conectarWooAccion,
+  configurarAccion,
+  sincronizarAccion,
+  vincularAccion,
+  type Estado,
+} from './acciones'
 
 const control = 'h-9 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento'
 
@@ -19,6 +27,45 @@ export function ConectarWoo() {
       </label>
       <Boton type="submit" variante="primario" disabled={enviando}>
         Conectar WooCommerce
+      </Boton>
+      {estado?.error && <Aviso>{estado.error}</Aviso>}
+    </form>
+  )
+}
+
+export function ConectarShopify() {
+  const [estado, accion, enviando] = useActionState(conectarShopifyAccion, undefined)
+  return (
+    <form action={accion} className="flex flex-col gap-2">
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-texto-2">Tienda en Shopify</span>
+        <input name="tienda" required placeholder="mitienda.myshopify.com" className={control} />
+      </label>
+      <Boton type="submit" variante="primario" disabled={enviando}>
+        Conectar Shopify
+      </Boton>
+      {estado?.error && <Aviso>{estado.error}</Aviso>}
+    </form>
+  )
+}
+
+/** Magento y PrestaShop: dirección de la tienda y la clave que se crea en su panel. */
+export function ConectarConClave({ tipo }: { tipo: 'magento' | 'prestashop' }) {
+  const [estado, accion, enviando] = useActionState(conectarClaveAccion.bind(null, tipo), undefined)
+  return (
+    <form action={accion} className="flex flex-col gap-2">
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-texto-2">Dirección de la tienda</span>
+        <input name="tienda" required placeholder="https://mitienda.com.ar" inputMode="url" className={control} />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-texto-2">
+          {tipo === 'magento' ? 'Access Token de la integración' : 'Clave del servicio web'}
+        </span>
+        <input name="clave" required type="password" autoComplete="off" className={control} />
+      </label>
+      <Boton type="submit" variante="primario" disabled={enviando}>
+        {enviando ? 'Probando la conexión…' : `Conectar ${tipo === 'magento' ? 'Magento' : 'PrestaShop'}`}
       </Boton>
       {estado?.error && <Aviso>{estado.error}</Aviso>}
     </form>

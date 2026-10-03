@@ -8,10 +8,10 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
  */
 
 export type Flujo = {
-  tipo: 'mercadolibre' | 'tiendanube' | 'woocommerce'
+  tipo: 'mercadolibre' | 'tiendanube' | 'woocommerce' | 'shopify'
   empresaId: string
   usuarioId: string
-  /** WooCommerce: la dirección de la tienda. */
+  /** WooCommerce y Shopify: la dirección de la tienda. */
   tienda?: string
   /** Mercado Libre: el verificador PKCE. */
   verificador?: string

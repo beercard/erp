@@ -1,4 +1,4 @@
-import { ShoppingBag, Store, Tag } from 'lucide-react'
+import { Boxes, ShoppingBag, ShoppingCart, Store, Tag, Warehouse } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -8,10 +8,11 @@ import { exigirPermiso } from '@/lib/auth/servidor'
 import { tienePermiso } from '@/lib/permisos'
 import { listarCanales } from '@/modulos/tiendas/canales'
 import { mlConfigurado } from '@/modulos/tiendas/mercadolibre'
+import { shopifyConfigurado } from '@/modulos/tiendas/shopify'
 import { tnConfigurado } from '@/modulos/tiendas/tiendanube'
 import { NOMBRES_CANAL, type TipoCanal } from '@/modulos/tiendas/tipos'
 
-import { ConectarWoo } from './Formularios'
+import { ConectarConClave, ConectarShopify, ConectarWoo } from './Formularios'
 
 export const metadata: Metadata = { title: 'Tiendas online' }
 
@@ -34,7 +35,7 @@ export default async function Tiendas({ searchParams }: PageProps<'/tiendas'>) {
     <>
       <EncabezadoPagina
         titulo="Tiendas online"
-        bajada="Conectá Mercado Libre, Tienda Nube o WooCommerce: el stock y los precios se mantienen al día y los pedidos pagados entran solos."
+        bajada="Conectá Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento o PrestaShop: el stock y los precios se mantienen al día y los pedidos pagados entran solos."
       />
       {typeof error === 'string' && (
         <div className="mb-4">
@@ -117,6 +118,39 @@ export default async function Tiendas({ searchParams }: PageProps<'/tiendas'>) {
                 Escribí la dirección de tu tienda y aprobá el acceso en WordPress. No hay que copiar claves.
               </p>
               <ConectarWoo />
+            </Panel>
+            <Panel className="flex flex-col gap-3 p-4">
+              <span className="flex items-center gap-2 font-semibold">
+                <ShoppingCart aria-hidden className="size-5 text-acento" /> Shopify
+              </span>
+              <p className="text-sm text-texto-2">
+                Escribí el nombre de tu tienda y aprobá los permisos en Shopify. Los pedidos pagados avisan al instante.
+              </p>
+              {shopifyConfigurado() ? (
+                <ConectarShopify />
+              ) : (
+                <Aviso tono="info">Disponible cuando el administrador de la plataforma habilite la aplicación.</Aviso>
+              )}
+            </Panel>
+            <Panel className="flex flex-col gap-3 p-4">
+              <span className="flex items-center gap-2 font-semibold">
+                <Warehouse aria-hidden className="size-5 text-acento" /> Magento
+              </span>
+              <p className="text-sm text-texto-2">
+                En tu panel, creá una integración (Sistema → Integraciones) con acceso a Catálogo, Inventario y Ventas, y pegá su
+                Access Token. Los pedidos se traen cada 15 minutos.
+              </p>
+              <ConectarConClave tipo="magento" />
+            </Panel>
+            <Panel className="flex flex-col gap-3 p-4">
+              <span className="flex items-center gap-2 font-semibold">
+                <Boxes aria-hidden className="size-5 text-acento" /> PrestaShop
+              </span>
+              <p className="text-sm text-texto-2">
+                Activá el servicio web (Parámetros avanzados → Webservice) y creá una clave. El ERP manda el stock; los precios se
+                cargan en la tienda. Los pedidos se traen cada 15 minutos.
+              </p>
+              <ConectarConClave tipo="prestashop" />
             </Panel>
           </div>
         </>

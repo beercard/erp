@@ -44,7 +44,8 @@ export const FUNCIONES: Record<Funcion, { nombre: string; detalle: string }> = {
   },
   tienda: {
     nombre: 'Tiendas online y Mercado Libre',
-    detalle: 'Mercado Libre, Tienda Nube y WooCommerce conectados: stock y precios al día y los pedidos entran solos.',
+    detalle:
+      'Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento y PrestaShop conectados: stock y precios al día y los pedidos entran solos.',
   },
 }
 

@@ -14,7 +14,7 @@ import {
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { cifrar, descifrar } from '../arca/certificado'
-import type { TipoCanal } from './tipos'
+import { SIN_PRECIOS, type TipoCanal } from './tipos'
 
 /** Canales de venta: alta (al volver de la plataforma), configuración y baja. */
 
@@ -118,6 +118,10 @@ const EsquemaConfig = z.object({
 export async function configurarCanal(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
   const p = EsquemaConfig.safeParse(entrada)
   if (!p.success) return { ok: false as const, error: p.error.issues[0].message }
+  const [canal] = await tx.select({ tipo: canalesVenta.tipo }).from(canalesVenta).where(eq(canalesVenta.id, id))
+  if (p.data.enviarPrecios && canal && SIN_PRECIOS.includes(canal.tipo as TipoCanal)) {
+    return { ok: false as const, error: 'A esta plataforma el ERP le manda el stock; los precios se cargan en la tienda.' }
+  }
   if (p.data.enviarPrecios && !p.data.listaPreciosId) {
     return { ok: false as const, error: 'Para mandar precios, elegí de qué lista salen.' }
   }

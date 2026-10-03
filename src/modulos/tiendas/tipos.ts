@@ -1,12 +1,18 @@
-/** Lo común a las tres plataformas: cada conector traduce su API a esto. */
+/** Lo común a las plataformas: cada conector traduce su API a esto. */
 
-export type TipoCanal = 'mercadolibre' | 'tiendanube' | 'woocommerce'
+export type TipoCanal = 'mercadolibre' | 'tiendanube' | 'woocommerce' | 'shopify' | 'magento' | 'prestashop'
 
 export const NOMBRES_CANAL: Record<TipoCanal, string> = {
   mercadolibre: 'Mercado Libre',
   tiendanube: 'Tienda Nube',
   woocommerce: 'WooCommerce',
+  shopify: 'Shopify',
+  magento: 'Magento',
+  prestashop: 'PrestaShop',
 }
+
+/** Plataformas a las que el ERP no les manda precios (PrestaShop guarda precios sin impuestos, por regla de cada producto). */
+export const SIN_PRECIOS: TipoCanal[] = ['prestashop']
 
 /** Una publicación o, si tiene variantes, cada variante. */
 export type ProductoCanal = {

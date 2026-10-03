@@ -37,7 +37,7 @@ export const canalesVenta = pgTable(
   {
     id: id(),
     empresaId: empresaId(),
-    /** mercadolibre | tiendanube | woocommerce */
+    /** mercadolibre | tiendanube | woocommerce | shopify | magento | prestashop */
     tipo: text('tipo').notNull(),
     nombre: text('nombre').notNull(),
     /** Cuenta en la plataforma: usuario de Mercado Libre, tienda de Tienda Nube o dirección de WooCommerce. */
@@ -64,7 +64,10 @@ export const canalesVenta = pgTable(
   (t) => [
     unique('canales_venta_empresa_id').on(t.empresaId, t.id),
     uniqueIndex('canales_venta_cuenta').on(t.empresaId, t.tipo, t.cuenta),
-    check('canales_venta_tipo', sql`${t.tipo} in ('mercadolibre', 'tiendanube', 'woocommerce')`),
+    check(
+      'canales_venta_tipo',
+      sql`${t.tipo} in ('mercadolibre', 'tiendanube', 'woocommerce', 'shopify', 'magento', 'prestashop')`,
+    ),
     check('canales_venta_estado', sql`${t.estado} in ('conectado', 'desconectado', 'error')`),
     deLaEmpresa('canales_venta_lista_fk', t.empresaId, t.listaPreciosId, listasPrecios),
     deLaEmpresa('canales_venta_deposito_fk', t.empresaId, t.depositoId, depositos),

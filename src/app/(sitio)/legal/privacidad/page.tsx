@@ -36,7 +36,8 @@ export default function Privacidad() {
       <h2>3. Con quién se comparten</h2>
       <p>
         Solo con proveedores necesarios para prestar el Servicio (alojamiento, correo, cobro) y con los organismos y plataformas
-        que el Cliente conecta (ARCA, Mercado Libre, Tienda Nube, WooCommerce, Mercado Pago), en la medida de esa conexión.
+        que el Cliente conecta (ARCA, Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento, PrestaShop, Mercado Pago), en la
+        medida de esa conexión.
       </p>
       <h2>4. Seguridad</h2>
       <ul>

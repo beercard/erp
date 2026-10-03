@@ -89,7 +89,7 @@ const AREAS = [
   {
     id: 'tiendas',
     rotulo: 'Tiendas online',
-    titulo: 'Mercado Libre, Tienda Nube y WooCommerce',
+    titulo: 'Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento y PrestaShop',
     texto: 'Un solo stock para todos tus canales y los pedidos entrando solos.',
     items: [
       'Conexión en un clic, sin copiar claves',

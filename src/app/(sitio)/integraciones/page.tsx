@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { Contenedor, Lista, Llamado, Rotulo } from '@/components/sitio/Bloques'
 
 export const metadata: Metadata = {
-  title: 'Integraciones: ARCA, Mercado Libre, Tienda Nube, WooCommerce y API',
+  title: 'Integraciones: ARCA, Mercado Libre, Tienda Nube, WooCommerce, Shopify y API',
   description:
-    'Facturación electrónica con ARCA, tiendas online con Mercado Libre, Tienda Nube y WooCommerce, cobro con Mercado Pago y API con webhooks firmados.',
+    'Facturación electrónica con ARCA, tiendas online con Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento y PrestaShop, cobro con Mercado Pago y API con webhooks firmados.',
   alternates: { canonical: '/integraciones' },
 }
 
@@ -32,6 +32,18 @@ const INTEGRACIONES = [
     nombre: 'WooCommerce',
     texto: 'Escribís la dirección de tu tienda, aprobás en WordPress y listo: sin copiar claves.',
     items: ['Productos y variaciones', 'Avisos firmados', 'Stock por depósito'],
+    enlace: '/soluciones/tiendas-online',
+  },
+  {
+    nombre: 'Shopify',
+    texto: 'Escribís el nombre de tu tienda, aprobás los permisos y los pedidos pagados avisan al instante.',
+    items: ['Variantes', 'Stock en tu ubicación', 'Pedidos pagados y cancelados'],
+    enlace: '/soluciones/tiendas-online',
+  },
+  {
+    nombre: 'Magento y PrestaShop',
+    texto: 'Pegás la clave de tu tienda y el sistema mantiene el stock al día y trae los pedidos cada 15 minutos.',
+    items: ['Magento 2 y Adobe Commerce', 'PrestaShop 1.7 en adelante', 'Prueba la conexión antes de guardar'],
     enlace: '/soluciones/tiendas-online',
   },
   {
