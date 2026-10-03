@@ -13,8 +13,11 @@ import { ponerAlDia } from '@/modulos/servicio/avisos'
 import { limpiarFrenos } from '@/lib/frenos'
 import { latido, registrarError } from '@/modulos/plataforma/monitoreo'
 import { revisarPendientes } from '@/modulos/cobros/cobros'
+import { recordatoriosDelDia } from '@/modulos/facturacion/cobranza'
 import { resumenDiario } from '@/modulos/crm/extras'
+import { facturarPedidosPagados } from '@/modulos/tiendas/facturar'
 import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
+import { clienteArca } from '@/modulos/arca/cliente'
 
 /**
  * Tarea programada del servicio técnico (llamarla cada 15 a 60 minutos desde
@@ -53,6 +56,8 @@ export async function POST(request: Request) {
     pedidosTiendas: 0,
     resumenesCrm: 0,
     pagosOnline: 0,
+    facturasTiendas: 0,
+    recordatoriosDeuda: 0,
     errores: 0,
   }
   await limpiarFrenos().catch(() => undefined)
@@ -69,6 +74,8 @@ export async function POST(request: Request) {
       })
       // CRM: resumen diario de actividades, desde las 8 de la mañana (hora argentina).
       if (horaArgentina() >= 8) resultado.resumenesCrm += (await conEmpresa(e.id, (tx) => resumenDiario(tx, e.id))).enviados
+      // Recordatorios de deuda: una vuelta por día, desde las 9 (hora argentina).
+      if (horaArgentina() >= 9) resultado.recordatoriosDeuda += (await recordatoriosDelDia(e.id)).clientes
       // Links de pago: vence los viejos y confirma los que se pagaron sin aviso.
       resultado.pagosOnline += (await revisarPendientes(e.id)).aprobados
       resultado.enviados += (await enviarPendientes(e.id, 100)).enviados
@@ -81,6 +88,8 @@ export async function POST(request: Request) {
       ])
       resultado.pedidosTiendas += tiendas.importados
       resultado.errores += tiendas.errores
+      // Pedidos pagados de tiendas con "facturar solo": remito, factura en ARCA y recibo.
+      resultado.facturasTiendas += (await facturarPedidosPagados(e.id, (tx, cuit) => clienteArca(tx, cuit))).facturados
     } catch (falla) {
       resultado.errores++
       await registrarError({

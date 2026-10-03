@@ -143,6 +143,9 @@ export async function configurarAccion(id: string, _: Estado, fd: FormData): Pro
         enviarStock: fd.has('enviarStock'),
         enviarPrecios: fd.has('enviarPrecios'),
         traerPedidos: fd.has('traerPedidos'),
+        facturarSolo: fd.has('facturarSolo'),
+        cuentaCobroId: fd.get('cuentaCobroId'),
+        puntoVenta: fd.get('puntoVenta') || null,
       }),
     ),
   )

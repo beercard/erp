@@ -88,3 +88,14 @@ En Cobranzas → Cierre de caja → Configuración de la caja (permiso `ventas.s
 
 - Ventas y cobranzas, Compras y pagos, y Tesorería se cierran **hasta una fecha** (permiso `empresa.bloqueos`): nada con fecha hasta ese día se emite, carga ni anula (facturas, recibos, compras, órdenes de pago, movimientos, depósitos, rechazos, canjes, arqueos y vales).
 - Se reabre corriendo la fecha para atrás o con "Reabrir". Es aparte del cierre de períodos de IVA presentados y del cierre del ejercicio contable. Código: `src/modulos/empresa/bloqueos.ts`.
+
+## Cobranza automática (Cobranzas → Cobranza automática)
+
+- **Estado de cuenta** de cada cliente: comprobantes con saldo, vencimiento (el del comprobante o el de la condición de pago), días vencido, vencido, a vencer y total. En PDF desde la cuenta corriente, con un botón para **mandarlo** por correo (con el PDF) y por WhatsApp (con un enlace firmado al estado de cuenta, válido 30 días). También "Mandar el estado de cuenta a todos" los que tienen deuda vencida.
+- **Recordatorios solos** (una vuelta por día desde las 9): un aviso unos días antes del vencimiento y recordatorios después (por defecto a 1, 7, 15 y 30 días); desde los 15 días, con tono de reclamo. Cada comprobante recibe cada etapa una sola vez por medio. Por correo, por WhatsApp o los dos.
+- **Intereses por mora**: tasa mensual simple por día sobre el saldo vencido, con días de gracia y un mínimo. La pantalla muestra lo que corresponde a hoy por cliente y arma una **nota de débito en borrador** por cliente (asociada a la factura más vieja, un renglón por comprobante); se revisa y se autoriza como cualquier nota. El próximo cálculo arranca al día siguiente de lo ya cobrado.
+- Código: `src/modulos/facturacion/cobranza.ts`; página pública `src/app/deuda/[token]/`.
+
+## Tiendas online que facturan solas
+
+En la configuración de cada tienda, **Facturar solo los pedidos pagados**: cada pedido pagado que entra se **remite** (descuenta stock), se **factura y autoriza en ARCA** y se **cobra** con un recibo en la cuenta elegida (Mercado Pago, la pasarela). Lo que no se pueda hacer (sin punto de venta, ARCA caída, sin stock con series) queda anotado en el pedido de la tienda para terminarlo a mano. Corre con la tarea periódica. Código: `src/modulos/tiendas/facturar.ts`.

@@ -99,6 +99,8 @@ export function Configuracion({
   canal,
   listas,
   depositos,
+  cuentas,
+  puntosVenta,
 }: {
   id: string
   canal: {
@@ -108,9 +110,14 @@ export function Configuracion({
     enviarStock: boolean
     enviarPrecios: boolean
     traerPedidos: boolean
+    facturarSolo: boolean
+    cuentaCobroId: string | null
+    puntoVenta: number | null
   }
   listas: Opcion[]
   depositos: Opcion[]
+  cuentas: Opcion[]
+  puntosVenta: { numero: number; nombre: string }[]
 }) {
   const [estado, accion, enviando] = useActionState(configurarAccion.bind(null, id), undefined)
   return (
@@ -126,6 +133,40 @@ export function Configuracion({
           <span className="block text-xs text-texto-2">Entran como pedidos del ERP, listos para remitir y facturar.</span>
         </span>
       </label>
+      <label className="flex items-start gap-2">
+        <input type="checkbox" name="facturarSolo" defaultChecked={canal.facturarSolo} className="mt-0.5" />
+        <span>
+          <span className="font-medium">Facturar solo los pedidos pagados</span>
+          <span className="block text-xs text-texto-2">
+            Se remiten, se autorizan en ARCA y se cobran en la cuenta de abajo. Lo que no se pueda hacer queda anotado en el
+            pedido.
+          </span>
+        </span>
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-texto-2">Entra el cobro en</span>
+          <select name="cuentaCobroId" defaultValue={canal.cuentaCobroId ?? ''} className={control}>
+            <option value="">La predeterminada</option>
+            {cuentas.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-texto-2">Punto de venta</span>
+          <select name="puntoVenta" defaultValue={canal.puntoVenta ?? ''} className={control}>
+            <option value="">El primero electrónico</option>
+            {puntosVenta.map((p) => (
+              <option key={p.numero} value={p.numero}>
+                {String(p.numero).padStart(4, '0')} · {p.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <label className="flex items-start gap-2">
         <input type="checkbox" name="enviarStock" defaultChecked={canal.enviarStock} className="mt-0.5" />
         <span>

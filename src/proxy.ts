@@ -22,6 +22,6 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Todo menos la pantalla de ingreso, los archivos estáticos y los internos de Next.
   matcher: [
-    '/((?!ingresar|invitacion|registro|precios|funciones|integraciones|soluciones|contacto|legal|robots.txt|sitemap.xml|opengraph-image|icon.svg|encuesta|seguimiento|portal|api/cron|api/crm/formulario|api/cobros|api/whatsapp|pago/|comprobante/|cierre/|api/v1|api/salud|api/pagos/mercadopago|api/tiendas/mercadolibre/avisos|api/tiendas/tiendanube/avisos|api/tiendas/woocommerce/claves|api/tiendas/woocommerce/avisos|api/tiendas/shopify/avisos|manifest.webmanifest|sw.js|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp)$).*)',
+    '/((?!ingresar|invitacion|registro|precios|funciones|integraciones|soluciones|contacto|legal|robots.txt|sitemap.xml|opengraph-image|icon.svg|encuesta|seguimiento|portal|api/cron|api/crm/formulario|api/cobros|api/whatsapp|pago/|comprobante/|cierre/|deuda/|api/v1|api/salud|api/pagos/mercadopago|api/tiendas/mercadolibre/avisos|api/tiendas/tiendanube/avisos|api/tiendas/woocommerce/claves|api/tiendas/woocommerce/avisos|api/tiendas/shopify/avisos|manifest.webmanifest|sw.js|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp)$).*)',
   ],
 }

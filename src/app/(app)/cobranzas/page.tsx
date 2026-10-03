@@ -1,4 +1,4 @@
-import { Calculator, Plus } from 'lucide-react'
+import { BellRing, Calculator, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -25,6 +25,9 @@ export default async function Cobranzas({ searchParams }: PageProps<'/cobranzas'
         bajada={`${filas.length} recibos${texto ? ` para “${texto}”` : ''}`}
         acciones={
           <>
+            <BotonEnlace href="/cobranzas/automatica">
+              <BellRing aria-hidden className="size-4" /> Cobranza automática
+            </BotonEnlace>
             <BotonEnlace href="/cobranzas/caja">
               <Calculator aria-hidden className="size-4" /> Cierre de caja
             </BotonEnlace>

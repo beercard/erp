@@ -28,7 +28,7 @@ export default async function Canal({ params, searchParams }: PageProps<'/tienda
   if (!UUID.test(id)) notFound()
   const datos = await conEmpresa(sesion, (tx) => obtenerCanal(tx, id))
   if (!datos) notFound()
-  const { canal, publicaciones, pedidos, listas, depositos } = datos
+  const { canal, publicaciones, pedidos, listas, depositos, cuentas, puntosVenta } = datos
   const puede = tienePermiso(sesion.permisos, 'tienda.configurar')
   const sinVincular = publicaciones.filter((p) => p.activa && !p.articuloId)
   const lista = ver === 'todas' ? publicaciones.filter((p) => p.activa) : sinVincular
@@ -179,6 +179,8 @@ export default async function Canal({ params, searchParams }: PageProps<'/tienda
                 canal={canal}
                 listas={listas.map((l) => ({ id: l.id, nombre: l.nombre }))}
                 depositos={depositos}
+                cuentas={cuentas}
+                puntosVenta={puntosVenta}
               />
             </Panel>
           )}

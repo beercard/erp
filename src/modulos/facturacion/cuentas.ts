@@ -136,7 +136,7 @@ export async function imputar(
 /** Al autorizar una nota de crédito, se aplica sola al comprobante que corrige. */
 export async function imputarNotaCreditoAsociada(
   tx: Transaccion,
-  usuarioId: string,
+  usuarioId: string | null,
   notaCreditoId: string,
   asociadoId: string,
   fecha: string,

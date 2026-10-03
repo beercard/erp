@@ -31,7 +31,7 @@ export type Movimiento = {
   fecha?: Date
 }
 
-export async function registrarMovimientos(tx: Transaccion, usuarioId: string, movimientos: Movimiento[]) {
+export async function registrarMovimientos(tx: Transaccion, usuarioId: string | null, movimientos: Movimiento[]) {
   if (!movimientos.length) return
   await tx.insert(movimientosStock).values(movimientos.map((m) => ({ ...m, usuarioId })))
 }

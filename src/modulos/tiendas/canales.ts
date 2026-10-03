@@ -11,6 +11,8 @@ import {
   listasPrecios,
   pedidosCanal,
   publicacionesCanal,
+  cuentasTesoreria,
+  puntosVenta,
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { cifrar, descifrar } from '../arca/certificado'
@@ -113,6 +115,9 @@ const EsquemaConfig = z.object({
   enviarStock: z.boolean(),
   enviarPrecios: z.boolean(),
   traerPedidos: z.boolean(),
+  facturarSolo: z.boolean().default(false),
+  cuentaCobroId: uuidONulo,
+  puntoVenta: z.coerce.number().int().min(1).max(99998).nullable().optional().default(null),
 })
 
 export async function configurarCanal(tx: Transaccion, usuarioId: string, id: string, entrada: unknown) {
@@ -121,6 +126,9 @@ export async function configurarCanal(tx: Transaccion, usuarioId: string, id: st
   const [canal] = await tx.select({ tipo: canalesVenta.tipo }).from(canalesVenta).where(eq(canalesVenta.id, id))
   if (p.data.enviarPrecios && canal && SIN_PRECIOS.includes(canal.tipo as TipoCanal)) {
     return { ok: false as const, error: 'A esta plataforma el ERP le manda el stock; los precios se cargan en la tienda.' }
+  }
+  if (p.data.facturarSolo && !p.data.traerPedidos) {
+    return { ok: false as const, error: 'Para facturar solo, la tienda tiene que traer los pedidos.' }
   }
   if (p.data.enviarPrecios && !p.data.listaPreciosId) {
     return { ok: false as const, error: 'Para mandar precios, elegí de qué lista salen.' }
@@ -180,9 +188,17 @@ export const sinSecretos = (c: Canal) => {
 export async function obtenerCanal(tx: Transaccion, id: string) {
   const [c] = await tx.select().from(canalesVenta).where(eq(canalesVenta.id, id))
   if (!c) return null
-  const [listas, deps, publicaciones, pedidos] = await Promise.all([
+  const [listas, deps, cuentas, pvs, publicaciones, pedidos] = await Promise.all([
     tx.select({ id: listasPrecios.id, nombre: listasPrecios.nombre, incluyeIva: listasPrecios.incluyeIva }).from(listasPrecios),
     tx.select({ id: depositos.id, nombre: depositos.nombre }).from(depositos),
+    tx
+      .select({ id: cuentasTesoreria.id, nombre: cuentasTesoreria.nombre })
+      .from(cuentasTesoreria)
+      .where(and(eq(cuentasTesoreria.activa, true), eq(cuentasTesoreria.moneda, 'PES'))),
+    tx
+      .select({ numero: puntosVenta.numero, nombre: puntosVenta.nombre })
+      .from(puntosVenta)
+      .where(and(eq(puntosVenta.activo, true), eq(puntosVenta.tipo, 'electronico'))),
     tx
       .select({ ...getTableColumns(publicacionesCanal), articuloCodigo: articulos.codigo })
       .from(publicacionesCanal)
@@ -191,7 +207,7 @@ export async function obtenerCanal(tx: Transaccion, id: string) {
       .orderBy(sql`${publicacionesCanal.articuloId} is not null`, asc(publicacionesCanal.titulo)),
     tx.select().from(pedidosCanal).where(eq(pedidosCanal.canalId, id)).orderBy(desc(pedidosCanal.creado)).limit(100),
   ])
-  return { canal: sinSecretos(c), listas, depositos: deps, publicaciones, pedidos }
+  return { canal: sinSecretos(c), listas, depositos: deps, cuentas, puntosVenta: pvs, publicaciones, pedidos }
 }
 
 export async function vincularPublicacion(tx: Transaccion, usuarioId: string, id: string, articuloId: string | null) {

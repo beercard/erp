@@ -179,7 +179,8 @@ function datosReceptor(t: typeof terceros.$inferSelect) {
 
 export async function guardarComprobante(
   tx: Transaccion,
-  usuarioId: string,
+  /** Vacío: lo arma el sistema (por ejemplo, un pedido pagado en una tienda online). */
+  usuarioId: string | null,
   entrada: unknown,
   id?: string,
 ): Promise<ResultadoGuardar> {
@@ -456,7 +457,7 @@ async function controlar(tx: Transaccion, c: typeof comprobantes.$inferSelect, h
 export type ResultadoEmision =
   { ok: true; numero: number; cae: string; observaciones: string[] } | { ok: false; error: string; pendiente?: boolean }
 
-type CrearCliente = (tx: Transaccion, cuit: string) => Promise<ClienteArca>
+export type CrearCliente = (tx: Transaccion, cuit: string) => Promise<ClienteArca>
 
 const textoMensajes = (ms: { codigo: string; mensaje: string }[]) => ms.map((m) => `${m.mensaje} (${m.codigo})`)
 
@@ -478,7 +479,7 @@ async function bloquearNumerador(tx: Transaccion, tipo: number, puntoVenta: numb
  */
 export async function emitirComprobante(
   empresaId: string,
-  usuarioId: string,
+  usuarioId: string | null,
   id: string,
   crearCliente: CrearCliente,
   hoy: string = hoyArgentina(),
@@ -605,7 +606,7 @@ export async function emitirComprobante(
  */
 export async function verificarComprobante(
   empresaId: string,
-  usuarioId: string,
+  usuarioId: string | null,
   id: string,
   crearCliente: CrearCliente,
 ): Promise<ResultadoEmision> {
@@ -665,7 +666,7 @@ export async function verificarComprobante(
 }
 
 /** Una nota de crédito recién autorizada cancela la deuda del comprobante que corrige. */
-async function aplicarNota(tx: Transaccion, usuarioId: string, id: string) {
+async function aplicarNota(tx: Transaccion, usuarioId: string | null, id: string) {
   const [c] = await tx.select().from(comprobantes).where(eq(comprobantes.id, id))
   if (c.clase !== 'nota_credito') return
   const asociados = await tx.select().from(comprobantesAsociados).where(eq(comprobantesAsociados.comprobanteId, id))

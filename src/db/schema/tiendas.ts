@@ -4,6 +4,7 @@ import {
   check,
   foreignKey,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -55,6 +56,12 @@ export const canalesVenta = pgTable(
     enviarStock: boolean('enviar_stock').notNull().default(true),
     enviarPrecios: boolean('enviar_precios').notNull().default(false),
     traerPedidos: boolean('traer_pedidos').notNull().default(true),
+    /** Los pedidos pagados se remiten, facturan y cobran solos. */
+    facturarSolo: boolean('facturar_solo').notNull().default(false),
+    /** Cuenta de tesorería donde entra lo que cobra la tienda (Mercado Pago, la pasarela…). */
+    cuentaCobroId: uuid('cuenta_cobro_id'),
+    /** Punto de venta electrónico para esas facturas. */
+    puntoVenta: integer('punto_venta'),
     /** Hasta dónde se trajeron pedidos (la próxima vuelta pide desde acá, con margen). */
     pedidosHasta: timestamp('pedidos_hasta', { withTimezone: true }),
     ultimaSincronizacion: timestamp('ultima_sincronizacion', { withTimezone: true }),

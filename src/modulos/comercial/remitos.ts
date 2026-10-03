@@ -68,7 +68,7 @@ const EsquemaRemito = z.object({
 export type ResultadoRemito =
   { ok: true; id: string; puntoVenta: number; numero: number; avisos: string[] } | { ok: false; error: string }
 
-export async function emitirRemito(tx: Transaccion, usuarioId: string, entrada: unknown): Promise<ResultadoRemito> {
+export async function emitirRemito(tx: Transaccion, usuarioId: string | null, entrada: unknown): Promise<ResultadoRemito> {
   const p = EsquemaRemito.safeParse(entrada)
   if (!p.success) return { ok: false, error: p.error.issues[0].message }
   const d = p.data
