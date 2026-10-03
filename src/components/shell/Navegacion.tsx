@@ -40,6 +40,7 @@ import {
   Scissors,
   Settings,
   Settings2,
+  ShoppingBag,
   ShoppingCart,
   Smartphone,
   Truck,
@@ -70,6 +71,7 @@ const SECCIONES: { titulo?: string; items: Item[] }[] = [
       { href: '/pedidos', texto: 'Pedidos', icono: ClipboardList, funcion: 'comercial' },
       { href: '/remitos', texto: 'Remitos', icono: Truck, funcion: 'comercial' },
       { href: '/stock', texto: 'Stock', icono: Boxes, funcion: 'stock' },
+      { href: '/tiendas', texto: 'Tiendas online', icono: ShoppingBag, funcion: 'tienda' },
     ],
   },
   {

@@ -39,7 +39,10 @@ export const FUNCIONES: Record<Funcion, { nombre: string; detalle: string }> = {
     nombre: 'Contratos y parque instalado',
     detalle: 'Equipos en clientes, lecturas de contadores, facturación mensual por copias o abonos y servicio técnico.',
   },
-  tienda: { nombre: 'Tienda online y MercadoLibre', detalle: 'Stock y precios publicados; los pedidos entran solos.' },
+  tienda: {
+    nombre: 'Tiendas online y Mercado Libre',
+    detalle: 'Mercado Libre, Tienda Nube y WooCommerce conectados: stock y precios al día y los pedidos entran solos.',
+  },
 }
 
 export type PlanId = 'gratis' | 'inicial' | 'pyme' | 'empresa'
@@ -128,7 +131,7 @@ export type Aplicacion = {
 
 export const APLICACIONES: Aplicacion[] = [
   { id: 'contratos', precioMensual: 59_900, desde: 'pyme', disponible: true },
-  { id: 'tienda', precioMensual: 39_900, desde: 'inicial', disponible: false },
+  { id: 'tienda', precioMensual: 39_900, desde: 'inicial', disponible: true },
 ]
 
 /** Cada usuario por encima de los del plan. */
@@ -172,6 +175,7 @@ const FUNCION_DE_MODULO: Record<string, Funcion> = {
   contabilidad: 'informes',
   contratos: 'contratos',
   servicio: 'contratos',
+  tienda: 'tienda',
 }
 
 export function funcionDePermiso(permiso: string): Funcion | null {

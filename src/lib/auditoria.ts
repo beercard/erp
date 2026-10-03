@@ -2,7 +2,8 @@ import type { Transaccion } from '../db/conexion'
 import { auditoria } from '../db/schema'
 
 export type Registro = {
-  usuarioId: string
+  /** Nulo: lo hizo el sistema (tarea periódica, aviso de una tienda). */
+  usuarioId: string | null
   accion: 'alta' | 'modificacion' | 'baja' | 'emision' | 'anulacion' | 'ingreso' | 'importacion'
   entidad: string
   entidadId?: string | null

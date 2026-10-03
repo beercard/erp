@@ -124,3 +124,12 @@ Convenciones:
 | `configuracion_contable`, `ejercicios` | Puesta en marcha (desde qué fecha se contabiliza), fecha hasta la que no se aceptan asientos y ejercicios abiertos o cerrados |
 | `cuentas_contables`, `imputaciones_contables` | Plan de cuentas (código con puntos, imputable o de agrupación) y cuentas clave: a qué cuenta va cada cosa en los asientos automáticos (también por proveedor, caja o concepto) |
 | `asientos`, `asientos_lineas` | Asientos automáticos (uno vigente por operación) y manuales; se anulan con contraasiento. Partida doble controlada en la base. Ver [06-contabilidad.md](06-contabilidad.md) |
+
+## Tiendas online (aplicación opcional)
+
+| Tabla | Para qué |
+|---|---|
+| `canales_venta` | Cada cuenta de Mercado Libre, Tienda Nube o WooCommerce: credenciales cifradas, lista de precios, depósito y qué se sincroniza |
+| `cuentas_canal` (plataforma) | De qué empresa es cada cuenta, para los avisos que llegan sin sesión |
+| `publicaciones_canal` | Cada publicación o variante, el artículo vinculado y lo último que se le mandó |
+| `pedidos_canal` | Pedidos que llegaron de cada canal: importado, con error o ignorado, y el pedido del ERP |

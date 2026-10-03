@@ -232,7 +232,7 @@ export type ResultadoGuardar =
 
 export async function guardarTercero(
   tx: Transaccion,
-  usuarioId: string,
+  usuarioId: string | null,
   entrada: unknown,
   id?: string,
 ): Promise<ResultadoGuardar> {

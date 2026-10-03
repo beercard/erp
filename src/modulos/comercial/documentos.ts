@@ -280,9 +280,11 @@ export async function convertirEnPedido(
 
 export async function guardarPedido(
   tx: Transaccion,
-  usuarioId: string,
+  usuarioId: string | null,
   entrada: unknown,
   id?: string,
+  /** Pedidos que vienen de una tienda: de qué canal y con qué número (no se repiten). */
+  externo?: { origen: string; idExterno: string },
 ): Promise<ResultadoDocumento> {
   const p = EsquemaPedido.safeParse(entrada)
   if (!p.success) return { ok: false, error: primerError(p.error) }
@@ -320,7 +322,7 @@ export async function guardarPedido(
       const numero = await siguienteNumero(tx, 'pedido')
       const [nuevo] = await tx
         .insert(pedidos)
-        .values({ ...cabecera, ...extra, numero, usuarioId })
+        .values({ ...cabecera, ...extra, ...externo, numero, usuarioId })
         .returning()
       await tx.insert(pedidosItems).values(items.map((i) => ({ ...i, pedidoId: nuevo.id })))
       await auditar(tx, {
@@ -340,7 +342,7 @@ export async function guardarPedido(
 }
 
 /** Cancela lo que falta entregar de un pedido. Lo entregado queda. */
-export async function cancelarPedido(tx: Transaccion, usuarioId: string, id: string) {
+export async function cancelarPedido(tx: Transaccion, usuarioId: string | null, id: string) {
   const [antes] = await tx.select().from(pedidos).where(eq(pedidos.id, id)).for('update')
   if (!antes) return { ok: false as const, error: 'Ese pedido ya no existe.' }
   if (['entregado', 'cancelado'].includes(antes.estado))

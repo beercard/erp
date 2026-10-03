@@ -143,7 +143,7 @@ export const pedidos = pgTable(
     presupuestoId: uuid('presupuesto_id'),
     depositoId: uuid('deposito_id'),
     fechaEntrega: date('fecha_entrega'),
-    /** manual | presupuesto | tienda */
+    /** manual | presupuesto | tienda | mercadolibre | tiendanube | woocommerce */
     origen: text('origen').notNull().default('manual'),
     /** Número del pedido en la tienda u otro sistema. */
     idExterno: text('id_externo'),

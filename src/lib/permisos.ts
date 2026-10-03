@@ -89,6 +89,14 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     },
   },
   {
+    modulo: 'tienda',
+    titulo: 'Tiendas online',
+    permisos: {
+      'tienda.ver': 'Ver las tiendas conectadas, sus publicaciones y los pedidos que llegaron',
+      'tienda.configurar': 'Conectar y desconectar tiendas, vincular publicaciones y sincronizar',
+    },
+  },
+  {
     modulo: 'informes',
     titulo: 'Informes e impuestos',
     permisos: {

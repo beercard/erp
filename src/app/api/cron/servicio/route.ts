@@ -10,6 +10,7 @@ import { contabilizar } from '@/modulos/contabilidad/automaticos'
 import { liquidarPendientes } from '@/modulos/contabilidad/cierre'
 import { avisarVencimientos } from '@/modulos/impuestos/vencimientos'
 import { ponerAlDia } from '@/modulos/servicio/avisos'
+import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
 
 /**
  * Tarea programada del servicio técnico (llamarla cada 15 a 60 minutos desde
@@ -17,7 +18,7 @@ import { ponerAlDia } from '@/modulos/servicio/avisos'
  * día vencimientos, preventivos, avisos, alertas de SLA y recordatorios de
  * todas las empresas, avisa los vencimientos impositivos que se acercan o
  * se pasaron, asienta las operaciones nuevas (si la contabilidad está en
- * marcha) y manda los correos y los webhooks. Sin CRON_SECRET no hace nada.
+ * marcha), manda los correos y los webhooks, y sincroniza las tiendas online. Sin CRON_SECRET no hace nada.
  */
 export async function POST(request: Request) {
   const secreto = process.env.CRON_SECRET
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     asientos: 0,
     enviados: 0,
     webhooks: 0,
+    pedidosTiendas: 0,
     errores: 0,
   }
   for (const e of activas) {
@@ -50,6 +52,10 @@ export async function POST(request: Request) {
       })
       resultado.enviados += (await enviarPendientes(e.id, 100)).enviados
       resultado.webhooks += (await entregarPendientes(e.id, 200)).entregados
+      // Tiendas online: pedidos que no avisaron y stock y precios que cambiaron.
+      const tiendas = await sincronizarEmpresa(e.id)
+      resultado.pedidosTiendas += tiendas.importados
+      resultado.errores += tiendas.errores
     } catch {
       resultado.errores++
     }

@@ -344,6 +344,20 @@
       "when": 1790981786484,
       "tag": "0048_grupos_clientes_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1790984796578,
+      "tag": "0049_tiendas_online",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1790984798462,
+      "tag": "0050_tiendas_online_seguridad",
+      "breakpoints": true
     }
   ]
 }
