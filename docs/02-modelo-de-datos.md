@@ -38,6 +38,8 @@ Convenciones:
 |---|---|
 | `terceros` | **Clientes y proveedores en una sola tabla**, con marcas `es_cliente` y `es_proveedor`. Guarda datos fiscales, contacto, domicilio y condiciones comerciales (lista, vendedor, condición de pago, límite de crédito, descuento) |
 | `terceros_contactos` | Personas de contacto de cada tercero (nombre, cargo, email, teléfono) |
+| `grupos_clientes` | Grupos de clientes; cada cliente puede estar en uno (`terceros.grupo_cliente_id`) |
+| `usuarios_grupos_clientes` | Grupos que ve cada usuario en la empresa; sin ninguno ve todos los clientes |
 | `rubros` | Árbol de rubros y subrubros (`padre_id`) |
 | `marcas` | Marcas de artículos |
 | `articulos` | Productos y servicios: código, nombre, rubro, marca, unidad, alícuota de IVA, si lleva stock, si lleva número de serie, costo y moneda del costo |
@@ -102,11 +104,32 @@ Convenciones:
 | `contratos_tarifas` | Cargo fijo, copias libres, precio por copia por tramos, color y blanco y negro, mínimo |
 | `lecturas` | Contador de cada equipo por fecha: manual, desde MPS Monitor o cargada por el técnico, más las copias de prueba que no se cobran |
 | `liquidaciones` | Cálculo mensual de cada contrato, que genera las facturas |
-| `ordenes_servicio` | Servicio técnico: pedido, asignación, visita, trabajos realizados e insumos consumidos |
+| `tecnicos` | Quienes atienden el servicio técnico (maestro simple de Configuración) |
+| `ordenes_servicio` | Servicio técnico: pedido del cliente sobre un equipo, técnico y día de visita, quién paga (contrato, garantía o con cargo), solución y contador al resolver. Se cancela, no se borra |
+| `ordenes_servicio_visitas` | Cada visita del técnico, con lo que hizo y las horas |
+| `ordenes_servicio_items` | Insumos, repuestos y mano de obra: un artículo con stock sale del depósito al cargarlo y vuelve si se quita. Lo que tiene precio se factura en borrador si la orden es con cargo |
+| `etiquetas_servicio`, `ordenes_servicio_etiquetas` | Etiquetas de colores de las órdenes (varias por orden), para filtrar y verlas en el calendario |
+| `ordenes_servicio_tecnicos` | Acompañantes de una orden: técnicos que van con el responsable (`ordenes_servicio.tecnico_id`); la ven en su agenda y les ocupa el horario |
+| `excepciones_jornada` | Licencias, vacaciones, feriados (sin técnico: para todos) y horarios especiales; el asistente de huecos y el calendario los respetan |
+| `historial_envios` | Historial de estados de cada formulario de la bandeja: estado (nombre y color de ese momento), quién, cuándo y nota |
+| `zonas_trabajo` | Zonas de trabajo: nombre, centro (lat, lng) y radio en km |
+| `tecnicos_zonas` | Qué zonas tiene cada técnico |
+| `alertas_zona` | Salidas y vueltas de un técnico a sus zonas durante la jornada, con el momento y la posición |
 
 ## Etapa 6 y 7: fiscal, informes y contabilidad
 
 | Tabla | Para qué |
 |---|---|
-| `presentaciones` | Libros y declaraciones generados (Libro IVA Digital, IIBB, SICORE/SIRE), con el archivo y su estado |
-| `plan_cuentas`, `asientos`, `asientos_lineas` | Contabilidad opcional: asientos automáticos desde cada operación |
+| `presentaciones` | Libros y declaraciones generados (Libro IVA Digital, SICORE), con el archivo exacto, el estado (generada, presentada, reabierta), el número de transacción y la secuencia de rectificativa. Presentada, cierra el período para ese impuesto. Ver [05-impuestos-e-informes.md](05-impuestos-e-informes.md) |
+| `configuracion_contable`, `ejercicios` | Puesta en marcha (desde qué fecha se contabiliza), fecha hasta la que no se aceptan asientos y ejercicios abiertos o cerrados |
+| `cuentas_contables`, `imputaciones_contables` | Plan de cuentas (código con puntos, imputable o de agrupación) y cuentas clave: a qué cuenta va cada cosa en los asientos automáticos (también por proveedor, caja o concepto) |
+| `asientos`, `asientos_lineas` | Asientos automáticos (uno vigente por operación) y manuales; se anulan con contraasiento. Partida doble controlada en la base. Ver [06-contabilidad.md](06-contabilidad.md) |
+
+## Tiendas online (aplicación opcional)
+
+| Tabla | Para qué |
+|---|---|
+| `canales_venta` | Cada cuenta de Mercado Libre, Tienda Nube o WooCommerce: credenciales cifradas, lista de precios, depósito y qué se sincroniza |
+| `cuentas_canal` (plataforma) | De qué empresa es cada cuenta, para los avisos que llegan sin sesión |
+| `publicaciones_canal` | Cada publicación o variante, el artículo vinculado y lo último que se le mandó |
+| `pedidos_canal` | Pedidos que llegaron de cada canal: importado, con error o ignorado, y el pedido del ERP |

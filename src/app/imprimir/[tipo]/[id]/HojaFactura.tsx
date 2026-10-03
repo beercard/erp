@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation'
 import QRCode from 'qrcode'
 import type { ReactNode } from 'react'
 
-import { condicionesIva, condicionesPago } from '@/db/schema'
+import { arcaConfiguracion, condicionesIva, condicionesPago } from '@/db/schema'
+import type { Transaccion } from '@/db/conexion'
+import { conEmpresa } from '@/db/empresa'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
 import { aImporte, D, formatearMonto } from '@/lib/dinero'
@@ -12,7 +14,7 @@ import { TASAS_IVA } from '@/modulos/comercial/calculo'
 import { formatearNumero } from '@/modulos/comercial/formato'
 import { datosEmpresa } from '@/modulos/empresa/datos'
 import { obtenerComprobante } from '@/modulos/facturacion/comprobantes'
-import { abreviatura, datosTipo, urlQr } from '@/modulos/facturacion/tipos'
+import { abreviatura, datosTipo, LEYENDA_CBU_INFORMADA, urlQr } from '@/modulos/facturacion/tipos'
 
 import { BotonImprimir } from './BotonImprimir'
 
@@ -26,10 +28,13 @@ const cantidad = (v: string) => Number(v).toLocaleString('es-AR', { maximumFract
  * letra y código, datos de emisor y receptor, CAE con su vencimiento y QR.
  * En los B los precios van con IVA y se informa el IVA contenido (Ley 27.743).
  */
-export async function HojaFactura({ id }: { id: string }) {
-  const sesion = await requerirEmpresa()
-  const empresa = await datosEmpresa(sesion.empresa.id)
-  const datos = await enLaEmpresa('ventas.ver', async (tx) => {
+export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: string }) {
+  // Con empresaId viene de un enlace público firmado (sin sesión).
+  const eid = empresaId ?? (await requerirEmpresa()).empresa.id
+  const empresa = await datosEmpresa(eid)
+  const leer = <T,>(trabajo: (tx: Transaccion) => Promise<T>) =>
+    empresaId ? conEmpresa(empresaId, trabajo) : enLaEmpresa('ventas.ver', trabajo)
+  const datos = await leer(async (tx) => {
     const c = await obtenerComprobante(tx, id)
     if (!c) return null
     const codigos = [c.receptorCondicionIva, empresa?.condicionIva].filter((x): x is number => x != null)
@@ -43,11 +48,12 @@ export async function HojaFactura({ id }: { id: string }) {
           .from(condicionesPago)
           .where(inArray(condicionesPago.id, [c.condicionPagoId]))
       : []
-    return { c, ivas: new Map(ivas.map((i) => [i.codigo, i.nombre])), condicion }
+    const [arca] = await tx.select({ cbu: arcaConfiguracion.cbuInformada }).from(arcaConfiguracion)
+    return { c, ivas: new Map(ivas.map((i) => [i.codigo, i.nombre])), condicion, cbu: arca?.cbu ?? null }
   })
   // Solo se imprimen los emitidos por el ERP: los migrados están en PYMEXIS y los internos no son fiscales.
   if (!datos || !empresa || datos.c.estado !== 'autorizado' || !datos.c.numero || datos.c.origen !== 'erp') notFound()
-  const { c, ivas, condicion } = datos
+  const { c, ivas, condicion, cbu } = datos
   const { letra, clase, fce } = datosTipo(c.tipo)
   const discrimina = letra === 'A'
   const simbolo = SIMBOLO[c.moneda] ?? c.moneda
@@ -106,6 +112,12 @@ export async function HojaFactura({ id }: { id: string }) {
           </div>
           <div className="flex flex-col gap-0.5 p-3">
             <p className="text-base font-bold">{fce ? `${TITULO[clase]} DE CRÉDITO ELECTRÓNICA MiPyME` : TITULO[clase]}</p>
+            {c.leyenda && (
+              <p className="border border-texto px-1.5 py-0.5 text-[11px] font-bold">
+                {c.leyenda}
+                {c.leyenda === LEYENDA_CBU_INFORMADA && cbu ? ` · CBU ${cbu}` : ''}
+              </p>
+            )}
             <p className="cifras">
               <b className="font-sans">Punto de venta:</b> {String(c.puntoVenta).padStart(5, '0')}{' '}
               <b className="ml-2 font-sans">Comp. Nro:</b> {String(c.numero).padStart(8, '0')}

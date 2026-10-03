@@ -3,6 +3,7 @@ import * as z from 'zod'
 
 import type { Transaccion } from '../../db/conexion'
 import {
+  gruposClientes,
   condicionesIva,
   condicionesPago,
   listasPrecios,
@@ -17,6 +18,8 @@ import {
 import { auditar } from '../../lib/auditoria'
 import { normalizarNumero } from '../../lib/dinero'
 import { soloDigitos, validarCuit } from '../../lib/cuit'
+import { gruposDeQuienConsulta } from './grupos'
+import { mensajeDeBase } from '../../lib/errores'
 
 /**
  * Clientes y proveedores ("terceros"). Toda función recibe la transacción de
@@ -75,7 +78,7 @@ export async function obtenerTercero(tx: Transaccion, id: string) {
 
 /** Opciones para los desplegables del formulario. */
 export async function opcionesTercero(tx: Transaccion) {
-  const [ivas, documentos, provs, listas, vends, condiciones, zns, transps, regs] = await Promise.all([
+  const [ivas, documentos, provs, listas, vends, condiciones, zns, transps, regs, grupos, propios] = await Promise.all([
     tx.select().from(condicionesIva).orderBy(asc(condicionesIva.codigo)),
     tx.select().from(tiposDocumento).orderBy(asc(tiposDocumento.codigo)),
     tx.select().from(provincias).orderBy(asc(provincias.nombre)),
@@ -105,6 +108,8 @@ export async function opcionesTercero(tx: Transaccion) {
       .from(regimenesGanancias)
       .where(eq(regimenesGanancias.activo, true))
       .orderBy(asc(regimenesGanancias.codigo)),
+    tx.select({ id: gruposClientes.id, nombre: gruposClientes.nombre }).from(gruposClientes).orderBy(asc(gruposClientes.nombre)),
+    gruposDeQuienConsulta(tx),
   ])
   return {
     ivas,
@@ -116,6 +121,8 @@ export async function opcionesTercero(tx: Transaccion) {
     zonas: zns,
     transportes: transps,
     regimenes: regs,
+    // Quien solo ve algunos grupos elige entre los suyos.
+    grupos: propios.length ? propios : grupos,
   }
 }
 
@@ -170,6 +177,7 @@ export const EsquemaTercero = z
     condicionPagoId: uuidOpcional,
     zonaId: uuidOpcional,
     transporteId: uuidOpcional,
+    grupoClienteId: uuidOpcional,
     descuento: numeroOpcional,
     limiteCredito: numeroOpcional,
     percepcionIibb: numeroOpcional,
@@ -224,7 +232,7 @@ export type ResultadoGuardar =
 
 export async function guardarTercero(
   tx: Transaccion,
-  usuarioId: string,
+  usuarioId: string | null,
   entrada: unknown,
   id?: string,
 ): Promise<ResultadoGuardar> {
@@ -238,6 +246,11 @@ export async function guardarTercero(
     return { ok: false, errores }
   }
   const datos = { ...parseo.data, codigo: parseo.data.codigo ?? (id ? undefined : await proximoCodigo(tx)) }
+  // Quien solo ve algunos grupos no puede dejar un cliente fuera de ellos: va al primero.
+  if (datos.esCliente && !datos.esProveedor && !datos.grupoClienteId) {
+    const [g] = await gruposDeQuienConsulta(tx)
+    if (g) datos.grupoClienteId = g.id
+  }
 
   // Mismo documento en otro tercero de la empresa: casi seguro es un duplicado.
   if (datos.numeroDocumento) {
@@ -254,28 +267,31 @@ export async function guardarTercero(
   }
 
   try {
-    if (id) {
-      const anterior = await obtenerTercero(tx, id)
-      if (!anterior) return { ok: false, errores: {}, mensaje: 'Ese cliente o proveedor ya no existe.' }
-      const [actualizado] = await tx.update(terceros).set(datos).where(eq(terceros.id, id)).returning()
-      await auditar(tx, {
-        usuarioId,
-        accion: 'modificacion',
-        entidad: 'tercero',
-        entidadId: id,
-        antes: anterior,
-        despues: actualizado,
-      })
-      return { ok: true, id }
-    }
-    const [nuevo] = await tx
-      .insert(terceros)
-      .values({ ...datos, codigo: datos.codigo! })
-      .returning()
-    await auditar(tx, { usuarioId, accion: 'alta', entidad: 'tercero', entidadId: nuevo.id, despues: nuevo })
-    return { ok: true, id: nuevo.id }
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      if (id) {
+        const anterior = await obtenerTercero(tx, id)
+        if (!anterior) return { ok: false, errores: {}, mensaje: 'Ese cliente o proveedor ya no existe.' }
+        const [actualizado] = await tx.update(terceros).set(datos).where(eq(terceros.id, id)).returning()
+        await auditar(tx, {
+          usuarioId,
+          accion: 'modificacion',
+          entidad: 'tercero',
+          entidadId: id,
+          antes: anterior,
+          despues: actualizado,
+        })
+        return { ok: true, id }
+      }
+      const [nuevo] = await tx
+        .insert(terceros)
+        .values({ ...datos, codigo: datos.codigo! })
+        .returning()
+      await auditar(tx, { usuarioId, accion: 'alta', entidad: 'tercero', entidadId: nuevo.id, despues: nuevo })
+      return { ok: true, id: nuevo.id }
+    })
   } catch (e) {
-    const mensaje = (e as { cause?: { message?: string } }).cause?.message ?? ''
+    const mensaje = mensajeDeBase(e)
     if (mensaje.includes('terceros_empresa_id_codigo')) {
       return { ok: false, errores: { codigo: 'Ese código ya lo tiene otro cliente o proveedor.' } }
     }

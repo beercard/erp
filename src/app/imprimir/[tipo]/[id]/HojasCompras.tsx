@@ -137,9 +137,9 @@ export async function HojaPago({ id }: { id: string }) {
           ))}
           {p.retenciones.map((r) => (
             <tr key={r.id} className="border-b border-borde">
-              <td className="px-2 py-1">Retención de Ganancias</td>
+              <td className="px-2 py-1">{r.impuesto === 'iibb' ? 'Retención de IIBB' : 'Retención de Ganancias'}</td>
               <td className="cifras px-2 py-1">
-                Régimen {r.regimen} · certificado {String(r.numero).padStart(6, '0')}
+                {r.impuesto === 'iibb' ? 'Provincia' : 'Régimen'} {r.regimen} · certificado {String(r.numero).padStart(6, '0')}
               </td>
               <td className="cifras px-2 py-1 text-right">{formatearMonto(r.importe, '$')}</td>
             </tr>
@@ -159,7 +159,7 @@ export async function HojaPago({ id }: { id: string }) {
   )
 }
 
-/** Certificado de retención de Ganancias (RG 2233, Anexo V: datos que exige SICORE). */
+/** Certificado de retención de Ganancias (RG 2233, Anexo V: datos que exige SICORE) o de Ingresos Brutos. */
 export async function HojaRetencion({ id }: { id: string }) {
   const sesion = await requerirEmpresa()
   const empresa = await datosEmpresa(sesion.empresa.id)
@@ -175,6 +175,7 @@ export async function HojaRetencion({ id }: { id: string }) {
   if (!datos || !empresa) notFound()
   const { r, p } = datos
   const numero = String(r.numero).padStart(6, '0')
+  const iibb = r.impuesto === 'iibb'
   const pagado = p.imputaciones.reduce((s, i) => s + Number(i.importeOrigen), 0) + Number(p.aCuenta)
   return (
     <Marco titulo={`Certificado de retención ${numero}`} barra={`Certificado de retención ${numero} · A4`}>
@@ -184,7 +185,7 @@ export async function HojaRetencion({ id }: { id: string }) {
         derecha={
           <>
             <p>Fecha: {fechaCorta(p.fecha)}</p>
-            <p>Impuesto a las Ganancias (217)</p>
+            <p>{iibb ? `Ingresos Brutos (${r.regimen})` : 'Impuesto a las Ganancias (217)'}</p>
           </>
         }
       />
@@ -206,7 +207,9 @@ export async function HojaRetencion({ id }: { id: string }) {
       <table className="w-full">
         <tbody>
           {[
-            ['Régimen', `${r.regimen}${p.regimen ? ` · ${p.regimen.concepto}` : ''} (RG 830)`],
+            iibb
+              ? ['Jurisdicción', `${r.regimen} (Ingresos Brutos)`]
+              : ['Régimen', `${r.regimen}${p.regimen ? ` · ${p.regimen.concepto}` : ''} (RG 830)`],
             [
               'Comprobante que origina la retención',
               `Orden de pago N° ${String(p.numero).padStart(6, '0')} del ${fechaCorta(p.fecha)}`,
@@ -217,7 +220,10 @@ export async function HojaRetencion({ id }: { id: string }) {
                 'Pago a cuenta',
             ],
             ['Monto del pago', formatearMonto(pagado.toFixed(2), SIMBOLO[p.moneda] ?? p.moneda)],
-            ['Base sujeta a retención (acumulado del mes, menos el mínimo no sujeto)', formatearMonto(r.base, '$')],
+            [
+              iibb ? 'Base sujeta a retención' : 'Base sujeta a retención (acumulado del mes, menos el mínimo no sujeto)',
+              formatearMonto(r.base, '$'),
+            ],
             ['Alícuota', r.alicuota ? `${Number(r.alicuota).toLocaleString('es-AR')} %` : 'Según escala'],
           ].map(([k, v]) => (
             <tr key={k} className="border-b border-borde">

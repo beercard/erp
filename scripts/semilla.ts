@@ -60,7 +60,7 @@ const [empresa] = await base
 // La demo tiene todo: plan Empresa con la aplicación de contratos.
 await base
   .insert(t.suscripciones)
-  .values({ empresaId: empresa.id, plan: 'empresa', estado: 'activa', aplicaciones: ['contratos'] })
+  .values({ empresaId: empresa.id, plan: 'empresa', estado: 'activa', aplicaciones: ['contratos', 'tienda'] })
 
 const email = process.env.SEMILLA_EMAIL ?? 'admin@demo.local'
 const clave = process.env.SEMILLA_CLAVE ?? `${randomBytes(9).toString('base64url')}-${randomBytes(2).readUInt16BE()}`

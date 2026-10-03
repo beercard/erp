@@ -12,6 +12,7 @@ import { cifrar, revisarCertificado } from '@/modulos/arca/certificado'
 import { clienteArca, probarServidores } from '@/modulos/arca/cliente'
 import { eliminarBorrador, emitirComprobante, guardarComprobante, verificarComprobante } from '@/modulos/facturacion/comprobantes'
 import { anularRecibo, emitirRecibo, pendientes, ReciboInvalido } from '@/modulos/facturacion/cuentas'
+import { REGIMENES_CLASE_A } from '@/modulos/facturacion/tipos'
 
 /** Ejecuta y convierte "sin permiso" en un mensaje para el usuario. */
 async function intentar<T>(trabajo: () => Promise<T>): Promise<T | { ok: false; error: string }> {
@@ -149,6 +150,26 @@ export async function cambiarAmbienteAccion(ambiente: 'homologacion' | 'producci
     await auditar(tx, { usuarioId: s.usuario.id, accion: 'modificacion', entidad: 'arca_ambiente', despues: { ambiente } })
   })
   revalidatePath('/configuracion/arca')
+}
+
+/** RG 5762/2025: cómo emite la empresa sus comprobantes A (lo informa ARCA) y la CBU informada. */
+export async function guardarRegimenAccion(_: EstadoFormulario, formData: FormData): Promise<EstadoFormulario> {
+  const regimen = String(formData.get('regimen') ?? 'comun')
+  const cbu = String(formData.get('cbu') ?? '').replace(/\D/g, '')
+  if (!(regimen in REGIMENES_CLASE_A)) return { error: 'Elegí el régimen.' }
+  if (regimen !== 'comun' && cbu.length !== 22) return { error: 'Con leyenda, cargá la CBU donde se cobra (22 dígitos).' }
+  if (cbu && cbu.length !== 22) return { error: 'La CBU tiene 22 dígitos.' }
+  const r = await intentar(() =>
+    enLaEmpresa('empresa.datos', async (tx, s) => {
+      const valores = { regimenClaseA: regimen, cbuInformada: cbu || null }
+      await tx.insert(arcaConfiguracion).values(valores).onConflictDoUpdate({ target: arcaConfiguracion.empresaId, set: valores })
+      await auditar(tx, { usuarioId: s.usuario.id, accion: 'modificacion', entidad: 'arca_regimen_clase_a', despues: valores })
+      return { ok: true as const }
+    }),
+  )
+  if (!r.ok) return { error: r.error }
+  revalidatePath('/configuracion/arca')
+  return { ok: 'Guardado. Se aplica a las facturas A nuevas; las notas siguen a su factura.' }
 }
 
 /** Prueba completa: servidores de ARCA y, con certificado, el ticket de acceso. */

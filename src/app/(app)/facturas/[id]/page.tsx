@@ -1,12 +1,16 @@
-import { ChevronLeft, FileMinus, FilePlus, Pencil, Printer, Send, Trash2, Wallet } from 'lucide-react'
+import { ChevronLeft, FileMinus, FilePlus, Pencil, Printer, Send, Trash2, Link2, MessageCircle, Wallet } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import QRCode from 'qrcode'
 
+import { arcaSimulado } from '@/modulos/arca/cliente'
 import { ChipEstado, VistaDocumento } from '@/components/comercial/VistaDocumento'
 import { Aviso, Boton, BotonEnlace, EncabezadoPagina, Panel } from '@/components/ui'
-import { arcaConfiguracion } from '@/db/schema'
+
+import { linkDeFacturaAccion } from '../../cobros-online/acciones'
+import { mandarFacturaAccion } from '../../whatsapp/acciones'
+import { arcaConfiguracion, whatsappCuentas } from '@/db/schema'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
 import { formatearMonto } from '@/lib/dinero'
@@ -26,7 +30,7 @@ type Mensaje = { codigo: string; mensaje: string } | string
 
 export default async function Comprobante({ params, searchParams }: PageProps<'/facturas/[id]'>) {
   const { id } = await params
-  const { guardado, emitido, error, avisos } = await searchParams
+  const { guardado, emitido, error, avisos, whatsapp } = await searchParams
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const sesion = await requerirEmpresa()
   const datos = await enLaEmpresa('ventas.ver', async (tx) => {
@@ -34,10 +38,12 @@ export default async function Comprobante({ params, searchParams }: PageProps<'/
     if (!c) return null
     const [config] = await tx.select({ ambiente: arcaConfiguracion.ambiente }).from(arcaConfiguracion)
     const [deuda] = c.estado === 'autorizado' && c.clase !== 'nota_credito' ? await pendientes(tx, { ids: [id] }) : []
-    return { c, ambiente: config?.ambiente ?? null, deuda }
+    const [wa] = await tx.select({ activa: whatsappCuentas.activa }).from(whatsappCuentas)
+    return { c, ambiente: config?.ambiente ?? (arcaSimulado() ? 'homologacion' : null), deuda, conWhatsapp: Boolean(wa?.activa) }
   })
   if (!datos) notFound()
   const { c, ambiente, deuda } = datos
+  const conWhatsapp = datos.conWhatsapp && tienePermiso(sesion.permisos, 'whatsapp.atender')
   const simbolo = SIMBOLO[c.moneda] ?? c.moneda
   const puedeFacturar = tienePermiso(sesion.permisos, 'ventas.facturar')
   const numero = c.numero ? formatearNumero(c.puntoVenta, c.numero) : null
@@ -89,6 +95,13 @@ export default async function Comprobante({ params, searchParams }: PageProps<'/
                 <Printer aria-hidden className="size-4" /> Imprimir
               </BotonEnlace>
             )}
+            {c.estado === 'autorizado' && c.origen === 'erp' && conWhatsapp && (
+              <form action={mandarFacturaAccion.bind(null, c.id)}>
+                <Boton type="submit">
+                  <MessageCircle aria-hidden className="size-4" /> WhatsApp
+                </Boton>
+              </form>
+            )}
             {puedeFacturar && c.estado === 'borrador' && (
               <BotonEnlace href={`/facturas/${c.id}/editar`}>
                 <Pencil aria-hidden className="size-4" /> Modificar
@@ -121,6 +134,7 @@ export default async function Comprobante({ params, searchParams }: PageProps<'/
         )}
         {typeof avisos === 'string' && <Aviso tono="aviso">Observaciones de ARCA: {avisos}</Aviso>}
         {typeof error === 'string' && <Aviso>{error}</Aviso>}
+        {whatsapp && <Aviso tono="ok">Enviada por WhatsApp. La conversación queda en WhatsApp.</Aviso>}
         {!ambiente && c.estado === 'borrador' && (
           <Aviso tono="aviso">
             Para autorizar comprobantes falta cargar el certificado de ARCA en{' '}
@@ -220,9 +234,16 @@ export default async function Comprobante({ params, searchParams }: PageProps<'/
                 Saldo pendiente: <span className="cifras font-medium">{formatearMonto(deuda.saldo, '$')}</span>
               </p>
               {Number(deuda.saldo) > 0 && tienePermiso(sesion.permisos, 'ventas.cobrar') && (
-                <BotonEnlace href={`/cobranzas/nueva?cliente=${c.terceroId}`} className="justify-center">
-                  <Wallet aria-hidden className="size-4" /> Cobrar
-                </BotonEnlace>
+                <>
+                  <BotonEnlace href={`/cobranzas/nueva?cliente=${c.terceroId}`} className="justify-center">
+                    <Wallet aria-hidden className="size-4" /> Cobrar
+                  </BotonEnlace>
+                  <form action={linkDeFacturaAccion.bind(null, c.terceroId, c.id)}>
+                    <Boton type="submit" variante="fantasma" className="w-full justify-center">
+                      <Link2 aria-hidden className="size-4" /> Link de pago
+                    </Boton>
+                  </form>
+                </>
               )}
             </Panel>
           )}

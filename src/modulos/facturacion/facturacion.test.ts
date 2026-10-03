@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
-import { comprobantes, empresas, percepcionesIibb, puntosVenta, terceros } from '../../db/schema'
+import { arcaConfiguracion, comprobantes, empresas, percepcionesIibb, puntosVenta, terceros } from '../../db/schema'
 import type { ClienteArca } from '../arca/cliente'
 import { ErrorIncierto } from '../arca/soap'
 import type { SolicitudCae } from '../arca/wsfe'
@@ -16,7 +16,7 @@ import {
   verificarComprobante,
 } from './comprobantes'
 import { anularRecibo, cuentaCorriente, emitirRecibo, imputar, ReciboInvalido } from './cuentas'
-import { codigoComprobante, datosTipo, documentoReceptor, letraPara, urlQr } from './tipos'
+import { codigoComprobante, datosTipo, documentoReceptor, letraPara, nombreComprobante, urlQr } from './tipos'
 
 const U = '00000000-0000-4000-8000-000000000001'
 const HOY = '2026-10-01'
@@ -132,7 +132,7 @@ describe('tipos de comprobante', () => {
       codigoComprobante('B', 'nota_credito'),
       codigoComprobante('A', 'factura', true),
     ]).toEqual([1, 8, 201])
-    expect(datosTipo(203)).toEqual({ letra: 'A', clase: 'nota_credito', fce: true })
+    expect(datosTipo(203)).toEqual({ letra: 'A', clase: 'nota_credito', fce: true, sujetaRetencion: false })
     expect(documentoReceptor(96, '30.123.456')).toEqual({ docTipo: 96, docNumero: '30123456' })
     expect(documentoReceptor(null, null)).toEqual({ docTipo: 99, docNumero: '0' })
   })
@@ -388,5 +388,54 @@ describe('cuenta corriente, notas de crédito y cobranzas', () => {
     await en((tx) => anularRecibo(tx, U, (primero as { id: string }).id))
     const cc = await en((tx) => cuentaCorriente(tx, inscripto))
     expect(cc.pendientes.find((p) => p.id === fa)?.saldo).toBe('1867.50')
+  })
+})
+
+describe('RG 5762/2025: comprobantes A con leyenda', () => {
+  const regimen = (regimenClaseA: string, cbuInformada: string | null) =>
+    en((tx) =>
+      tx
+        .insert(arcaConfiguracion)
+        .values({ regimenClaseA, cbuInformada })
+        .onConflictDoUpdate({ target: arcaConfiguracion.empresaId, set: { regimenClaseA, cbuInformada } }),
+    )
+
+  it('los códigos 51 a 53 son A sujetas a retención (ya no M)', () => {
+    expect(codigoComprobante('A', 'factura', false, true)).toBe(51)
+    expect(codigoComprobante('B', 'factura', false, true)).toBe(6)
+    expect(datosTipo(53)).toEqual({ letra: 'A', clase: 'nota_credito', fce: false, sujetaRetencion: true })
+    expect(nombreComprobante(51)).toBe('Factura A')
+  })
+
+  it('sujeta a retención: la factura sale con código 51 y su leyenda, y la nota de crédito la sigue con 53', async () => {
+    await regimen('sujeta_retencion', null)
+    const sinCbu = await en((tx) => guardarComprobante(tx, U, factura(inscripto)))
+    expect(sinCbu).toMatchObject({ ok: false, error: expect.stringContaining('CBU informada') })
+    await regimen('sujeta_retencion', '0110599520000001234567')
+    const id = await guardar(factura(inscripto))
+    const [c] = await en((tx) => tx.select().from(comprobantes).where(eq(comprobantes.id, id)))
+    expect(c).toMatchObject({ tipo: 51, letra: 'A', leyenda: 'OPERACIÓN SUJETA A RETENCIÓN' })
+    expect((await emitirComprobante(empresa, U, id, crear, HOY)).ok).toBe(true)
+    // Aunque la empresa vuelva a la A común, la nota sigue a su factura.
+    await regimen('comun', null)
+    const nc = await guardar(factura(inscripto, { clase: 'nota_credito', asociadoId: id }))
+    const [n] = await en((tx) => tx.select().from(comprobantes).where(eq(comprobantes.id, nc)))
+    expect(n).toMatchObject({ tipo: 53, leyenda: 'OPERACIÓN SUJETA A RETENCIÓN' })
+  })
+
+  it('pago en CBU informada: A común (código 1) con su leyenda; a consumidor final, B sin leyenda', async () => {
+    await regimen('cbu_informada', '0110599520000001234567')
+    const a = await guardar(factura(inscripto))
+    const b = await guardar(factura(consumidor))
+    const filas = await en((tx) =>
+      tx
+        .select()
+        .from(comprobantes)
+        .where(sql`${comprobantes.id} in (${a}, ${b})`),
+    )
+    const porId = new Map(filas.map((f) => [f.id, f]))
+    expect(porId.get(a)).toMatchObject({ tipo: 1, leyenda: 'PAGO EN CBU INFORMADA' })
+    expect(porId.get(b)).toMatchObject({ tipo: 6, leyenda: null })
+    await regimen('comun', null)
   })
 })

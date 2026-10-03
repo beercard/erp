@@ -16,13 +16,22 @@ export type Movimiento = {
   depositoId: string
   /** Positiva entra, negativa sale. */
   cantidad: string
-  tipo: 'inicial' | 'ajuste' | 'transferencia' | 'remito' | 'anulacion_remito' | 'compra' | 'anulacion_compra'
+  tipo:
+    | 'inicial'
+    | 'ajuste'
+    | 'transferencia'
+    | 'remito'
+    | 'anulacion_remito'
+    | 'compra'
+    | 'anulacion_compra'
+    | 'servicio'
+    | 'anulacion_servicio'
   origenId?: string | null
   observacion?: string | null
   fecha?: Date
 }
 
-export async function registrarMovimientos(tx: Transaccion, usuarioId: string, movimientos: Movimiento[]) {
+export async function registrarMovimientos(tx: Transaccion, usuarioId: string | null, movimientos: Movimiento[]) {
   if (!movimientos.length) return
   await tx.insert(movimientosStock).values(movimientos.map((m) => ({ ...m, usuarioId })))
 }

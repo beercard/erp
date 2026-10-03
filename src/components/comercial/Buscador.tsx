@@ -67,7 +67,7 @@ export function Buscador<T>({
       <label htmlFor={id} className="sr-only">
         {etiqueta}
       </label>
-      <div className="flex h-9 items-center gap-2 rounded-md border border-borde bg-superficie px-2.5 focus-within:border-acento">
+      <div className="flex h-9 items-center gap-2 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2.5 focus-within:border-acento focus-within:ring-3 focus-within:ring-anillo">
         <Search aria-hidden className="size-4 shrink-0 text-texto-3" />
         <input
           id={id}
@@ -105,7 +105,7 @@ export function Buscador<T>({
         <ul
           id={`${id}-lista`}
           role="listbox"
-          className="absolute inset-x-0 top-10 z-30 max-h-80 overflow-y-auto rounded-md border border-borde bg-superficie py-1 shadow-panel"
+          className="absolute inset-x-0 top-10 z-30 max-h-80 overflow-y-auto rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave py-1 shadow-panel"
         >
           {visibles.map((item, i) => (
             <li

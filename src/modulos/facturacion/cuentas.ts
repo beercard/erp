@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
+import { controlarBloqueo } from '../empresa/bloqueos'
+import { turnoDelRecibo } from '../tesoreria/cierres'
 import type { Transaccion } from '../../db/conexion'
 import { comprobantes, imputaciones, recibos, recibosValores, terceros } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
@@ -87,7 +89,7 @@ async function disponible(tx: Transaccion, origen: { reciboId?: string; notaCred
  */
 export async function imputar(
   tx: Transaccion,
-  usuarioId: string,
+  usuarioId: string | null,
   origen: { reciboId?: string; notaCreditoId?: string },
   destinos: { comprobanteId: string; importe: string }[],
   fecha: string,
@@ -134,7 +136,7 @@ export async function imputar(
 /** Al autorizar una nota de crédito, se aplica sola al comprobante que corrige. */
 export async function imputarNotaCreditoAsociada(
   tx: Transaccion,
-  usuarioId: string,
+  usuarioId: string | null,
   notaCreditoId: string,
   asociadoId: string,
   fecha: string,
@@ -295,7 +297,8 @@ const EsquemaRecibo = z.object({
 
 export async function emitirRecibo(
   tx: Transaccion,
-  usuarioId: string,
+  /** Vacío: lo emite el sistema (por ejemplo, al aprobarse un pago online). */
+  usuarioId: string | null,
   entrada: unknown,
 ): Promise<{ ok: true; id: string; numero: number } | { ok: false; error: string }> {
   const p = EsquemaRecibo.safeParse(entrada)
@@ -307,10 +310,12 @@ export async function emitirRecibo(
   const d = p.data
   const [cliente] = await tx.select().from(terceros).where(eq(terceros.id, d.terceroId))
   if (!cliente) return { ok: false, error: 'Ese cliente ya no existe.' }
+  const cerrado = await controlarBloqueo(tx, 'ventas', d.fecha)
+  if (cerrado) return { ok: false, error: cerrado }
   const total = d.valores.reduce((s, v) => s.plus(v.importe), new D(0))
   const cuentas: (string | null)[] = []
   for (const v of d.valores) {
-    const c = await resolverCuenta(tx, v, { moneda: 'PES', medios: MEDIOS_COBRO_CON_CUENTA })
+    const c = await resolverCuenta(tx, v, { moneda: 'PES', medios: MEDIOS_COBRO_CON_CUENTA, sinTurno: !usuarioId })
     if (!c.ok) return c
     cuentas.push(c.cuentaId)
   }
@@ -325,6 +330,7 @@ export async function emitirRecibo(
       total: aImporte(total),
       observaciones: d.observaciones,
       usuarioId,
+      turnoId: await turnoDelRecibo(tx, cuentas, usuarioId),
     })
     .returning()
   await tx
@@ -344,6 +350,8 @@ export async function anularRecibo(tx: Transaccion, usuarioId: string, id: strin
   const [r] = await tx.select().from(recibos).where(eq(recibos.id, id)).for('update')
   if (!r) return { ok: false as const, error: 'Ese recibo ya no existe.' }
   if (r.estado === 'anulado') return { ok: false as const, error: 'El recibo ya está anulado.' }
+  const cerrado = await controlarBloqueo(tx, 'ventas', r.fecha)
+  if (cerrado) return { ok: false as const, error: cerrado }
   await tx.update(recibos).set({ estado: 'anulado', anulado: new Date(), anuladoPor: usuarioId }).where(eq(recibos.id, id))
   await auditar(tx, { usuarioId, accion: 'anulacion', entidad: 'recibo', entidadId: id, antes: { estado: r.estado } })
   return { ok: true as const }

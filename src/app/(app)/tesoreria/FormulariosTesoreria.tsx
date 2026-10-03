@@ -244,7 +244,7 @@ export function FormularioMovimiento({
             role="radio"
             aria-checked={operacion === k}
             onClick={() => setOperacion(k)}
-            className={`rounded-full border px-3 py-1 text-xs ${
+            className={`inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-medium transition-colors ${
               operacion === k ? 'border-acento bg-acento-suave text-acento' : 'border-borde text-texto-2 hover:bg-superficie-2'
             }`}
           >

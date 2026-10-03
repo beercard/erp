@@ -5,6 +5,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   smallint,
   text,
   unique,
@@ -221,6 +222,13 @@ export const articulos = pgTable(
       .default('PES')
       .references(() => monedas.codigo),
     stockMinimo: cantidad('stock_minimo'),
+    /** Cuánto pedir al reponer; sin dato, se repone hasta el doble del mínimo. */
+    loteReposicion: cantidad('lote_reposicion'),
+    /** Proveedor habitual; sin dato, el de la última compra. */
+    proveedorId: uuid('proveedor_id'),
+    /** COT (ARBA): código del nomenclador de productos y de la unidad de medida de la tabla de ARBA. */
+    codigoCot: text('codigo_cot'),
+    unidadCot: smallint('unidad_cot'),
     activo: boolean('activo').notNull().default(true),
     ...marcasDeTiempo(),
   },
@@ -254,6 +262,38 @@ export const precios = pgTable(
     uniqueIndex().on(t.empresaId, t.listaId, t.articuloId, t.vigenteDesde),
     deLaEmpresa('precios_lista_fk', t.empresaId, t.listaId, listasPrecios),
     deLaEmpresa('precios_articulo_fk', t.empresaId, t.articuloId, articulos),
+  ],
+)
+
+/**
+ * Grupos de clientes: un usuario con grupos asignados solo ve los clientes
+ * de esos grupos (y sus órdenes, equipos y formularios). Sin grupos ve todo.
+ * Lo hace cumplir Postgres (drizzle/0048_grupos_clientes_seguridad.sql).
+ */
+export const gruposClientes = pgTable(
+  'grupos_clientes',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    nombre: text('nombre').notNull(),
+    ...marcasDeTiempo(),
+  },
+  (t) => [uniqueIndex().on(t.empresaId, t.nombre), unique('grupos_clientes_empresa_id').on(t.empresaId, t.id)],
+)
+
+export const usuariosGruposClientes = pgTable(
+  'usuarios_grupos_clientes',
+  {
+    empresaId: empresaId(),
+    usuarioId: uuid('usuario_id')
+      .notNull()
+      .references(() => usuarios.id),
+    grupoId: uuid('grupo_id').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.usuarioId, t.grupoId] }),
+    index().on(t.empresaId, t.usuarioId),
+    deLaEmpresa('usuarios_grupos_clientes_grupo_fk', t.empresaId, t.grupoId, gruposClientes).onDelete('cascade'),
   ],
 )
 
@@ -301,6 +341,8 @@ export const terceros = pgTable(
     /** Inscripto en Ganancias (si no, se le retiene con la alícuota de no inscriptos). */
     gananciasInscripto: boolean('ganancias_inscripto').notNull().default(true),
     notas: text('notas'),
+    /** Grupo de clientes (visibilidad por usuario). */
+    grupoClienteId: uuid('grupo_cliente_id'),
     activo: boolean('activo').notNull().default(true),
     ...marcasDeTiempo(),
   },
@@ -314,6 +356,7 @@ export const terceros = pgTable(
     deLaEmpresa('terceros_condicion_pago_fk', t.empresaId, t.condicionPagoId, condicionesPago),
     deLaEmpresa('terceros_zona_fk', t.empresaId, t.zonaId, zonas),
     deLaEmpresa('terceros_transporte_fk', t.empresaId, t.transporteId, transportes),
+    deLaEmpresa('terceros_grupo_cliente_fk', t.empresaId, t.grupoClienteId, gruposClientes),
   ],
 )
 

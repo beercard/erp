@@ -40,7 +40,7 @@ export default async function Pagos({ searchParams }: PageProps<'/pagos'>) {
           name="q"
           defaultValue={texto}
           placeholder="Proveedor o número, y Enter"
-          className="h-9 w-full rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+          className="h-9 w-full rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
         />
       </form>
       <Panel className="overflow-x-auto">

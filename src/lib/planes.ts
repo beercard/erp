@@ -22,21 +22,31 @@ export const FUNCIONES: Record<Funcion, { nombre: string; detalle: string }> = {
     nombre: 'Facturación electrónica',
     detalle: 'Facturas, notas de crédito y débito con CAE de ARCA, cobranzas y cuentas corrientes.',
   },
-  comercial: { nombre: 'Ventas', detalle: 'Presupuestos, pedidos y remitos con entregas parciales.' },
+  comercial: {
+    nombre: 'Ventas y CRM',
+    detalle: 'Embudo de oportunidades, presupuestos, pedidos y remitos con entregas parciales.',
+  },
   stock: { nombre: 'Stock', detalle: 'Depósitos, ajustes, transferencias y movimientos.' },
   compras: {
     nombre: 'Compras y pagos',
     detalle: 'Comprobantes desde Mis Comprobantes de ARCA, órdenes de compra y de pago, retenciones de Ganancias.',
   },
   tesoreria: { nombre: 'Tesorería', detalle: 'Cajas, bancos, cheques y ECHEQ, arqueos y conciliación bancaria.' },
-  informes: { nombre: 'Informes e impuestos', detalle: 'Informes de gestión, libros de IVA y presentaciones.' },
+  informes: {
+    nombre: 'Informes, impuestos y contabilidad',
+    detalle: 'Informes de gestión, libros de IVA y presentaciones, y contabilidad con asientos automáticos.',
+  },
   roles: { nombre: 'Roles a medida', detalle: 'Permisos definidos por la empresa, además de los roles de sistema.' },
   api: { nombre: 'API e integraciones', detalle: 'Acceso por API para conectar una tienda u otros sistemas.' },
   contratos: {
     nombre: 'Contratos y parque instalado',
-    detalle: 'Equipos en clientes, lecturas de contadores y facturación mensual por copias o abonos.',
+    detalle: 'Equipos en clientes, lecturas de contadores, facturación mensual por copias o abonos y servicio técnico.',
   },
-  tienda: { nombre: 'Tienda online y MercadoLibre', detalle: 'Stock y precios publicados; los pedidos entran solos.' },
+  tienda: {
+    nombre: 'Tiendas online y Mercado Libre',
+    detalle:
+      'Mercado Libre, Tienda Nube, WooCommerce, Shopify, Magento y PrestaShop conectados: stock y precios al día y los pedidos entran solos.',
+  },
 }
 
 export type PlanId = 'gratis' | 'inicial' | 'pyme' | 'empresa'
@@ -125,7 +135,7 @@ export type Aplicacion = {
 
 export const APLICACIONES: Aplicacion[] = [
   { id: 'contratos', precioMensual: 59_900, desde: 'pyme', disponible: true },
-  { id: 'tienda', precioMensual: 39_900, desde: 'inicial', disponible: false },
+  { id: 'tienda', precioMensual: 39_900, desde: 'inicial', disponible: true },
 ]
 
 /** Cada usuario por encima de los del plan. */
@@ -155,9 +165,12 @@ const FUNCION_DE_PERMISO: Record<string, Funcion> = {
   'ventas.facturar': 'facturacion',
   'ventas.anular': 'facturacion',
   'ventas.cobrar': 'facturacion',
+  'ventas.pasarelas': 'facturacion',
+  'ventas.supervisar_caja': 'facturacion',
   'ventas.presupuestos': 'comercial',
   'ventas.pedidos': 'comercial',
   'ventas.remitos': 'comercial',
+  'empresa.integraciones': 'api',
 }
 const FUNCION_DE_MODULO: Record<string, Funcion> = {
   stock: 'stock',
@@ -165,7 +178,12 @@ const FUNCION_DE_MODULO: Record<string, Funcion> = {
   tesoreria: 'tesoreria',
   informes: 'informes',
   impuestos: 'informes',
+  contabilidad: 'informes',
   contratos: 'contratos',
+  servicio: 'contratos',
+  tienda: 'tienda',
+  crm: 'comercial',
+  whatsapp: 'comercial',
 }
 
 export function funcionDePermiso(permiso: string): Funcion | null {

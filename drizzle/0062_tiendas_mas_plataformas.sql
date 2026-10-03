@@ -1,0 +1,2 @@
+ALTER TABLE "canales_venta" DROP CONSTRAINT "canales_venta_tipo";--> statement-breakpoint
+ALTER TABLE "canales_venta" ADD CONSTRAINT "canales_venta_tipo" CHECK ("canales_venta"."tipo" in ('mercadolibre', 'tiendanube', 'woocommerce', 'shopify', 'magento', 'prestashop'));

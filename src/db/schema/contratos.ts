@@ -96,6 +96,9 @@ export const contratos = pgTable(
     estado: text('estado').notNull().default('activo'),
     /** Clave en el sistema anterior (cliente|grupo o equipo), para importar sin duplicar. */
     codigoOrigen: text('codigo_origen'),
+    /** Tiempos de servicio comprometidos en el contrato (horas); vacíos: los generales de la empresa. */
+    slaRespuestaHoras: integer('sla_respuesta_horas'),
+    slaResolucionHoras: integer('sla_resolucion_horas'),
     observaciones: text('observaciones'),
     ...marcasDeTiempo(),
   },
@@ -139,6 +142,9 @@ export const equipos = pgTable(
     horario: text('horario'),
     ip: text('ip'),
     tecnico: text('tecnico'),
+    /** Ubicación en el mapa (geocodificada del domicilio o marcada a mano). */
+    lat: numeric('lat', { precision: 9, scale: 6 }),
+    lng: numeric('lng', { precision: 9, scale: 6 }),
     /** Contador al instalarlo (desde ahí se cuentan las copias). */
     contadorInicial: bigint('contador_inicial', { mode: 'number' }).notNull().default(0),
     observaciones: text('observaciones'),
@@ -174,14 +180,14 @@ export const lecturas = pgTable(
     contador: bigint('contador', { mode: 'number' }).notNull(),
     /** Copias de prueba del técnico: no se le cobran al cliente. */
     creditos: integer('creditos').notNull().default(0),
-    /** manual | archivo | mps | pymexis */
+    /** manual | archivo | mps | pymexis | tecnico | portal (el cliente) | api */
     origen: text('origen').notNull().default('manual'),
     usuarioId: uuid('usuario_id'),
     creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex().on(t.empresaId, t.equipoId, t.fecha),
-    check('lecturas_origen', sql`${t.origen} in ('manual', 'archivo', 'mps', 'pymexis')`),
+    check('lecturas_origen', sql`${t.origen} in ('manual', 'archivo', 'mps', 'pymexis', 'tecnico', 'portal', 'api')`),
     check('lecturas_positivo', sql`${t.contador} >= 0 and ${t.creditos} >= 0`),
     deLaEmpresa('lecturas_equipo_fk', t.empresaId, t.equipoId, equipos).onDelete('cascade'),
   ],

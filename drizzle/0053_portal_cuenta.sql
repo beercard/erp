@@ -1,0 +1,1 @@
+ALTER TABLE "configuracion_servicio" ADD COLUMN "portal_cuenta" boolean DEFAULT false NOT NULL;

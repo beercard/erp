@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
+import { controlarBloqueo } from '../empresa/bloqueos'
 import type { Transaccion } from '../../db/conexion'
 import {
   articulos,
@@ -14,6 +15,7 @@ import {
   terceros,
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { controlarPeriodoIva } from '../impuestos/presentaciones'
 import { aImporte, D, monto, normalizarNumero } from '../../lib/dinero'
 import { calcularTotales, TASAS_IVA } from '../comercial/calculo'
 import { decimal, EsquemaItem, opcionalUuid, primerError } from '../comercial/documentos'
@@ -228,6 +230,9 @@ export async function registrarCompra(
       ),
     )
   if (repetida) return { ok: false, error: 'Ese comprobante del proveedor ya está registrado.' }
+  const cerrado =
+    (await controlarBloqueo(tx, 'compras', d.fecha)) ?? (await controlarPeriodoIva(tx, d.periodoIva ?? d.fecha.slice(0, 7)))
+  if (cerrado) return { ok: false, error: cerrado }
 
   const calculo = calcularCompra(d)
   if (!calculo.ok) return calculo
@@ -427,6 +432,8 @@ export async function anularCompra(tx: Transaccion, usuarioId: string, id: strin
   const [c] = await tx.select().from(compras).where(eq(compras.id, id)).for('update')
   if (!c) return { ok: false as const, error: 'Ese comprobante ya no existe.' }
   if (c.estado === 'anulado') return { ok: false as const, error: 'El comprobante ya está anulado.' }
+  const cerrado = (await controlarBloqueo(tx, 'compras', c.fecha)) ?? (await controlarPeriodoIva(tx, c.periodoIva))
+  if (cerrado) return { ok: false as const, error: cerrado }
   const [aplicado] = filasDe<{ n: number }>(
     await tx.execute(sql`
       select count(*)::int as n from imputaciones_compras i

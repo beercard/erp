@@ -15,6 +15,7 @@ export async function opcionesFormulario(tx: Transaccion): Promise<OpcionesFormu
     condiciones: o.condiciones.map((x) => ({ valor: x.id, texto: x.nombre })),
     zonas: o.zonas.map((x) => ({ valor: x.id, texto: x.nombre })),
     transportes: o.transportes.map((x) => ({ valor: x.id, texto: x.nombre })),
+    grupos: o.grupos.map((x) => ({ valor: x.id, texto: x.nombre })),
     regimenes: o.regimenes.map((x) => ({ valor: x.codigo, texto: `${x.codigo} · ${x.concepto}` })),
   }
 }

@@ -38,7 +38,9 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
       'ventas.remitos': 'Emitir remitos',
       'ventas.facturar': 'Emitir facturas y notas de crédito y débito',
       'ventas.anular': 'Anular comprobantes',
-      'ventas.cobrar': 'Cargar cobranzas',
+      'ventas.cobrar': 'Cargar cobranzas y mandar links de pago',
+      'ventas.pasarelas': 'Conectar Mercado Pago, Payway, GoCuotas y Clover',
+      'ventas.supervisar_caja': 'Configurar los turnos de caja y cerrar cajas con diferencias mayores a la permitida',
     },
   },
   {
@@ -78,6 +80,42 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     },
   },
   {
+    modulo: 'servicio',
+    titulo: 'Servicio técnico',
+    permisos: {
+      'servicio.ver': 'Ver las órdenes de servicio',
+      'servicio.cargar': 'Abrir, programar, revisar, cerrar y cancelar órdenes (coordinación)',
+      'servicio.trabajar': 'Completar las órdenes asignadas desde el celular (técnico)',
+      'servicio.facturar': 'Facturar las órdenes con cargo al cliente',
+      'servicio.configurar': 'Tipos de orden y sus formularios',
+    },
+  },
+  {
+    modulo: 'crm',
+    titulo: 'CRM',
+    permisos: {
+      'crm.ver': 'Ver el embudo, las oportunidades, las actividades y el pronóstico',
+      'crm.oportunidades': 'Cargar y mover oportunidades, agendar actividades y pasarlas a presupuesto',
+      'crm.configurar': 'Definir las etapas del embudo y los motivos de pérdida',
+    },
+  },
+  {
+    modulo: 'whatsapp',
+    titulo: 'WhatsApp',
+    permisos: {
+      'whatsapp.atender': 'Ver y contestar las conversaciones de WhatsApp',
+      'whatsapp.configurar': 'Conectar el número, el agente de atención y quién manda facturas',
+    },
+  },
+  {
+    modulo: 'tienda',
+    titulo: 'Tiendas online',
+    permisos: {
+      'tienda.ver': 'Ver las tiendas conectadas, sus publicaciones y los pedidos que llegaron',
+      'tienda.configurar': 'Conectar y desconectar tiendas, vincular publicaciones y sincronizar',
+    },
+  },
+  {
     modulo: 'informes',
     titulo: 'Informes e impuestos',
     permisos: {
@@ -86,12 +124,23 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     },
   },
   {
+    modulo: 'contabilidad',
+    titulo: 'Contabilidad',
+    permisos: {
+      'contabilidad.ver': 'Ver el plan de cuentas, los asientos y los libros contables',
+      'contabilidad.asientos': 'Contabilizar, cargar asientos manuales y reclasificar',
+      'contabilidad.configurar': 'Poner en marcha la contabilidad, editar el plan de cuentas y cerrar ejercicios',
+    },
+  },
+  {
     modulo: 'empresa',
     titulo: 'Empresa',
     permisos: {
       'empresa.datos': 'Modificar los datos fiscales de la empresa',
+      'empresa.bloqueos': 'Cerrar y reabrir períodos por módulo (bloqueo por fecha)',
       'empresa.usuarios': 'Administrar usuarios, invitaciones y roles',
       'empresa.suscripcion': 'Ver y cambiar el plan de la suscripción',
+      'empresa.integraciones': 'Claves de la API y webhooks',
     },
   },
 ]

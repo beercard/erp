@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { marcarAtendida } from '@/modulos/plataforma/consultas'
 import { actualizarSuscripcion, registrarPago, resolverPedido } from '@/modulos/plataforma/suscripciones'
 
 import { exigirAdmin } from './admin'
@@ -45,5 +46,11 @@ export async function registrarPagoAccion(empresaId: string, _: EstadoAdmin, for
 export async function resolverPedidoAccion(pedidoId: string, aceptar: boolean) {
   const sesion = await exigirAdmin()
   await resolverPedido(sesion.usuario.id, pedidoId, aceptar)
+  revalidatePath('/plataforma')
+}
+
+export async function atenderConsultaAccion(id: string) {
+  await exigirAdmin()
+  await marcarAtendida(id)
   revalidatePath('/plataforma')
 }

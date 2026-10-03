@@ -10,6 +10,7 @@ import {
   pendientesProveedor,
   registrarCompraAccion,
 } from '@/app/(app)/compras/acciones'
+import { LETRAS_COMPRA, NOMBRE_LETRA_COMPRA } from '@/modulos/compras/tipos'
 import { Buscador } from '@/components/comercial/Buscador'
 import { Aviso, Boton, BotonEnlace, Chip, Panel, Tecla } from '@/components/ui'
 import { D, formatearMonto, normalizarNumero } from '@/lib/dinero'
@@ -255,7 +256,7 @@ export function FormularioCompra({
         <div className="flex flex-col gap-1 md:col-span-2">
           <span className={etiqueta}>Proveedor</span>
           {proveedor ? (
-            <div className="flex h-9 items-center justify-between gap-2 rounded-md border border-borde bg-superficie-2 px-2.5">
+            <div className="flex h-9 items-center justify-between gap-2 rounded-lg border border-borde-fuerte/80 bg-superficie-2 px-2.5">
               <span className="truncate text-sm font-medium">{proveedor.razonSocial}</span>
               {!ordenId && (
                 <button type="button" onClick={() => setProveedor(null)} className="text-xs text-acento hover:underline">
@@ -330,8 +331,10 @@ export function FormularioCompra({
               <label className="flex flex-col gap-1">
                 <span className={etiqueta}>Letra</span>
                 <select value={letra} onChange={(e) => setLetra(e.target.value)} className={control}>
-                  {['A', 'B', 'C', 'M'].map((l) => (
-                    <option key={l}>{l}</option>
+                  {LETRAS_COMPRA.map((l) => (
+                    <option key={l} value={l}>
+                      {NOMBRE_LETRA_COMPRA[l]}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -432,7 +435,7 @@ export function FormularioCompra({
               role="radio"
               aria-checked={conArticulos === o.v}
               onClick={() => setConArticulos(o.v)}
-              className={`rounded-full border px-3 py-1 text-xs ${
+              className={`inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-medium transition-colors ${
                 conArticulos === o.v
                   ? 'border-acento bg-acento-suave text-acento'
                   : 'border-borde text-texto-2 hover:bg-superficie-2'

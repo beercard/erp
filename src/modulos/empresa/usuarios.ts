@@ -7,8 +7,9 @@ import type { Transaccion } from '../../db/conexion'
 import { comoPlataforma, conEmpresa } from '../../db/empresa'
 import { empresas, invitaciones, membresias, roles, usuarios } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { anotar, superado } from '../../lib/frenos'
 import { hashearClave, problemaDeClave, verificarClave } from '../../lib/auth/clave'
-import { PERMISOS } from '../../lib/permisos'
+import { PERMISOS, tienePermiso } from '../../lib/permisos'
 import { controlarLimite } from '../plataforma/suscripciones'
 
 /**
@@ -65,6 +66,30 @@ export async function miembros(empresaId: string) {
   })
 }
 
+/** Permisos del rol con que el actor está en la empresa (vacío si no tiene acceso). */
+async function permisosDelActor(tx: Transaccion, empresaId: string, actor: string): Promise<string[]> {
+  const [m] = await tx
+    .select({ permisos: roles.permisos })
+    .from(membresias)
+    .innerJoin(roles, eq(roles.id, membresias.rolId))
+    .where(and(eq(membresias.empresaId, empresaId), eq(membresias.usuarioId, actor), eq(membresias.activa, true)))
+  return m?.permisos ?? []
+}
+
+/**
+ * ¿Puede el actor otorgar (o quitar) un rol con estos permisos? Solo si él
+ * mismo tiene todo lo que el rol da: nadie reparte permisos que no tiene, y
+ * el acceso total ("*") solo lo maneja otro dueño.
+ */
+export function cubre(delActor: readonly string[], delRol: readonly string[]) {
+  if (delActor.includes('*')) return true
+  if (delRol.includes('*')) return false
+  const concretos = Object.keys(PERMISOS).filter((p) => tienePermiso(delRol, p))
+  return concretos.every((p) => tienePermiso(delActor, p))
+}
+
+const SIN_ALCANCE = 'No podés dar ni quitar permisos que vos no tenés. Pedíselo a un dueño de la empresa.'
+
 /** Cuántos dueños activos (rol con "*") quedarían si se aplica el cambio. */
 async function duenosActivos(tx: Transaccion, empresaId: string, excluirMembresia?: string) {
   const filas = await tx
@@ -95,7 +120,9 @@ export async function invitar(
   const token = randomBytes(32).toString('base64url')
   const vence = new Date(Date.now() + DIAS_INVITACION * 86_400_000)
   const r = await comoPlataforma(async (tx) => {
-    if (!(await rolDeLaEmpresa(tx, empresaId, rolId))) return 'Ese rol no existe en esta empresa.'
+    const rol = await rolDeLaEmpresa(tx, empresaId, rolId)
+    if (!rol) return 'Ese rol no existe en esta empresa.'
+    if (!cubre(await permisosDelActor(tx, empresaId, invitadoPor), rol.permisos)) return SIN_ALCANCE
     const [ya] = await tx
       .select({ id: membresias.id })
       .from(membresias)
@@ -165,8 +192,16 @@ export async function aceptarInvitacion(
 
   let usuarioId: string
   if (inv.usuarioExistente) {
+    // Mismo freno que el ingreso: la invitación no puede servir para adivinar la clave de otra cuenta.
+    const freno = `ingreso:email:${inv.email.toLowerCase()}`
+    if (await superado([freno], 8, 15 * 60_000)) {
+      return { ok: false, error: 'Demasiados intentos fallidos. Esperá 15 minutos y probá de nuevo.' }
+    }
     const [u] = await comoPlataforma((tx) => tx.select().from(usuarios).where(eq(usuarios.id, inv.usuarioExistente!.id)))
-    if (!(await verificarClave(clave, u.hashClave))) return { ok: false, error: 'La contraseña no es correcta.' }
+    if (!(await verificarClave(clave, u.hashClave))) {
+      await anotar([freno])
+      return { ok: false, error: 'La contraseña no es correcta.' }
+    }
     usuarioId = u.id
   } else {
     const nombre = typeof entrada.nombre === 'string' ? entrada.nombre.trim() : ''
@@ -211,6 +246,10 @@ export async function cambiarRol(empresaId: string, actor: string, membresiaId: 
       .from(membresias)
       .where(and(eq(membresias.id, membresiaId), eq(membresias.empresaId, empresaId)))
     if (!m) return 'Ese usuario no está en la empresa.'
+    if (m.usuarioId === actor) return 'No podés cambiar tu propio rol: pedíselo a otro administrador.'
+    const delActor = await permisosDelActor(tx, empresaId, actor)
+    const [actual] = await tx.select({ permisos: roles.permisos }).from(roles).where(eq(roles.id, m.rolId))
+    if (!cubre(delActor, rol.permisos) || !cubre(delActor, actual?.permisos ?? [])) return SIN_ALCANCE
     if (!rol.permisos.includes('*') && (await duenosActivos(tx, empresaId, membresiaId)) === 0) {
       return 'La empresa tiene que tener al menos un dueño con acceso total.'
     }
@@ -232,6 +271,8 @@ export async function cambiarAcceso(empresaId: string, actor: string, membresiaI
       .where(and(eq(membresias.id, membresiaId), eq(membresias.empresaId, empresaId)))
     if (!m) return 'Ese usuario no está en la empresa.'
     if (!activa && m.usuarioId === actor) return 'No podés quitarte el acceso a vos mismo.'
+    const [suyo] = await tx.select({ permisos: roles.permisos }).from(roles).where(eq(roles.id, m.rolId))
+    if (!cubre(await permisosDelActor(tx, empresaId, actor), suyo?.permisos ?? [])) return SIN_ALCANCE
     if (!activa && (await duenosActivos(tx, empresaId, membresiaId)) === 0)
       return 'La empresa tiene que tener al menos un dueño con acceso total.'
     await tx.update(membresias).set({ activa }).where(eq(membresias.id, membresiaId))
@@ -268,6 +309,7 @@ export async function guardarRol(
   if (desconocidos.length) return { ok: false, error: `Permisos que no existen: ${desconocidos.join(', ')}` }
 
   const r = await comoPlataforma(async (tx) => {
+    if (!cubre(await permisosDelActor(tx, empresaId, actor), p.data.permisos)) return { error: SIN_ALCANCE }
     if (id) {
       const [rol] = await tx
         .select()

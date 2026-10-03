@@ -7,9 +7,10 @@ import { requerirEmpresa } from '@/lib/auth/servidor'
 import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
 import { FUNCIONES, planPorId, planQueIncluye, precioDeLista, situacion, type Funcion } from '@/lib/planes'
+import { ESTADOS_DEBITO, mpConfigurado } from '@/modulos/plataforma/mercadopago'
 import { historial, suscripcionDe, usoDe } from '@/modulos/plataforma/suscripciones'
 
-import { FormularioSuscripcion } from './FormularioSuscripcion'
+import { FormularioSuscripcion, PagarConMercadoPago } from './FormularioSuscripcion'
 
 export const metadata: Metadata = { title: 'Suscripción' }
 
@@ -45,7 +46,7 @@ function Uso({ titulo, usado, tope }: { titulo: string; usado: number; tope: num
 
 export default async function Suscripcion({ searchParams }: PageProps<'/configuracion/suscripcion'>) {
   const sesion = await requerirEmpresa()
-  const { funcion } = (await searchParams) as { funcion?: string }
+  const { funcion, mp } = (await searchParams) as { funcion?: string; mp?: string }
   const hoy = hoyArgentina()
   const [s, uso, eventos] = await Promise.all([
     suscripcionDe(sesion.empresa.id),
@@ -115,6 +116,25 @@ export default async function Suscripcion({ searchParams }: PageProps<'/configur
               Hay un pedido de cambio al plan {planPorId((pendiente.detalle as { plan: string }).plan).nombre} del{' '}
               {fechaCorta(pendiente.creado.toISOString().slice(0, 10))}, esperando el pago.
             </Aviso>
+          )}
+          {mp === '1' && s.mpEstado !== 'authorized' && (
+            <Aviso tono="info">Si autorizaste el débito en Mercado Pago, en unos minutos queda registrado acá.</Aviso>
+          )}
+          {mpConfigurado() && (precio > 0 || pendiente) && tienePermiso(sesion.permisos, 'empresa.suscripcion') && (
+            <div className="flex flex-wrap items-center gap-3 border-t border-borde pt-3">
+              {s.mpEstado === 'authorized' ? (
+                <Chip tono="ok">Débito automático de Mercado Pago activo</Chip>
+              ) : (
+                <>
+                  <PagarConMercadoPago />
+                  <span className="text-xs text-texto-2">
+                    Con tarjeta o dinero en cuenta. Se debita solo{s.ciclo === 'anual' ? ' cada año' : ' cada mes'} y la
+                    suscripción se renueva sola.
+                    {s.mpEstado && s.mpEstado !== 'pending' && ` Estado actual: ${ESTADOS_DEBITO[s.mpEstado] ?? s.mpEstado}.`}
+                  </span>
+                </>
+              )}
+            </div>
           )}
         </Panel>
         <Panel className="flex flex-col gap-4 p-4">

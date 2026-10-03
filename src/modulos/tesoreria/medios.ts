@@ -39,11 +39,15 @@ export const TIPOS_MOVIMIENTO = {
   acreditacion: 'Acreditación',
   comision: 'Comisiones y gastos',
   ajuste_arqueo: 'Ajuste de arqueo',
+  canje_cheque: 'Canje de cheque',
+  vale: 'Vale a rendir',
+  rendicion_vale: 'Rendición de vale',
 } as const
 
 export const ESTADOS_CHEQUE = {
   cartera: 'En cartera',
   depositado: 'Depositado',
+  canjeado: 'Canjeado (cambiado por fondos)',
   entregado: 'Entregado a proveedor',
   rechazado: 'Rechazado',
   anulado: 'Anulado (recibo anulado)',

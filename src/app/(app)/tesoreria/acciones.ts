@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation'
 import { cuentasTesoreria } from '@/db/schema'
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
 import { normalizarNumero } from '@/lib/dinero'
-import { anularDeposito, depositarCheques, rechazarCheque } from '@/modulos/tesoreria/cheques'
+import { anularDeposito, canjearCheques, depositarCheques, rechazarCheque } from '@/modulos/tesoreria/cheques'
 import {
   conciliar,
   conciliarVarias,
@@ -174,6 +174,25 @@ export async function depositarAccion(_: Estado, formData: FormData): Promise<Es
   return {
     ok: `Se depositaron ${r.cantidad} cheques por $ ${Number(r.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`,
   }
+}
+
+export async function canjearAccion(_: Estado, formData: FormData): Promise<Estado> {
+  const r = await intentar(() =>
+    enLaEmpresa('tesoreria.mover', (tx, s) =>
+      canjearCheques(tx, s.usuario.id, {
+        cuentaId: valor(formData, 'cuentaId'),
+        fecha: valor(formData, 'fecha'),
+        entidad: valor(formData, 'entidad'),
+        neto: normalizarNumero(valor(formData, 'neto') || '0'),
+        comprobante: valor(formData, 'comprobante'),
+        cheques: formData.getAll('cheque').map(String),
+      }),
+    ),
+  )
+  if (!r.ok) return { error: r.error }
+  revalidatePath('/tesoreria', 'layout')
+  const $ = (v: string) => `$ ${Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+  return { ok: `Se canjearon cheques por ${$(r.bruto)}${Number(r.costo) > 0 ? ` con un costo de ${$(r.costo)}` : ''}.` }
 }
 
 export async function rechazarAccion(chequeId: string, _: Estado, formData: FormData): Promise<Estado> {

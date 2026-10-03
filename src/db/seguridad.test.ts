@@ -7,7 +7,16 @@ import { baseDePrueba } from './pruebas'
 import { auditoria, empresas, terceros, vendedores } from './schema'
 
 /** Tablas con empresa_id que son de plataforma y NO llevan RLS (ver plataforma.ts). */
-const PLATAFORMA = new Set(['roles', 'membresias', 'sesiones', 'invitaciones', 'suscripciones', 'eventos_suscripcion'])
+const PLATAFORMA = new Set([
+  'roles',
+  'membresias',
+  'sesiones',
+  'invitaciones',
+  'suscripciones',
+  'eventos_suscripcion',
+  'cuentas_canal',
+  'crm_formularios', 'claves_cobro', 'whatsapp_numeros', 'latidos', 'errores_servidor',
+])
 
 /** Mensaje de Postgres detrás del error de Drizzle: la prueba verifica el MOTIVO del rechazo. */
 async function motivo(operacion: Promise<unknown>): Promise<string> {
@@ -116,8 +125,14 @@ describe('auditoría', () => {
       conEmpresa(empresaA, (tx) => tx.update(auditoria).set({ accion: 'otra' }).where(eq(auditoria.id, fila.id))),
     ).rejects.toThrow()
     await expect(conEmpresa(empresaA, (tx) => tx.delete(auditoria).where(eq(auditoria.id, fila.id)))).rejects.toThrow()
-    // Ni siquiera el dueño de las tablas puede: lo impide el trigger.
-    await expect(base.delete(auditoria).where(eq(auditoria.id, fila.id))).rejects.toThrow()
+    // Ni siquiera el dueño de las tablas puede: lo impide el trigger. (El
+    // dueño también pasa por RLS forzado, así que fija la empresa para ver la fila.)
+    await expect(
+      base.transaction(async (tx) => {
+        await tx.execute(sql`select set_config('app.empresa_id', ${empresaA}, true)`)
+        return tx.delete(auditoria).where(eq(auditoria.id, fila.id)).returning()
+      }),
+    ).rejects.toThrow()
   })
 })
 

@@ -51,7 +51,7 @@ export function WidgetCotizacion({
                 name="valor"
                 inputMode="decimal"
                 placeholder="Pesos por dólar"
-                className="cifras h-9 min-w-0 flex-1 rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento"
+                className="cifras h-9 min-w-0 flex-1 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm focus:border-acento"
               />
               <Boton type="submit" variante="primario" disabled={enviando}>
                 {enviando ? '…' : 'Grabar'}

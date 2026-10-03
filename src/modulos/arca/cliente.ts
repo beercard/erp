@@ -1,7 +1,7 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, max } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
-import { arcaConfiguracion, arcaTickets } from '../../db/schema'
+import { arcaConfiguracion, arcaTickets, comprobantes } from '../../db/schema'
 import { descifrar } from './certificado'
 import { ErrorArca, transporteHttp, type Transporte } from './soap'
 import { pedirTicket } from './wsaa'
@@ -23,7 +23,7 @@ export class SinConfiguracionArca extends Error {}
 const MARGEN_MS = 5 * 60_000
 
 /** Ticket vigente de la empresa, o uno nuevo si no hay. */
-async function credenciales(tx: Transaccion, cuit: string, transporte: Transporte) {
+export async function credenciales(tx: Transaccion, cuit: string, transporte: Transporte, servicio = 'wsfe') {
   const [config] = await tx.select().from(arcaConfiguracion)
   if (!config?.certificado || !config.claveCifrada) {
     throw new SinConfiguracionArca('Falta cargar el certificado de ARCA en Configuración → ARCA.')
@@ -32,7 +32,7 @@ async function credenciales(tx: Transaccion, cuit: string, transporte: Transport
   const [guardado] = await tx
     .select()
     .from(arcaTickets)
-    .where(and(eq(arcaTickets.ambiente, ambiente), eq(arcaTickets.servicio, 'wsfe')))
+    .where(and(eq(arcaTickets.ambiente, ambiente), eq(arcaTickets.servicio, servicio)))
   if (guardado && guardado.vence.getTime() - Date.now() > MARGEN_MS) {
     return { ambiente, c: { token: guardado.token, firma: guardado.firma, cuit } }
   }
@@ -41,7 +41,7 @@ async function credenciales(tx: Transaccion, cuit: string, transporte: Transport
     ticket = await pedirTicket({
       transporte,
       ambiente,
-      servicio: 'wsfe',
+      servicio,
       certificado: config.certificado,
       clave: descifrar(config.claveCifrada),
     })
@@ -56,12 +56,41 @@ async function credenciales(tx: Transaccion, cuit: string, transporte: Transport
   }
   await tx
     .insert(arcaTickets)
-    .values({ ambiente, servicio: 'wsfe', token: ticket.token, firma: ticket.firma, vence: ticket.vence })
+
+    .values({ ambiente, servicio, token: ticket.token, firma: ticket.firma, vence: ticket.vence })
     .onConflictDoUpdate({
       target: [arcaTickets.empresaId, arcaTickets.ambiente, arcaTickets.servicio],
       set: { token: ticket.token, firma: ticket.firma, vence: ticket.vence },
     })
   return { ambiente, c: { token: ticket.token, firma: ticket.firma, cuit } }
+}
+
+/**
+ * ARCA simulado, solo fuera de producción (ARCA_SIMULADO=1): autoriza todo con
+ * un CAE inventado. Sirve para la demo y las pruebas en navegador sin
+ * certificado. En producción se ignora.
+ */
+export const arcaSimulado = () => process.env.ARCA_SIMULADO === '1' && process.env.NODE_ENV !== 'production'
+
+function clienteSimulado(tx: Transaccion): ClienteArca {
+  return {
+    ambiente: 'homologacion',
+    ultimoAutorizado: async (puntoVenta, tipo) => {
+      const [u] = await tx
+        .select({ n: max(comprobantes.numero) })
+        .from(comprobantes)
+        .where(and(eq(comprobantes.puntoVenta, puntoVenta), eq(comprobantes.tipo, tipo), eq(comprobantes.estado, 'autorizado')))
+      return u?.n ?? 0
+    },
+    solicitarCae: async () => ({
+      resultado: 'A',
+      cae: String(70_000_000_000_000 + Math.floor(Math.random() * 9_999_999_999_999)),
+      caeVence: new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10),
+      observaciones: [],
+      errores: [],
+    }),
+    consultar: async () => null,
+  }
 }
 
 /** Cliente de ARCA de la empresa de la transacción. */
@@ -70,6 +99,7 @@ export async function clienteArca(
   cuit: string,
   transporte: Transporte = transporteHttp(),
 ): Promise<ClienteArca> {
+  if (arcaSimulado()) return clienteSimulado(tx)
   const { ambiente, c } = await credenciales(tx, cuit, transporte)
   const ws = wsfe(transporte, ambiente)
   return {

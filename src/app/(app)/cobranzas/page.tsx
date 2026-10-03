@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { BellRing, Calculator, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -24,11 +24,19 @@ export default async function Cobranzas({ searchParams }: PageProps<'/cobranzas'
         titulo="Cobranzas"
         bajada={`${filas.length} recibos${texto ? ` para “${texto}”` : ''}`}
         acciones={
-          tienePermiso(sesion.permisos, 'ventas.cobrar') && (
-            <BotonEnlace href="/cobranzas/nueva" variante="primario">
-              <Plus aria-hidden className="size-4" /> Nueva cobranza
+          <>
+            <BotonEnlace href="/cobranzas/automatica">
+              <BellRing aria-hidden className="size-4" /> Cobranza automática
             </BotonEnlace>
-          )
+            <BotonEnlace href="/cobranzas/caja">
+              <Calculator aria-hidden className="size-4" /> Cierre de caja
+            </BotonEnlace>
+            {tienePermiso(sesion.permisos, 'ventas.cobrar') && (
+              <BotonEnlace href="/cobranzas/nueva" variante="primario">
+                <Plus aria-hidden className="size-4" /> Nueva cobranza
+              </BotonEnlace>
+            )}
+          </>
         }
       />
       <form className="mb-3" role="search">
@@ -40,7 +48,7 @@ export default async function Cobranzas({ searchParams }: PageProps<'/cobranzas'
           name="q"
           defaultValue={texto}
           placeholder="Cliente o número, y Enter"
-          className="h-9 w-full max-w-sm rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+          className="h-9 w-full max-w-sm rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
         />
       </form>
       <Panel className="overflow-x-auto">

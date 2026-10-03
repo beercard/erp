@@ -16,6 +16,7 @@ import {
   suscripciones,
   usuarios,
 } from '../../db/schema'
+import { mensajeDeBase } from '../../lib/errores'
 import { auditar } from '../../lib/auditoria'
 import { validarCuit } from '../../lib/cuit'
 import { hoyArgentina, sumarDias } from '../../lib/fechas'
@@ -38,9 +39,14 @@ import {
 
 type Resultado = { ok: true } | { ok: false; error: string }
 
-export async function suscripcionDe(
-  empresaId: string,
-): Promise<DatosSuscripcion & { ciclo: string; precioAcordado: string | null; observaciones: string | null }> {
+export async function suscripcionDe(empresaId: string): Promise<
+  DatosSuscripcion & {
+    ciclo: string
+    precioAcordado: string | null
+    observaciones: string | null
+    mpEstado: string | null
+  }
+> {
   const [s] = await comoPlataforma((tx) => tx.select().from(suscripciones).where(eq(suscripciones.empresaId, empresaId)))
   // Una empresa sin suscripción (no debería pasar) queda en el plan gratis.
   return (
@@ -54,6 +60,7 @@ export async function suscripcionDe(
       pagadoHasta: null,
       precioAcordado: null,
       observaciones: null,
+      mpEstado: null,
     }
   )
 }
@@ -387,30 +394,39 @@ export async function actualizarSuscripcion(adminId: string, empresaId: string, 
 
 /** Registra un pago: corre la fecha de pago un mes o un año y deja la suscripción activa. */
 export async function registrarPago(
-  adminId: string,
+  adminId: string | null,
   empresaId: string,
   entrada: { importe: string; medio: string; referencia?: string },
   hoy = hoyArgentina(),
+  /** Meses que cubre el pago; si no se dice, los del ciclo de la suscripción. */
+  mesesPagados?: number,
 ): Promise<Resultado> {
   const s = await suscripcionDe(empresaId)
   const desde = s.pagadoHasta && s.pagadoHasta > hoy ? s.pagadoHasta : hoy
   const [a, m, dia] = desde.split('-').map(Number)
-  const meses = s.ciclo === 'anual' ? 12 : 1
+  const meses = mesesPagados ?? (s.ciclo === 'anual' ? 12 : 1)
   const fin = new Date(Date.UTC(a, m - 1 + meses, Math.min(dia, 28))).toISOString().slice(0, 10)
-  await comoPlataforma(async (tx) => {
-    await tx
-      .update(suscripciones)
-      .set({ estado: 'activa', pagadoHasta: fin, pruebaHasta: null, actualizado: new Date() })
-      .where(eq(suscripciones.empresaId, empresaId))
-    await tx
-      .insert(eventosSuscripcion)
-      .values({ empresaId, tipo: 'pago', detalle: { ...entrada, hasta: fin }, usuarioId: adminId })
-  })
+  try {
+    await comoPlataforma(async (tx) => {
+      // Primero el evento: un índice único sobre la referencia de Mercado Pago
+      // hace que el mismo cobro avisado dos veces a la vez se registre una sola.
+      await tx
+        .insert(eventosSuscripcion)
+        .values({ empresaId, tipo: 'pago', detalle: { ...entrada, hasta: fin, meses }, usuarioId: adminId })
+      await tx
+        .update(suscripciones)
+        .set({ estado: 'activa', pagadoHasta: fin, pruebaHasta: null, actualizado: new Date() })
+        .where(eq(suscripciones.empresaId, empresaId))
+    })
+  } catch (e) {
+    if (/eventos_suscripcion_referencia_mp/.test(mensajeDeBase(e))) return { ok: false, error: 'Ese pago ya estaba registrado.' }
+    throw e
+  }
   return { ok: true }
 }
 
 /** Aplica un pedido pendiente (después de cobrar) o lo rechaza. */
-export async function resolverPedido(adminId: string, pedidoId: string, aceptar: boolean): Promise<Resultado> {
+export async function resolverPedido(adminId: string | null, pedidoId: string, aceptar: boolean): Promise<Resultado> {
   const [pedido] = await comoPlataforma((tx) =>
     tx
       .select()

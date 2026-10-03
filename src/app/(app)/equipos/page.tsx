@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: 'Equipos' }
 export default async function Equipos({ searchParams }: PageProps<'/equipos'>) {
   const sesion = await paginaContratos('contratos.ver')
   const { q, estado } = (await searchParams) as { q?: string; estado?: string }
-  const lista = await conEmpresa(sesion.empresa.id, (tx) =>
+  const lista = await conEmpresa(sesion, (tx) =>
     equiposConLectura(tx, { q, estado: estado === 'todos' ? undefined : (estado ?? 'instalado') }),
   )
   return (
@@ -36,12 +36,12 @@ export default async function Equipos({ searchParams }: PageProps<'/equipos'>) {
           name="q"
           defaultValue={q}
           placeholder="Serie, cliente o modelo"
-          className="h-9 min-w-64 flex-1 rounded-md border border-borde bg-superficie px-2.5 text-sm focus:border-acento"
+          className="h-9 min-w-64 flex-1 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2.5 text-sm focus:border-acento"
         />
         <select
           name="estado"
           defaultValue={estado ?? 'instalado'}
-          className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+          className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
         >
           <option value="instalado">Instalados</option>
           <option value="retirado">Retirados</option>

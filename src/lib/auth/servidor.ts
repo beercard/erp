@@ -32,12 +32,23 @@ export async function borrarCookieDeSesion() {
   ;(await cookies()).delete(COOKIE_SESION)
 }
 
+/**
+ * IP del cliente. El primer valor de X-Forwarded-For lo puede escribir
+ * cualquiera; el último lo agrega el proxy de confianza que está delante
+ * (Caddy, nginx, el balanceador). Por eso se toma el último.
+ */
+export function ipDe(h: Headers): string | null {
+  const reenviada = h
+    .get('x-forwarded-for')
+    ?.split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+  return reenviada?.at(-1) || h.get('x-real-ip') || null
+}
+
 export async function datosDelPedido() {
   const h = await headers()
-  return {
-    ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || null,
-    navegador: h.get('user-agent'),
-  }
+  return { ip: ipDe(h), navegador: h.get('user-agent') }
 }
 
 /** Una sola lectura de la sesión por pedido, aunque la pidan varios componentes. */
@@ -104,7 +115,7 @@ export async function enLaEmpresa<T>(
 ): Promise<T> {
   const sesion = await requerirEmpresa()
   if (!tienePermiso(sesion.permisos, permiso)) throw new SinPermiso(permiso, sesion)
-  return conEmpresa(sesion.empresa.id, (tx) => trabajo(tx, sesion))
+  return conEmpresa(sesion, (tx) => trabajo(tx, sesion))
 }
 
 /**

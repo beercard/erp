@@ -1,4 +1,15 @@
-import { Building2, ChevronRight, CreditCard, Landmark, Percent, ShieldCheck } from 'lucide-react'
+import {
+  Building2,
+  BookLock,
+  ChevronRight,
+  CreditCard,
+  FileStack,
+  Landmark,
+  Newspaper,
+  Percent,
+  Plug,
+  ShieldCheck,
+} from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -48,6 +59,34 @@ export default async function Configuracion() {
       icono: Percent,
       permiso: 'empresa.datos',
     },
+    {
+      href: '/configuracion/padrones',
+      titulo: 'Padrones de IIBB y ARBA',
+      texto: 'Alícuotas de percepción y retención por CUIT, retención de IIBB al pagar y acceso a ARBA (COT).',
+      icono: FileStack,
+      permiso: 'empresa.datos',
+    },
+    {
+      href: '/configuracion/cierres',
+      titulo: 'Cierre de períodos',
+      texto: 'Bloquear por fecha ventas, compras y tesorería para que nadie toque lo ya cerrado.',
+      icono: BookLock,
+      permiso: 'empresa.bloqueos',
+    },
+    {
+      href: '/configuracion/resumen',
+      titulo: 'Resumen para el dueño',
+      texto: 'Ventas, cobranzas, deuda, caja y alertas, por correo o WhatsApp cada día o cada semana.',
+      icono: Newspaper,
+      permiso: 'empresa.datos',
+    },
+    {
+      href: '/configuracion/integraciones',
+      titulo: 'API e integraciones',
+      texto: 'Claves de la API y webhooks para conectar otros sistemas.',
+      icono: Plug,
+      permiso: 'empresa.integraciones',
+    },
   ].filter((e) => puede(e.permiso))
 
   return (
@@ -59,11 +98,7 @@ export default async function Configuracion() {
       {empresa.length > 0 && (
         <div className="mb-6 grid gap-3 sm:grid-cols-2">
           {empresa.map((e) => (
-            <Link
-              key={e.href}
-              href={e.href}
-              className="group flex items-start gap-3 rounded-lg border border-borde bg-superficie p-4 hover:border-acento"
-            >
+            <Link key={e.href} href={e.href} className="group flex items-start gap-3 tarjeta p-4 hover:border-acento">
               <e.icono aria-hidden className="mt-0.5 size-5 text-acento" />
               <span className="min-w-0 flex-1">
                 <span className="block font-medium">{e.titulo}</span>

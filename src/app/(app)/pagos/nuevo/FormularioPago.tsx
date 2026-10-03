@@ -18,7 +18,7 @@ import { fechaCorta } from '@/lib/fechas'
 import { formatearNumero } from '@/modulos/comercial/formato'
 import { MEDIOS_PAGO, type MedioPago } from '@/modulos/compras/medios'
 import type { Liquidacion } from '@/modulos/compras/pagos'
-import { abreviaturaCompra } from '@/modulos/compras/tipos'
+import { abreviaturaCompra, AVISO_SUJETA_RETENCION, datosTipoCompra } from '@/modulos/compras/tipos'
 
 type Proveedor = Awaited<ReturnType<typeof buscarProveedores>>[number]
 type Pendiente = Awaited<ReturnType<typeof pendientesProveedor>>[number]
@@ -185,7 +185,7 @@ export function FormularioPago({
         <div className="flex flex-col gap-1 md:col-span-2">
           <span className="text-xs font-medium text-texto-2">Proveedor</span>
           {proveedor ? (
-            <div className="flex h-9 items-center justify-between rounded-md border border-borde bg-superficie-2 px-2.5">
+            <div className="flex h-9 items-center justify-between rounded-lg border border-borde-fuerte/80 bg-superficie-2 px-2.5">
               <span className="truncate text-sm font-medium">{proveedor.razonSocial}</span>
               <button
                 type="button"
@@ -296,6 +296,9 @@ export function FormularioPago({
         </Panel>
       )}
 
+      {deuda?.some((p) => datosTipoCompra(p.tipo)?.letra === 'M' && /[1-9]/.test(aplicar[p.id] ?? '')) && (
+        <Aviso tono="aviso">{AVISO_SUJETA_RETENCION}</Aviso>
+      )}
       {errorLiquidacion && hayAlgo && <Aviso>{errorLiquidacion}</Aviso>}
       {liq && (
         <Panel className="p-4">
@@ -310,9 +313,22 @@ export function FormularioPago({
                   <dt className="font-sans text-texto-2">
                     Retención de Ganancias ({liq.retencion.concepto}, régimen {liq.regimen})
                   </dt>
-                  <dd>− {formatearMonto(liq.retencionMonedaPago, simbolo)}</dd>
+                  <dd>− {formatearMonto(liq.retencion.importe, '$')}</dd>
                 </div>
                 <p className="font-sans text-xs text-texto-3">{liq.retencion.explicacion}</p>
+              </div>
+            )}
+            {liq.retencionIibb && (
+              <div className="flex flex-col gap-0.5">
+                <div className="flex justify-between">
+                  <dt className="font-sans text-texto-2">Retención de IIBB ({liq.retencionIibb.provincia})</dt>
+                  <dd>− {formatearMonto(liq.retencionIibb.importe, '$')}</dd>
+                </div>
+                <p className="font-sans text-xs text-texto-3">
+                  {Number(liq.retencionIibb.alicuota).toLocaleString('es-AR')} % sobre{' '}
+                  {formatearMonto(liq.retencionIibb.base, '$')}
+                  {liq.retencionIibb.delPadron ? ', alícuota del padrón' : ', alícuota general (no figura en el padrón)'}
+                </p>
               </div>
             )}
             <div className="mt-1 flex justify-between border-t border-borde pt-2 text-base font-medium">

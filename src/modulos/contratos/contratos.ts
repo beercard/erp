@@ -43,6 +43,21 @@ const EsquemaContrato = z.object({
   desde: fecha,
   hasta: fecha,
   estado: z.enum(['activo', 'suspendido', 'finalizado']).default('activo'),
+  /** Tiempos de servicio del contrato, en horas (vacíos: los generales). */
+  slaRespuestaHoras: z.coerce
+    .number()
+    .int()
+    .min(1, { error: 'Horas de respuesta inválidas.' })
+    .max(2160)
+    .nullable()
+    .default(null),
+  slaResolucionHoras: z.coerce
+    .number()
+    .int()
+    .min(1, { error: 'Horas de resolución inválidas.' })
+    .max(2160)
+    .nullable()
+    .default(null),
   observaciones: texto,
 })
 
@@ -258,7 +273,7 @@ export async function registrarLectura(
   tx: Transaccion,
   usuarioId: string,
   entrada: unknown,
-  origen: 'manual' | 'archivo' | 'mps' = 'manual',
+  origen: 'manual' | 'archivo' | 'mps' | 'tecnico' | 'portal' | 'api' = 'manual',
 ) {
   const p = EsquemaLectura.safeParse(entrada)
   if (!p.success) return { ok: false as const, error: primerError(p.error) }

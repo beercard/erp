@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
+import { consultarPadron } from '@/modulos/arca/padron'
 import { guardarTercero, type DatosTercero } from '@/modulos/maestros/terceros'
 
 export type EstadoFormulario =
@@ -35,4 +36,14 @@ export async function guardar(id: string | null, _: EstadoFormulario, formData: 
   }
   revalidatePath('/terceros')
   redirect(`/terceros/${resultado.id}?guardado=1`)
+}
+
+/** Datos de la constancia de inscripción de ARCA para completar la ficha. */
+export async function consultarPadronAccion(cuit: string) {
+  try {
+    return await enLaEmpresa('maestros.terceros', (tx, s) => consultarPadron(tx, s.empresa.cuit, cuit))
+  } catch (e) {
+    if (e instanceof SinPermiso) return { ok: false as const, error: e.message }
+    return { ok: false as const, error: e instanceof Error ? e.message : 'No se pudo consultar a ARCA.' }
+  }
 }

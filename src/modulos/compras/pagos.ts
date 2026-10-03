@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, ilike, lt, or, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
+import { controlarBloqueo } from '../empresa/bloqueos'
 import type { Transaccion } from '../../db/conexion'
 import {
   escalaGanancias,
@@ -16,6 +17,7 @@ import { auditar } from '../../lib/auditoria'
 import { aImporte, D, monto } from '../../lib/dinero'
 import { decimal, primerError } from '../comercial/documentos'
 import { siguienteNumero } from '../comercial/numeracion'
+import { alicuotasPadron } from '../impuestos/padronesIibb'
 import { filasDe, pendientesCompras } from './compras'
 import { calcularRetencionGanancias, type ResultadoRetencion } from './ganancias'
 import { resolverCuenta } from '../tesoreria/cuentas'
@@ -102,14 +104,16 @@ export type Liquidacion = {
   basePesos: string
   regimen: string | null
   retencion: (ResultadoRetencion & { concepto: string }) | null
-  /** La retención en la moneda del pago. */
+  /** Retención de Ingresos Brutos (alícuota del padrón de la provincia o la general). */
+  retencionIibb: { provincia: string; base: string; alicuota: string; importe: string; delPadron: boolean } | null
+  /** Las retenciones en la moneda del pago. */
   retencionMonedaPago: string
   /** Lo que se entrega en valores. */
   aPagar: string
 }
 
 /**
- * Calcula el pago sin grabarlo: cuánto cancela, la retención de Ganancias y
+ * Calcula el pago sin grabarlo: cuánto cancela, las retenciones (Ganancias e IIBB) y
  * cuánto hay que entregar. Lo usa la pantalla (vista previa) y la emisión.
  */
 export async function liquidarPago(
@@ -202,7 +206,32 @@ export async function liquidarPago(
       }
     }
   }
-  const retencionMonedaPago = retencion ? convertir(retencion.importe, 'PES', d.moneda, cot) : new D(0)
+  let retencionIibb: Liquidacion['retencionIibb'] = null
+  if (
+    config?.iibbActiva &&
+    config.iibbProvincia &&
+    proveedor.condicionIva !== 6 &&
+    basePesos.gt(0) &&
+    basePesos.gte(config.iibbMinimo)
+  ) {
+    const padron =
+      proveedor.tipoDocumento === 80 && proveedor.numeroDocumento
+        ? (await alicuotasPadron(tx, proveedor.numeroDocumento, d.fecha))[config.iibbProvincia]
+        : undefined
+    const alicuota = padron?.retencion ?? config.iibbAlicuotaGeneral
+    const importe = alicuota ? aImporte(basePesos.times(alicuota).dividedBy(100)) : '0.00'
+    if (alicuota && monto(importe).gt(0)) {
+      retencionIibb = {
+        provincia: config.iibbProvincia,
+        base: aImporte(basePesos),
+        alicuota: monto(alicuota).toFixed(4),
+        importe,
+        delPadron: padron?.retencion != null,
+      }
+    }
+  }
+  const retenidoPesos = monto(retencion?.importe ?? 0).plus(retencionIibb?.importe ?? 0)
+  const retencionMonedaPago = retenidoPesos.gt(0) ? convertir(aImporte(retenidoPesos), 'PES', d.moneda, cot) : new D(0)
   return {
     ok: true,
     liquidacion: {
@@ -211,6 +240,7 @@ export async function liquidarPago(
       basePesos: aImporte(basePesos),
       regimen,
       retencion,
+      retencionIibb,
       retencionMonedaPago: aImporte(retencionMonedaPago),
       aPagar: aImporte(cancelado.minus(retencionMonedaPago)),
     },
@@ -264,6 +294,8 @@ export async function emitirPago(
     return { ok: false, error: donde + (donde ? i.message : primerError(p.error)) }
   }
   const d = p.data
+  const cerrado = await controlarBloqueo(tx, 'compras', d.fecha)
+  if (cerrado) return { ok: false, error: cerrado }
   const r = await liquidarPago(tx, d)
   if (!r.ok) return r
   const l = r.liquidacion
@@ -338,6 +370,17 @@ export async function emitirPago(
       importe: l.retencion.importe,
     })
   }
+  if (l.retencionIibb) {
+    await tx.insert(retenciones).values({
+      pagoId: pago.id,
+      impuesto: 'iibb',
+      regimen: l.retencionIibb.provincia,
+      numero: await siguienteNumero(tx, 'certificado_iibb'),
+      base: l.retencionIibb.base,
+      alicuota: l.retencionIibb.alicuota,
+      importe: l.retencionIibb.importe,
+    })
+  }
   if (l.destinos.length) {
     await tx.insert(imputacionesCompras).values(
       l.destinos.map((x) => ({
@@ -364,6 +407,8 @@ export async function anularPago(tx: Transaccion, usuarioId: string, id: string)
   const [pg] = await tx.select().from(pagos).where(eq(pagos.id, id)).for('update')
   if (!pg) return { ok: false as const, error: 'Ese pago ya no existe.' }
   if (pg.estado === 'anulado') return { ok: false as const, error: 'El pago ya está anulado.' }
+  const cerrado = await controlarBloqueo(tx, 'compras', pg.fecha)
+  if (cerrado) return { ok: false as const, error: cerrado }
   await tx.update(pagos).set({ estado: 'anulado', anulado: new Date(), anuladoPor: usuarioId }).where(eq(pagos.id, id))
   await auditar(tx, { usuarioId, accion: 'anulacion', entidad: 'pago', entidadId: id, antes: { estado: pg.estado } })
   return { ok: true as const }

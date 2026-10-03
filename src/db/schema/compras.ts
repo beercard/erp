@@ -306,6 +306,13 @@ export const retencionesConfiguracion = pgTable(
     empresaId: empresaId(),
     /** Retiene Ganancias al pagar (agente de retención). */
     gananciasActiva: boolean('ganancias_activa').notNull().default(false),
+    /** Retiene Ingresos Brutos al pagar, como agente de la provincia indicada. */
+    iibbActiva: boolean('iibb_activa').notNull().default(false),
+    iibbProvincia: text('iibb_provincia').references(() => provincias.codigo),
+    /** No se retiene si la base del pago es menor. */
+    iibbMinimo: importe('iibb_minimo').notNull().default('0'),
+    /** Alícuota para los que no están en el padrón (vacío: no se les retiene). */
+    iibbAlicuotaGeneral: precio('iibb_alicuota_general'),
     ...marcasDeTiempo(),
   },
   (t) => [uniqueIndex().on(t.empresaId)],
@@ -380,11 +387,7 @@ export const pagosValores = pgTable(
     check('pagos_valores_positivo', sql`${t.importe} > 0`),
     check('pagos_valores_cheque_tercero', sql`(${t.medio} = 'cheque_tercero') = (${t.reciboValorId} is not null)`),
     deLaEmpresa('pagos_valores_pago_fk', t.empresaId, t.pagoId, pagos).onDelete('cascade'),
-    foreignKey({
-      name: 'pagos_valores_recibo_valor_fk',
-      columns: [t.reciboValorId],
-      foreignColumns: [recibosValores.id],
-    }),
+    deLaEmpresa('pagos_valores_recibo_valor_fk', t.empresaId, t.reciboValorId, recibosValores),
   ],
 )
 

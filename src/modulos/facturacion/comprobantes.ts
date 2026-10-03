@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
+import { controlarBloqueo } from '../empresa/bloqueos'
 import type { Transaccion } from '../../db/conexion'
 import { conEmpresa } from '../../db/empresa'
 import {
@@ -18,6 +19,8 @@ import {
   arcaConfiguracion,
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { alicuotasPadron } from '../impuestos/padronesIibb'
+import { controlarPeriodoIva } from '../impuestos/presentaciones'
 import { validarCuit } from '../../lib/cuit'
 import { aImporte, D, monto } from '../../lib/dinero'
 import { hoyArgentina, sumarDias } from '../../lib/fechas'
@@ -30,6 +33,9 @@ import { controlarLimite } from '../plataforma/suscripciones'
 import { enPesos, imputarNotaCreditoAsociada } from './cuentas'
 import {
   codigoComprobante,
+  LEYENDA_CBU_INFORMADA,
+  LEYENDA_SUJETA_RETENCION,
+  type RegimenClaseA,
   datosTipo,
   documentoReceptor,
   letraPara,
@@ -113,14 +119,21 @@ type Percepcion = typeof percepcionesIibb.$inferSelect
  * discrimina IVA: el precio es final.
  *
  * Percepción: manda la alícuota de la ficha del cliente (0 = no se le
- * percibe). Sin alícuota en la ficha, la general se aplica solo a clientes de
+ * percibe); después, la del padrón de IIBB de la provincia de la percepción
+ * vigente a la fecha. Sin ninguna de las dos, la general se aplica solo a clientes de
  * la provincia de la percepción: un régimen provincial alcanza a los que
  * están en esa jurisdicción, no a todos.
  */
 export function calcularComprobante(
   letra: Letra,
   items: { cantidad: string; precioUnitario: string; descuento?: string | null; alicuotaIva: number }[],
-  percepcion: { alicuotaCliente: string | null; provinciaCliente: string | null; activas: Percepcion[] },
+  percepcion: {
+    alicuotaCliente: string | null
+    provinciaCliente: string | null
+    activas: Percepcion[]
+    /** Alícuotas del padrón de IIBB del cliente, por provincia. */
+    padron?: Record<string, { percepcion: string | null }>
+  },
 ) {
   const { lineas, totales } = calcularTotales(items)
   const iva = letra === 'C' ? [] : totales.porAlicuota
@@ -130,7 +143,8 @@ export function calcularComprobante(
   for (const p of percepcion.activas) {
     if (p.soloLetraA && letra !== 'A') continue
     const deLaProvincia = !p.provincia || p.provincia === percepcion.provinciaCliente
-    const alicuota = percepcion.alicuotaCliente ?? (deLaProvincia ? p.alicuota : '0')
+    const delPadron = p.provincia ? percepcion.padron?.[p.provincia]?.percepcion : null
+    const alicuota = percepcion.alicuotaCliente ?? delPadron ?? (deLaProvincia ? p.alicuota : '0')
     if (monto(alicuota).lte(0) || neto.lt(p.minimoBase)) continue
     const importe = aImporte(neto.times(alicuota).dividedBy(100))
     if (monto(importe).lte(0)) continue
@@ -174,7 +188,8 @@ function datosReceptor(t: typeof terceros.$inferSelect) {
 
 export async function guardarComprobante(
   tx: Transaccion,
-  usuarioId: string,
+  /** Vacío: lo arma el sistema (por ejemplo, un pedido pagado en una tienda online). */
+  usuarioId: string | null,
   entrada: unknown,
   id?: string,
 ): Promise<ResultadoGuardar> {
@@ -189,7 +204,6 @@ export async function guardarComprobante(
     .from(condicionesIva)
     .where(eq(condicionesIva.codigo, tercero.condicionIva ?? 5))
   const letra = letraPara(empresa.condicionIva, condicion?.letraDesdeInscripto)
-  const tipo = codigoComprobante(letra, d.clase, d.fce)
 
   const [pv] = await tx.select().from(puntosVenta).where(eq(puntosVenta.numero, d.puntoVenta))
   if (!pv || !pv.activo || !['electronico', 'fce'].includes(pv.tipo)) {
@@ -211,6 +225,25 @@ export async function guardarComprobante(
     }
     if (asociado.clase === 'nota_credito') return { ok: false, error: 'Una nota no se asocia a una nota de crédito.' }
   }
+
+  // RG 5762/2025: la A puede ir con leyenda (y la sujeta a retención con los códigos 51 a 53).
+  // Las notas siguen a su comprobante; las facturas, al régimen que ARCA le asignó a la empresa.
+  const [arca] = await tx
+    .select({ regimen: arcaConfiguracion.regimenClaseA, cbu: arcaConfiguracion.cbuInformada })
+    .from(arcaConfiguracion)
+  const regimen = (arca?.regimen ?? 'comun') as RegimenClaseA
+  const sujetaRetencion =
+    letra === 'A' && !d.fce && (asociado ? datosTipo(asociado.tipo).sujetaRetencion : regimen === 'sujeta_retencion')
+  const tipo = codigoComprobante(letra, d.clase, d.fce, sujetaRetencion)
+  const conCbu =
+    letra === 'A' &&
+    !d.fce &&
+    !sujetaRetencion &&
+    (asociado ? asociado.leyenda === LEYENDA_CBU_INFORMADA : regimen === 'cbu_informada')
+  if ((sujetaRetencion || conCbu) && !asociado && arca?.cbu?.length !== 22) {
+    return { ok: false, error: 'Los comprobantes A con leyenda se cobran en la CBU informada: cargala en Configuración → ARCA.' }
+  }
+  const leyenda = sujetaRetencion ? LEYENDA_SUJETA_RETENCION : conCbu ? LEYENDA_CBU_INFORMADA : null
 
   if (d.concepto !== 1 && (!d.servicioDesde || !d.servicioHasta || !d.vencimiento)) {
     return { ok: false, error: 'Para servicios, ARCA pide el período facturado (desde y hasta) y el vencimiento del pago.' }
@@ -239,6 +272,10 @@ export async function guardarComprobante(
       alicuotaCliente: tercero.percepcionIibb,
       provinciaCliente: tercero.provincia,
       activas,
+      padron:
+        activas.length && tercero.tipoDocumento === 80 && tercero.numeroDocumento
+          ? await alicuotasPadron(tx, tercero.numeroDocumento, d.fecha)
+          : {},
     },
   )
 
@@ -246,6 +283,7 @@ export async function guardarComprobante(
     clase: d.clase,
     letra,
     tipo,
+    leyenda,
     puntoVenta: d.puntoVenta,
     fecha: d.fecha,
     terceroId: d.terceroId,
@@ -278,42 +316,45 @@ export async function guardarComprobante(
   }))
 
   try {
-    let comprobanteId = id
-    if (id) {
-      const [antes] = await tx.select().from(comprobantes).where(eq(comprobantes.id, id))
-      if (!antes) return { ok: false, error: 'Ese comprobante ya no existe.' }
-      if (antes.estado !== 'borrador') return { ok: false, error: 'Solo se modifica un borrador.' }
-      await tx.update(comprobantes).set(cabecera).where(eq(comprobantes.id, id))
-      for (const tabla of [comprobantesItems, comprobantesIva, comprobantesTributos, comprobantesAsociados]) {
-        await tx.delete(tabla).where(eq(tabla.comprobanteId, id))
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      let comprobanteId = id
+      if (id) {
+        const [antes] = await tx.select().from(comprobantes).where(eq(comprobantes.id, id))
+        if (!antes) return { ok: false, error: 'Ese comprobante ya no existe.' }
+        if (antes.estado !== 'borrador') return { ok: false, error: 'Solo se modifica un borrador.' }
+        await tx.update(comprobantes).set(cabecera).where(eq(comprobantes.id, id))
+        for (const tabla of [comprobantesItems, comprobantesIva, comprobantesTributos, comprobantesAsociados]) {
+          await tx.delete(tabla).where(eq(tabla.comprobanteId, id))
+        }
+      } else {
+        const [nuevo] = await tx
+          .insert(comprobantes)
+          .values({ ...cabecera, usuarioId })
+          .returning({ id: comprobantes.id })
+        comprobanteId = nuevo.id
       }
-    } else {
-      const [nuevo] = await tx
-        .insert(comprobantes)
-        .values({ ...cabecera, usuarioId })
-        .returning({ id: comprobantes.id })
-      comprobanteId = nuevo.id
-    }
-    await tx.insert(comprobantesItems).values(items.map((i) => ({ ...i, comprobanteId: comprobanteId! })))
-    if (calculo.iva.length) {
-      await tx
-        .insert(comprobantesIva)
-        .values(
-          calculo.iva.map((a) => ({ comprobanteId: comprobanteId!, alicuotaIva: a.alicuotaIva, base: a.base, importe: a.iva })),
-        )
-    }
-    if (calculo.tributos.length) {
-      await tx.insert(comprobantesTributos).values(calculo.tributos.map((x) => ({ ...x, comprobanteId: comprobanteId! })))
-    }
-    if (asociado) await tx.insert(comprobantesAsociados).values({ comprobanteId: comprobanteId!, asociadoId: asociado.id })
-    await auditar(tx, {
-      usuarioId,
-      accion: id ? 'modificacion' : 'alta',
-      entidad: 'comprobante',
-      entidadId: comprobanteId,
-      despues: { cabecera, items },
+      await tx.insert(comprobantesItems).values(items.map((i) => ({ ...i, comprobanteId: comprobanteId! })))
+      if (calculo.iva.length) {
+        await tx
+          .insert(comprobantesIva)
+          .values(
+            calculo.iva.map((a) => ({ comprobanteId: comprobanteId!, alicuotaIva: a.alicuotaIva, base: a.base, importe: a.iva })),
+          )
+      }
+      if (calculo.tributos.length) {
+        await tx.insert(comprobantesTributos).values(calculo.tributos.map((x) => ({ ...x, comprobanteId: comprobanteId! })))
+      }
+      if (asociado) await tx.insert(comprobantesAsociados).values({ comprobanteId: comprobanteId!, asociadoId: asociado.id })
+      await auditar(tx, {
+        usuarioId,
+        accion: id ? 'modificacion' : 'alta',
+        entidad: 'comprobante',
+        entidadId: comprobanteId,
+        despues: { cabecera, items },
+      })
+      return { ok: true, id: comprobanteId! }
     })
-    return { ok: true, id: comprobanteId! }
   } catch (e) {
     const m = errorDeBase(e)
     if (m) return { ok: false, error: m }
@@ -429,7 +470,7 @@ async function controlar(tx: Transaccion, c: typeof comprobantes.$inferSelect, h
 export type ResultadoEmision =
   { ok: true; numero: number; cae: string; observaciones: string[] } | { ok: false; error: string; pendiente?: boolean }
 
-type CrearCliente = (tx: Transaccion, cuit: string) => Promise<ClienteArca>
+export type CrearCliente = (tx: Transaccion, cuit: string) => Promise<ClienteArca>
 
 const textoMensajes = (ms: { codigo: string; mensaje: string }[]) => ms.map((m) => `${m.mensaje} (${m.codigo})`)
 
@@ -451,7 +492,7 @@ async function bloquearNumerador(tx: Transaccion, tipo: number, puntoVenta: numb
  */
 export async function emitirComprobante(
   empresaId: string,
-  usuarioId: string,
+  usuarioId: string | null,
   id: string,
   crearCliente: CrearCliente,
   hoy: string = hoyArgentina(),
@@ -464,6 +505,8 @@ export async function emitirComprobante(
     if (!c) return { error: 'Ese comprobante ya no existe.' }
     if (c.estado === 'autorizado') return { error: 'El comprobante ya está autorizado.' }
     if (c.estado === 'pendiente_verificacion') return { verificar: true as const }
+    const cerrado = (await controlarBloqueo(tx, 'ventas', c.fecha)) ?? (await controlarPeriodoIva(tx, c.fecha.slice(0, 7)))
+    if (cerrado) return { error: cerrado }
     // La ficha del cliente pudo cambiar desde que se armó el borrador.
     const [tercero] = await tx.select().from(terceros).where(eq(terceros.id, c.terceroId))
     const receptor = datosReceptor(tercero)
@@ -576,7 +619,7 @@ export async function emitirComprobante(
  */
 export async function verificarComprobante(
   empresaId: string,
-  usuarioId: string,
+  usuarioId: string | null,
   id: string,
   crearCliente: CrearCliente,
 ): Promise<ResultadoEmision> {
@@ -636,7 +679,7 @@ export async function verificarComprobante(
 }
 
 /** Una nota de crédito recién autorizada cancela la deuda del comprobante que corrige. */
-async function aplicarNota(tx: Transaccion, usuarioId: string, id: string) {
+async function aplicarNota(tx: Transaccion, usuarioId: string | null, id: string) {
   const [c] = await tx.select().from(comprobantes).where(eq(comprobantes.id, id))
   if (c.clase !== 'nota_credito') return
   const asociados = await tx.select().from(comprobantesAsociados).where(eq(comprobantesAsociados.comprobanteId, id))

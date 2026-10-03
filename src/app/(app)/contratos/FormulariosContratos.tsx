@@ -35,7 +35,7 @@ function ElegirCliente({ inicial }: { inicial?: { id: string; razonSocial: strin
       <span className={etiqueta}>Cliente</span>
       <input type="hidden" name="terceroId" value={cliente?.id ?? ''} />
       {cliente ? (
-        <div className="flex h-9 items-center justify-between rounded-md border border-borde bg-superficie-2 px-2.5">
+        <div className="flex h-9 items-center justify-between rounded-lg border border-borde-fuerte/80 bg-superficie-2 px-2.5">
           <span className="truncate text-sm font-medium">{cliente.razonSocial}</span>
           <button type="button" onClick={() => setCliente(null)} className="text-xs text-acento hover:underline">
             Cambiar
@@ -73,6 +73,8 @@ export type DatosContrato = {
   desde: string | null
   hasta: string | null
   estado: string
+  slaRespuestaHoras: number | null
+  slaResolucionHoras: number | null
   observaciones: string | null
 }
 
@@ -193,6 +195,26 @@ export function FormularioContrato({
           </select>
         </label>
       )}
+      <label className="flex flex-col gap-1">
+        <span className={etiqueta}>Servicio técnico: llegar en (horas)</span>
+        <input
+          name="slaRespuestaHoras"
+          inputMode="numeric"
+          defaultValue={inicial?.slaRespuestaHoras ?? ''}
+          placeholder="El general"
+          className={`${control} cifras`}
+        />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className={etiqueta}>Resolver en (horas)</span>
+        <input
+          name="slaResolucionHoras"
+          inputMode="numeric"
+          defaultValue={inicial?.slaResolucionHoras ?? ''}
+          placeholder="El general"
+          className={`${control} cifras`}
+        />
+      </label>
       <label className="flex flex-col gap-1 sm:col-span-2 lg:col-span-4">
         <span className={etiqueta}>Leyenda en la factura</span>
         <input name="leyenda" defaultValue={inicial?.leyenda ?? ''} className={control} />

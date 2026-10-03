@@ -5,6 +5,7 @@ import {
   date,
   index,
   inet,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -171,6 +172,9 @@ export const suscripciones = pgTable(
     pagadoHasta: date('pagado_hasta'),
     /** Precio mensual acordado sin IVA; nulo es el de lista. */
     precioAcordado: numeric('precio_acordado', { precision: 18, scale: 2 }),
+    /** Débito automático de Mercado Pago (preapproval): su id y su estado. */
+    mpSuscripcion: text('mp_suscripcion'),
+    mpEstado: text('mp_estado'),
     observaciones: text('observaciones'),
     ...marcasDeTiempo(),
   },
@@ -208,3 +212,84 @@ export const eventosSuscripcion = pgTable(
     check('eventos_suscripcion_tipo', sql`${t.tipo} in ('alta', 'cambio', 'pago', 'pedido', 'nota')`),
   ],
 )
+
+/**
+ * Consultas del formulario de contacto del sitio comercial. De plataforma:
+ * las atiende Vektra. La IP se guarda resumida (hash), solo para frenar abusos.
+ */
+export const consultasSitio = pgTable(
+  'consultas_sitio',
+  {
+    id: id(),
+    nombre: text('nombre').notNull(),
+    email: text('email').notNull(),
+    telefono: text('telefono'),
+    empresa: text('empresa'),
+    rubro: text('rubro'),
+    mensaje: text('mensaje').notNull(),
+    /** Página desde la que escribió. */
+    origen: text('origen'),
+    ipHash: text('ip_hash'),
+    /** nueva | atendida */
+    estado: text('estado').notNull().default('nueva'),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.creado), index().on(t.ipHash, t.creado)],
+)
+
+/**
+ * Freno a la fuerza bruta y al abuso (ingreso, portal, formularios
+ * públicos): un registro por intento. Vive en la base para que funcione con
+ * varias instancias y sobreviva a los reinicios; la tarea periódica borra
+ * lo viejo.
+ */
+export const frenos = pgTable(
+  'frenos',
+  {
+    id: id(),
+    /** Qué se frena: "ingreso:email:x@y.com", "ingreso:ip:1.2.3.4"… (las IP van resumidas). */
+    clave: text('clave').notNull(),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.clave, t.creado), index().on(t.creado)],
+)
+
+/** Pedidos de "olvidé mi contraseña": token de un solo uso (acá queda su hash), vence en una hora. */
+export const recuperacionesClave = pgTable(
+  'recuperaciones_clave',
+  {
+    id: id(),
+    usuarioId: uuid('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    hashToken: text('hash_token').notNull().unique(),
+    vence: timestamp('vence', { withTimezone: true }).notNull(),
+    usada: timestamp('usada', { withTimezone: true }),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.usuarioId)],
+)
+
+/**
+ * Monitoreo (de plataforma): el último paso de cada tarea periódica, para
+ * saber si dejó de correr.
+ */
+export const latidos = pgTable('latidos', {
+  nombre: text('nombre').primaryKey(),
+  ultimo: timestamp('ultimo', { withTimezone: true }).notNull().defaultNow(),
+  ok: boolean('ok').notNull().default(true),
+  detalle: jsonb('detalle').$type<Record<string, unknown>>(),
+})
+
+/** Errores del servidor agrupados por huella (mensaje y ruta), con aviso a la plataforma. */
+export const erroresServidor = pgTable('errores_servidor', {
+  huella: text('huella').primaryKey(),
+  mensaje: text('mensaje').notNull(),
+  ruta: text('ruta'),
+  tipo: text('tipo'),
+  digest: text('digest'),
+  cantidad: integer('cantidad').notNull().default(1),
+  primero: timestamp('primero', { withTimezone: true }).notNull().defaultNow(),
+  ultimo: timestamp('ultimo', { withTimezone: true }).notNull().defaultNow(),
+  avisado: timestamp('avisado', { withTimezone: true }),
+})

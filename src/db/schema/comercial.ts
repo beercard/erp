@@ -143,7 +143,7 @@ export const pedidos = pgTable(
     presupuestoId: uuid('presupuesto_id'),
     depositoId: uuid('deposito_id'),
     fechaEntrega: date('fecha_entrega'),
-    /** manual | presupuesto | tienda */
+    /** manual | presupuesto | tienda | mercadolibre | tiendanube | woocommerce */
     origen: text('origen').notNull().default('manual'),
     /** Número del pedido en la tienda u otro sistema. */
     idExterno: text('id_externo'),
@@ -193,6 +193,11 @@ export const remitos = pgTable(
     /** emitido | anulado */
     estado: text('estado').notNull().default('emitido'),
     observaciones: text('observaciones'),
+    /** Código de Operación de Traslado (ARBA) y datos de su pedido. */
+    cot: text('cot'),
+    cotIntegridad: text('cot_integridad'),
+    cotPedido: timestamp('cot_pedido', { withTimezone: true }),
+    patente: text('patente'),
     usuarioId: uuid('usuario_id'),
     anuladoPor: uuid('anulado_por'),
     anulado: timestamp('anulado', { withTimezone: true }),
@@ -246,7 +251,7 @@ export const movimientosStock = pgTable(
     depositoId: uuid('deposito_id').notNull(),
     /** Positiva entra, negativa sale. */
     cantidad: cantidad('cantidad').notNull(),
-    /** inicial | ajuste | transferencia | remito | anulacion_remito | compra | anulacion_compra */
+    /** inicial | ajuste | transferencia | remito | anulacion_remito | compra | anulacion_compra | servicio | anulacion_servicio */
     tipo: text('tipo').notNull(),
     origenId: uuid('origen_id'),
     observacion: text('observacion'),

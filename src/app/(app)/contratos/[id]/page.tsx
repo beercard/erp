@@ -25,7 +25,7 @@ export default async function Contrato({ params, searchParams }: PageProps<'/con
   const sesion = await paginaContratos('contratos.ver')
   const { id } = await params
   const { guardado, error } = (await searchParams) as { guardado?: string; error?: string }
-  const datos = await conEmpresa(sesion.empresa.id, async (tx) => {
+  const datos = await conEmpresa(sesion, async (tx) => {
     const c = await obtenerContrato(tx, id)
     if (!c) return null
     const libres = await tx

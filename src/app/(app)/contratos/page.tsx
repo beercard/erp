@@ -19,7 +19,7 @@ export default async function Contratos({ searchParams }: PageProps<'/contratos'
   const sesion = await paginaContratos('contratos.ver')
   const { q, estado } = (await searchParams) as { q?: string; estado?: string }
   const filtroEstado = estado === 'todos' ? undefined : (estado ?? 'activo')
-  const lista = await conEmpresa(sesion.empresa.id, (tx) => listarContratos(tx, { q, estado: filtroEstado }))
+  const lista = await conEmpresa(sesion, (tx) => listarContratos(tx, { q, estado: filtroEstado }))
   const editar = tienePermiso(sesion.permisos, 'contratos.editar')
 
   return (
@@ -52,12 +52,12 @@ export default async function Contratos({ searchParams }: PageProps<'/contratos'
           name="q"
           defaultValue={q}
           placeholder="Cliente o número de contrato"
-          className="h-9 min-w-64 flex-1 rounded-md border border-borde bg-superficie px-2.5 text-sm focus:border-acento"
+          className="h-9 min-w-64 flex-1 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2.5 text-sm focus:border-acento"
         />
         <select
           name="estado"
           defaultValue={estado ?? 'activo'}
-          className="h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+          className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
         >
           {Object.entries(ESTADOS_CONTRATO).map(([k, t]) => (
             <option key={k} value={k}>

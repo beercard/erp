@@ -111,7 +111,7 @@ export default async function Cuenta({ params, searchParams }: PageProps<'/tesor
                 type="date"
                 name="desde"
                 defaultValue={desde}
-                className="h-8 rounded-md border border-borde bg-superficie px-2 text-sm"
+                className="h-8 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -120,7 +120,7 @@ export default async function Cuenta({ params, searchParams }: PageProps<'/tesor
                 type="date"
                 name="hasta"
                 defaultValue={hasta}
-                className="h-8 rounded-md border border-borde bg-superficie px-2 text-sm"
+                className="h-8 rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-2 text-sm"
               />
             </label>
             <button type="submit" className="h-8 rounded-md border border-borde px-3 text-sm hover:bg-superficie-2">

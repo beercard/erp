@@ -8,9 +8,11 @@ import { Boton, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { formatearCuit } from '@/lib/cuit'
 import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 import { FUNCIONES, MESES_COBRADOS_EN_ANUAL, planPorId, precioDeLista, situacion, type Funcion } from '@/lib/planes'
+import { listarConsultas } from '@/modulos/plataforma/consultas'
+import { erroresRecientes, estadoCron } from '@/modulos/plataforma/monitoreo'
 import { listarSuscripciones, pedidosPendientes } from '@/modulos/plataforma/suscripciones'
 
-import { resolverPedidoAccion } from './acciones'
+import { atenderConsultaAccion, resolverPedidoAccion } from './acciones'
 import { exigirAdmin } from './admin'
 
 export const metadata: Metadata = { title: 'Plataforma' }
@@ -27,7 +29,13 @@ export default async function Plataforma({ searchParams }: PageProps<'/plataform
   await exigirAdmin()
   const { estado: filtro } = (await searchParams) as { estado?: string }
   const hoy = hoyArgentina()
-  const [todas, pedidos] = await Promise.all([listarSuscripciones(), pedidosPendientes()])
+  const [todas, pedidos, consultas, cron, errores] = await Promise.all([
+    listarSuscripciones(),
+    pedidosPendientes(),
+    listarConsultas(50),
+    estadoCron(),
+    erroresRecientes(15),
+  ])
   const filas = todas.map((e) => {
     const datos = {
       plan: e.plan ?? 'gratis',
@@ -48,7 +56,7 @@ export default async function Plataforma({ searchParams }: PageProps<'/plataform
   const cuenta = (e: string) => filas.filter((f) => f.estado === e).length
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
+    <main className="contenido mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-8 sm:py-8">
       <Link href="/" className="flex items-center gap-1.5 text-sm text-texto-2 hover:text-texto">
         <ArrowLeft aria-hidden className="size-4" /> Volver al sistema
       </Link>
@@ -68,6 +76,41 @@ export default async function Plataforma({ searchParams }: PageProps<'/plataform
           </div>
         ))}
       </div>
+
+      <Panel>
+        <h2 className="flex flex-wrap items-center gap-2 border-b border-borde px-4 py-3 text-sm font-semibold">
+          Salud del servicio
+          <Chip tono={!cron ? 'aviso' : cron.atrasado || !cron.ok ? 'error' : 'ok'}>
+            {!cron
+              ? 'La tarea periódica nunca corrió'
+              : cron.atrasado
+                ? `Tarea periódica atrasada: última ${cron.ultimo.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}`
+                : `Tarea periódica al día${cron.ok ? '' : ' (con errores)'}: ${cron.ultimo.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}`}
+          </Chip>
+        </h2>
+        {errores.length ? (
+          <ul className="divide-y divide-borde text-sm">
+            {errores.map((e) => (
+              <li key={e.huella} className="flex flex-wrap justify-between gap-2 px-4 py-2">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{e.mensaje}</span>
+                  <span className="text-xs text-texto-3">
+                    {e.ruta} · {e.tipo}
+                  </span>
+                </span>
+                <span className="cifras text-right text-xs text-texto-2">
+                  {e.cantidad} {e.cantidad === 1 ? 'vez' : 'veces'}
+                  <span className="block">
+                    {e.ultimo.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-4 py-3 text-sm text-texto-3">Sin errores registrados.</p>
+        )}
+      </Panel>
 
       {pedidos.length > 0 && (
         <Panel className="overflow-x-auto">
@@ -180,6 +223,55 @@ export default async function Plataforma({ searchParams }: PageProps<'/plataform
             ))}
           </tbody>
         </table>
+      </Panel>
+      <Panel className="overflow-x-auto">
+        <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">
+          Consultas del sitio{' '}
+          {consultas.some((c) => c.estado === 'nueva') && (
+            <Chip tono="aviso">{consultas.filter((c) => c.estado === 'nueva').length} nuevas</Chip>
+          )}
+        </h2>
+        {consultas.length === 0 ? (
+          <p className="px-4 py-6 text-sm text-texto-2">Todavía no llegó ninguna consulta.</p>
+        ) : (
+          <table className="w-full min-w-[720px] text-sm">
+            <tbody className="divide-y divide-borde">
+              {consultas.map((c) => (
+                <tr key={c.id} className={c.estado === 'nueva' ? '' : 'text-texto-3'}>
+                  <td className="cifras px-4 py-2 align-top text-xs text-texto-2">
+                    {c.creado.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                    <span className="block">{c.id.slice(0, 8).toUpperCase()}</span>
+                  </td>
+                  <td className="px-4 py-2 align-top">
+                    <span className="font-medium">{c.nombre}</span>
+                    {c.empresa && ` · ${c.empresa}`}
+                    <a href={`mailto:${c.email}`} className="block text-xs text-acento">
+                      {c.email}
+                    </a>
+                    {c.telefono && <span className="block text-xs text-texto-2">{c.telefono}</span>}
+                  </td>
+                  <td className="max-w-md px-4 py-2 align-top whitespace-pre-line">
+                    {(c.rubro || c.origen) && (
+                      <span className="mb-1 block text-xs text-texto-3">{[c.rubro, c.origen].filter(Boolean).join(' · ')}</span>
+                    )}
+                    {c.mensaje}
+                  </td>
+                  <td className="px-4 py-2 text-right align-top">
+                    {c.estado === 'nueva' ? (
+                      <form action={atenderConsultaAccion.bind(null, c.id)}>
+                        <Boton type="submit" className="h-8 px-2 text-xs">
+                          Atendida
+                        </Boton>
+                      </form>
+                    ) : (
+                      <Chip>Atendida</Chip>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Panel>
     </main>
   )

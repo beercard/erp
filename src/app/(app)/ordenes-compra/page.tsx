@@ -48,7 +48,7 @@ export default async function Ordenes({ searchParams }: PageProps<'/ordenes-comp
             key={f.valor}
             href={enlace(f.valor)}
             aria-current={filtro === f.valor ? 'page' : undefined}
-            className={`rounded-full border px-3 py-1 text-xs ${
+            className={`inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-medium transition-colors ${
               filtro === f.valor ? 'border-acento bg-acento-suave text-acento' : 'border-borde text-texto-2 hover:bg-superficie-2'
             }`}
           >

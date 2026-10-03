@@ -2,10 +2,11 @@ import { and, asc, desc, eq, lte, sql } from 'drizzle-orm'
 import * as z from 'zod'
 
 import type { Transaccion } from '../../db/conexion'
-import { alicuotasIva, articulos, listasPrecios, marcas, monedas, precios, rubros } from '../../db/schema'
+import { alicuotasIva, articulos, listasPrecios, marcas, monedas, precios, rubros, terceros } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { aImporte, aplicarPorcentaje, normalizarNumero } from '../../lib/dinero'
 import { hoyArgentina } from '../../lib/fechas'
+import { mensajeDeBase } from '../../lib/errores'
 
 /** Alta y modificación de artículos y sus precios (con historial). */
 
@@ -48,6 +49,24 @@ export const EsquemaArticulo = z.object({
   costo: decimal('El costo tiene que ser un número positivo (hasta 4 decimales).'),
   monedaCosto: z.string().min(3),
   stockMinimo: decimal(),
+  loteReposicion: decimal('El lote tiene que ser un número.'),
+  proveedorId: uuid,
+  /** COT de ARBA: código del nomenclador (6 dígitos) y unidad de medida de la tabla de ARBA. */
+  codigoCot: z
+    .preprocess(
+      (v) => (typeof v === 'string' && v.trim() ? v.replace(/\D/g, '') : null),
+      z
+        .string()
+        .regex(/^\d{6}$/, { error: 'El código del nomenclador del COT tiene 6 dígitos.' })
+        .nullable(),
+    )
+    .optional(),
+  unidadCot: z
+    .preprocess(
+      (v) => (typeof v === 'string' && v.trim() ? Number(v) : null),
+      z.number().int().min(1).max(99, { error: 'La unidad del COT es un código de 1 o 2 dígitos.' }).nullable(),
+    )
+    .optional(),
 })
 
 export type DatosArticulo = z.infer<typeof EsquemaArticulo>
@@ -69,18 +88,21 @@ export async function guardarArticulo(
   // Un servicio no lleva stock ni número de serie.
   const datos = p.data.tipo === 'servicio' ? { ...p.data, llevaStock: false, llevaSerie: false } : p.data
   try {
-    if (id) {
-      const [antes] = await tx.select().from(articulos).where(eq(articulos.id, id))
-      if (!antes) return { ok: false, errores: {}, mensaje: 'Ese artículo ya no existe.' }
-      const [despues] = await tx.update(articulos).set(datos).where(eq(articulos.id, id)).returning()
-      await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'articulo', entidadId: id, antes, despues })
-      return { ok: true, id }
-    }
-    const [nuevo] = await tx.insert(articulos).values(datos).returning()
-    await auditar(tx, { usuarioId, accion: 'alta', entidad: 'articulo', entidadId: nuevo.id, despues: nuevo })
-    return { ok: true, id: nuevo.id }
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      if (id) {
+        const [antes] = await tx.select().from(articulos).where(eq(articulos.id, id))
+        if (!antes) return { ok: false, errores: {}, mensaje: 'Ese artículo ya no existe.' }
+        const [despues] = await tx.update(articulos).set(datos).where(eq(articulos.id, id)).returning()
+        await auditar(tx, { usuarioId, accion: 'modificacion', entidad: 'articulo', entidadId: id, antes, despues })
+        return { ok: true, id }
+      }
+      const [nuevo] = await tx.insert(articulos).values(datos).returning()
+      await auditar(tx, { usuarioId, accion: 'alta', entidad: 'articulo', entidadId: nuevo.id, despues: nuevo })
+      return { ok: true, id: nuevo.id }
+    })
   } catch (e) {
-    const m = (e as { cause?: { message?: string } }).cause?.message ?? ''
+    const m = mensajeDeBase(e)
     if (m.includes('articulos_empresa_id_codigo'))
       return { ok: false, errores: { codigo: 'Ese código ya lo tiene otro artículo.' } }
     throw e
@@ -97,7 +119,12 @@ export async function opcionesArticulo(tx: Transaccion) {
       .orderBy(asc(alicuotasIva.porcentaje)),
     tx.select({ valor: monedas.codigo, texto: monedas.nombre }).from(monedas),
   ])
-  return { rubros: rbs, marcas: mcs, alicuotas: ivas, monedas: mons }
+  const provs = await tx
+    .select({ valor: terceros.id, texto: terceros.razonSocial })
+    .from(terceros)
+    .where(and(eq(terceros.esProveedor, true), eq(terceros.activo, true)))
+    .orderBy(asc(terceros.razonSocial))
+  return { rubros: rbs, marcas: mcs, alicuotas: ivas, monedas: mons, proveedores: provs }
 }
 
 export type PrecioDeLista = {

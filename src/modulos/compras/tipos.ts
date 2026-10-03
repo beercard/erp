@@ -23,6 +23,22 @@ const CODIGOS: Record<'comun' | 'fce', Partial<Record<LetraCompra, Record<Clase,
 
 export const LETRAS_COMPRA: LetraCompra[] = ['A', 'B', 'C', 'M']
 
+/**
+ * Cómo se muestra cada letra. "M" (códigos 51 a 53) es, desde la RG 5762/2025,
+ * la A con la leyenda "OPERACIÓN SUJETA A RETENCIÓN": al pagarla se retiene el
+ * 100 % del IVA y el 6 % de Ganancias, y se paga en la CBU informada.
+ */
+export const NOMBRE_LETRA_COMPRA: Record<LetraCompra, string> = {
+  A: 'A',
+  B: 'B',
+  C: 'C',
+  M: 'A sujeta a retención (51-53, ex M)',
+}
+
+/** Aviso al pagar comprobantes A sujetos a retención (RG 5762/2025). */
+export const AVISO_SUJETA_RETENCION =
+  'Hay comprobantes A con la leyenda "OPERACIÓN SUJETA A RETENCIÓN": corresponde retener el 100 % del IVA y el 6 % de Ganancias sobre el neto, y pagar en la CBU informada del proveedor.'
+
 export function codigoCompra(letra: LetraCompra, clase: Clase, fce = false): number | null {
   return CODIGOS[fce ? 'fce' : 'comun'][letra]?.[clase] ?? null
 }
@@ -39,7 +55,7 @@ export function datosTipoCompra(tipo: number): { letra: LetraCompra; clase: Clas
   return null
 }
 
-/** Abreviatura para listados: FA, NCA, NDM, FCEA… */
+/** Abreviatura para listados: FA, NCA, FA-R (A sujeta a retención), FCEA… */
 export function abreviaturaCompra(tipo: number): string {
   // 0: saldo migrado de PYMEXIS que no es un comprobante fiscal (pago, a cuenta…).
   if (tipo === 0) return 'SI'
@@ -47,6 +63,7 @@ export function abreviaturaCompra(tipo: number): string {
   const d = datosTipoCompra(tipo)
   if (!d) return String(tipo)
   const base = d.clase === 'factura' ? 'F' : d.clase === 'nota_credito' ? 'NC' : 'ND'
+  if (d.letra === 'M') return `${base}A-R`
   return `${d.fce ? (d.clase === 'factura' ? 'FCE' : `${base}E`) : base}${d.letra}`
 }
 

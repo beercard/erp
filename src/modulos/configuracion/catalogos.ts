@@ -11,6 +11,7 @@ import {
   monedas,
   puntosVenta,
   rubros,
+  tecnicos,
   transportes,
   vendedores,
   zonas,
@@ -18,6 +19,7 @@ import {
 import { auditar } from '../../lib/auditoria'
 import { normalizarNumero } from '../../lib/dinero'
 import { validarCuit } from '../../lib/cuit'
+import { mensajeDeBase } from '../../lib/errores'
 
 /**
  * Maestros simples de la empresa, definidos como configuración: una sola
@@ -56,6 +58,9 @@ export type DefinicionCatalogo = {
   /** Restricción única → mensaje cuando choca. */
   duplicado?: { indice: string; mensaje: string }
 }
+
+const hora = (v: unknown) =>
+  /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v ?? '')) ? null : 'Hora con formato HH:MM, por ejemplo 08:30.'
 
 const numeroPositivo = (v: unknown) =>
   v === null || v === undefined || v === '' || Number(v) >= 0 ? null : 'Tiene que ser cero o más.'
@@ -225,6 +230,49 @@ export const CATALOGOS: DefinicionCatalogo[] = [
     ],
   },
   {
+    clave: 'tecnicos',
+    titulo: 'Técnicos',
+    singular: 'técnico',
+    descripcion: 'Quienes atienden las órdenes de servicio técnico de los equipos.',
+    tabla: tecnicos,
+    id: tecnicos.id,
+    orden: tecnicos.nombre,
+    activo: tecnicos.activo,
+    nombreActivo: 'activo',
+    duplicado: { indice: 'tecnicos_empresa_id_codigo', mensaje: 'Ya hay un técnico con ese código.' },
+    campos: [
+      { nombre: 'codigo', etiqueta: 'Código', tipo: 'texto', requerido: true, enListado: true },
+      { nombre: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, enListado: true },
+      { nombre: 'telefono', etiqueta: 'Teléfono', tipo: 'texto', enListado: true },
+      {
+        nombre: 'email',
+        etiqueta: 'Email',
+        tipo: 'texto',
+        enListado: true,
+        ayuda: 'Con el usuario de este email el técnico entra a Mi agenda.',
+      },
+      {
+        nombre: 'depositoId',
+        etiqueta: 'Camioneta (depósito)',
+        tipo: 'seleccion',
+        ayuda: 'De acá salen los materiales que carga en el celular.',
+        opciones: (tx) => opcionesDe(tx, depositos, depositos.id, depositos.nombre),
+      },
+      { nombre: 'jornadaDesde', etiqueta: 'Jornada desde (HH:MM)', tipo: 'texto', requerido: true, validar: hora },
+      { nombre: 'jornadaHasta', etiqueta: 'Jornada hasta (HH:MM)', tipo: 'texto', requerido: true, validar: hora },
+      {
+        nombre: 'dias',
+        etiqueta: 'Días que trabaja',
+        tipo: 'texto',
+        requerido: true,
+        ayuda: '1 = lunes … 7 = domingo. De lunes a viernes: 12345.',
+        validar: (v) =>
+          /^[1-7]{1,7}$/.test(String(v ?? '')) ? null : 'Números del 1 (lunes) al 7 (domingo), por ejemplo 12345.',
+      },
+      { nombre: 'partida', etiqueta: 'Sale desde (domicilio)', tipo: 'texto' },
+    ],
+  },
+  {
     clave: 'rubros',
     titulo: 'Rubros',
     singular: 'rubro',
@@ -389,21 +437,24 @@ export async function guardarCatalogo(
     }
   }
   try {
-    if (id) {
-      const [antes] = await tx.select().from(def.tabla).where(eq(def.id, id))
-      if (!antes) return { ok: false, errores: {}, mensaje: 'Ese registro ya no existe.' }
-      const [despues] = (await tx.update(def.tabla).set(leido.datos).where(eq(def.id, id)).returning()) as Record<
-        string,
-        unknown
-      >[]
-      await auditar(tx, { usuarioId, accion: 'modificacion', entidad: def.clave, entidadId: id, antes, despues })
-      return { ok: true, id }
-    }
-    const [nuevo] = (await tx.insert(def.tabla).values(leido.datos).returning()) as { id: string }[]
-    await auditar(tx, { usuarioId, accion: 'alta', entidad: def.clave, entidadId: nuevo.id, despues: nuevo })
-    return { ok: true, id: nuevo.id }
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      if (id) {
+        const [antes] = await tx.select().from(def.tabla).where(eq(def.id, id))
+        if (!antes) return { ok: false, errores: {}, mensaje: 'Ese registro ya no existe.' }
+        const [despues] = (await tx.update(def.tabla).set(leido.datos).where(eq(def.id, id)).returning()) as Record<
+          string,
+          unknown
+        >[]
+        await auditar(tx, { usuarioId, accion: 'modificacion', entidad: def.clave, entidadId: id, antes, despues })
+        return { ok: true, id }
+      }
+      const [nuevo] = (await tx.insert(def.tabla).values(leido.datos).returning()) as { id: string }[]
+      await auditar(tx, { usuarioId, accion: 'alta', entidad: def.clave, entidadId: nuevo.id, despues: nuevo })
+      return { ok: true, id: nuevo.id }
+    })
   } catch (e) {
-    const mensaje = (e as { cause?: { message?: string } }).cause?.message ?? ''
+    const mensaje = mensajeDeBase(e)
     if (def.duplicado && mensaje.includes(def.duplicado.indice)) return { ok: false, errores: {}, mensaje: def.duplicado.mensaje }
     if (mensaje.includes('violates foreign key'))
       return { ok: false, errores: {}, mensaje: 'Una de las opciones elegidas ya no existe.' }

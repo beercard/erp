@@ -10,6 +10,7 @@ import { preciosVigentes } from '../maestros/articulos'
 import { calcularTotales, convertir, TASAS_IVA } from './calculo'
 import { siguienteNumero } from './numeracion'
 import { saldos } from './stock'
+import { mensajeDeBase } from '../../lib/errores'
 
 /**
  * Presupuestos y pedidos: documentos sin valor fiscal con renglones, moneda
@@ -122,7 +123,7 @@ function preparar<T extends z.infer<typeof EsquemaDocumento>>(datos: T) {
 }
 
 export function errorDeBase(e: unknown): string | null {
-  const m = (e as { cause?: { message?: string } }).cause?.message ?? ''
+  const m = mensajeDeBase(e)
   if (m.includes('violates foreign key')) return 'Un dato elegido (cliente, artículo, lista o vendedor) ya no existe.'
   return null
 }
@@ -139,42 +140,45 @@ export async function guardarPresupuesto(
   if (!p.success) return { ok: false, error: primerError(p.error) }
   const { cabecera, items } = preparar(p.data)
   try {
-    if (id) {
-      const [antes] = await tx.select().from(presupuestos).where(eq(presupuestos.id, id))
-      if (!antes) return { ok: false, error: 'Ese presupuesto ya no existe.' }
-      if (!['borrador', 'enviado'].includes(antes.estado)) {
-        return { ok: false, error: `El presupuesto está ${antes.estado}: ya no se modifica. Hacé uno nuevo.` }
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      if (id) {
+        const [antes] = await tx.select().from(presupuestos).where(eq(presupuestos.id, id))
+        if (!antes) return { ok: false, error: 'Ese presupuesto ya no existe.' }
+        if (!['borrador', 'enviado'].includes(antes.estado)) {
+          return { ok: false, error: `El presupuesto está ${antes.estado}: ya no se modifica. Hacé uno nuevo.` }
+        }
+        await tx
+          .update(presupuestos)
+          .set({ ...cabecera, validezDias: p.data.validezDias })
+          .where(eq(presupuestos.id, id))
+        await tx.delete(presupuestosItems).where(eq(presupuestosItems.presupuestoId, id))
+        await tx.insert(presupuestosItems).values(items.map((i) => ({ ...i, presupuestoId: id })))
+        await auditar(tx, {
+          usuarioId,
+          accion: 'modificacion',
+          entidad: 'presupuesto',
+          entidadId: id,
+          antes,
+          despues: { cabecera, items },
+        })
+        return { ok: true, id, numero: antes.numero }
       }
-      await tx
-        .update(presupuestos)
-        .set({ ...cabecera, validezDias: p.data.validezDias })
-        .where(eq(presupuestos.id, id))
-      await tx.delete(presupuestosItems).where(eq(presupuestosItems.presupuestoId, id))
-      await tx.insert(presupuestosItems).values(items.map((i) => ({ ...i, presupuestoId: id })))
+      const numero = await siguienteNumero(tx, 'presupuesto')
+      const [nuevo] = await tx
+        .insert(presupuestos)
+        .values({ ...cabecera, numero, validezDias: p.data.validezDias, usuarioId })
+        .returning()
+      await tx.insert(presupuestosItems).values(items.map((i) => ({ ...i, presupuestoId: nuevo.id })))
       await auditar(tx, {
         usuarioId,
-        accion: 'modificacion',
+        accion: 'alta',
         entidad: 'presupuesto',
-        entidadId: id,
-        antes,
-        despues: { cabecera, items },
+        entidadId: nuevo.id,
+        despues: { numero, cabecera, items },
       })
-      return { ok: true, id, numero: antes.numero }
-    }
-    const numero = await siguienteNumero(tx, 'presupuesto')
-    const [nuevo] = await tx
-      .insert(presupuestos)
-      .values({ ...cabecera, numero, validezDias: p.data.validezDias, usuarioId })
-      .returning()
-    await tx.insert(presupuestosItems).values(items.map((i) => ({ ...i, presupuestoId: nuevo.id })))
-    await auditar(tx, {
-      usuarioId,
-      accion: 'alta',
-      entidad: 'presupuesto',
-      entidadId: nuevo.id,
-      despues: { numero, cabecera, items },
+      return { ok: true, id: nuevo.id, numero }
     })
-    return { ok: true, id: nuevo.id, numero }
   } catch (e) {
     const m = errorDeBase(e)
     if (m) return { ok: false, error: m }
@@ -276,49 +280,60 @@ export async function convertirEnPedido(
 
 export async function guardarPedido(
   tx: Transaccion,
-  usuarioId: string,
+  usuarioId: string | null,
   entrada: unknown,
   id?: string,
+  /** Pedidos que vienen de una tienda: de qué canal y con qué número (no se repiten). */
+  externo?: { origen: string; idExterno: string },
 ): Promise<ResultadoDocumento> {
   const p = EsquemaPedido.safeParse(entrada)
   if (!p.success) return { ok: false, error: primerError(p.error) }
   const { cabecera, items } = preparar(p.data)
   const extra = { depositoId: p.data.depositoId, fechaEntrega: p.data.fechaEntrega }
   try {
-    if (id) {
-      const [antes] = await tx.select().from(pedidos).where(eq(pedidos.id, id)).for('update')
-      if (!antes) return { ok: false, error: 'Ese pedido ya no existe.' }
-      const [entregado] = await tx
-        .select({ n: sql<number>`count(*)::int` })
-        .from(pedidosItems)
-        .where(and(eq(pedidosItems.pedidoId, id), sql`${pedidosItems.cantidadEntregada} > 0`))
-      if (antes.estado !== 'pendiente' || entregado.n > 0) {
-        return { ok: false, error: 'El pedido ya tiene entregas o está cerrado: no se modifica.' }
+    // Punto de guardado: si algo falla, se deshace solo esto y la transacción sigue sana.
+    return await tx.transaction(async (tx) => {
+      if (id) {
+        const [antes] = await tx.select().from(pedidos).where(eq(pedidos.id, id)).for('update')
+        if (!antes) return { ok: false, error: 'Ese pedido ya no existe.' }
+        const [entregado] = await tx
+          .select({ n: sql<number>`count(*)::int` })
+          .from(pedidosItems)
+          .where(and(eq(pedidosItems.pedidoId, id), sql`${pedidosItems.cantidadEntregada} > 0`))
+        if (antes.estado !== 'pendiente' || entregado.n > 0) {
+          return { ok: false, error: 'El pedido ya tiene entregas o está cerrado: no se modifica.' }
+        }
+        await tx
+          .update(pedidos)
+          .set({ ...cabecera, ...extra })
+          .where(eq(pedidos.id, id))
+        await tx.delete(pedidosItems).where(eq(pedidosItems.pedidoId, id))
+        await tx.insert(pedidosItems).values(items.map((i) => ({ ...i, pedidoId: id })))
+        await auditar(tx, {
+          usuarioId,
+          accion: 'modificacion',
+          entidad: 'pedido',
+          entidadId: id,
+          antes,
+          despues: { cabecera, items },
+        })
+        return { ok: true, id, numero: antes.numero }
       }
-      await tx
-        .update(pedidos)
-        .set({ ...cabecera, ...extra })
-        .where(eq(pedidos.id, id))
-      await tx.delete(pedidosItems).where(eq(pedidosItems.pedidoId, id))
-      await tx.insert(pedidosItems).values(items.map((i) => ({ ...i, pedidoId: id })))
+      const numero = await siguienteNumero(tx, 'pedido')
+      const [nuevo] = await tx
+        .insert(pedidos)
+        .values({ ...cabecera, ...extra, ...externo, numero, usuarioId })
+        .returning()
+      await tx.insert(pedidosItems).values(items.map((i) => ({ ...i, pedidoId: nuevo.id })))
       await auditar(tx, {
         usuarioId,
-        accion: 'modificacion',
+        accion: 'alta',
         entidad: 'pedido',
-        entidadId: id,
-        antes,
-        despues: { cabecera, items },
+        entidadId: nuevo.id,
+        despues: { numero, cabecera, items },
       })
-      return { ok: true, id, numero: antes.numero }
-    }
-    const numero = await siguienteNumero(tx, 'pedido')
-    const [nuevo] = await tx
-      .insert(pedidos)
-      .values({ ...cabecera, ...extra, numero, usuarioId })
-      .returning()
-    await tx.insert(pedidosItems).values(items.map((i) => ({ ...i, pedidoId: nuevo.id })))
-    await auditar(tx, { usuarioId, accion: 'alta', entidad: 'pedido', entidadId: nuevo.id, despues: { numero, cabecera, items } })
-    return { ok: true, id: nuevo.id, numero }
+      return { ok: true, id: nuevo.id, numero }
+    })
   } catch (e) {
     const m = errorDeBase(e)
     if (m) return { ok: false, error: m }
@@ -327,7 +342,7 @@ export async function guardarPedido(
 }
 
 /** Cancela lo que falta entregar de un pedido. Lo entregado queda. */
-export async function cancelarPedido(tx: Transaccion, usuarioId: string, id: string) {
+export async function cancelarPedido(tx: Transaccion, usuarioId: string | null, id: string) {
   const [antes] = await tx.select().from(pedidos).where(eq(pedidos.id, id)).for('update')
   if (!antes) return { ok: false as const, error: 'Ese pedido ya no existe.' }
   if (['entregado', 'cancelado'].includes(antes.estado))

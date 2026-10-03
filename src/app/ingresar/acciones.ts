@@ -5,6 +5,7 @@ import * as z from 'zod'
 
 import { borrarCookieDeSesion, datosDelPedido, guardarCookieDeSesion, tokenDeSesion } from '@/lib/auth/servidor'
 import { cerrarSesion, elegirEmpresa, iniciarSesion } from '@/lib/auth/sesiones'
+import { anotar, claveIp, olvidar, superado } from '@/lib/frenos'
 
 export type EstadoIngreso = { error?: string; email?: string } | undefined
 
@@ -14,16 +15,25 @@ const Datos = z.object({
   volver: z.string().optional(),
 })
 
-// Freno a la fuerza bruta: 8 intentos fallidos por email e IP cada 15 minutos.
-// Vive en memoria; con varias instancias hay que pasarlo a la base (TODO al
-// desplegar en más de un servidor).
-const fallidos = new Map<string, { cuenta: number; desde: number }>()
+// Freno a la fuerza bruta (en la base, ver src/lib/frenos.ts): 8 fallidos por
+// email cada 15 minutos, sin importar desde dónde, y 30 por conexión.
 const VENTANA = 15 * 60_000
-const MAXIMO = 8
+const POR_EMAIL = 8
+const POR_IP = 30
 
-/** Solo rutas internas: evita que ?volver= mande a otro sitio. */
-function destinoSeguro(volver: string | undefined): string {
-  return volver && volver.startsWith('/') && !volver.startsWith('//') ? volver : '/'
+/**
+ * Solo rutas internas: evita que ?volver= mande a otro sitio. Se rechazan
+ * "//otro.com" y "/\\otro.com" (los navegadores toman la barra invertida
+ * como "/") y cualquier control.
+ */
+export async function destinoSeguro(volver: string | undefined): Promise<string> {
+  if (!volver || !/^\/(?![/\\])/.test(volver) || /[\\\s]/.test(volver)) return '/'
+  try {
+    const u = new URL(volver, 'http://local.invalido')
+    return u.origin === 'http://local.invalido' ? `${u.pathname}${u.search}${u.hash}` : '/'
+  } catch {
+    return '/'
+  }
 }
 
 export async function ingresar(_: EstadoIngreso, formData: FormData): Promise<EstadoIngreso> {
@@ -36,21 +46,20 @@ export async function ingresar(_: EstadoIngreso, formData: FormData): Promise<Es
   if (!datos.success) return { error: datos.error.issues[0]?.message, email }
 
   const meta = await datosDelPedido()
-  const clave = `${datos.data.email.toLowerCase()}|${meta.ip ?? ''}`
-  const previo = fallidos.get(clave)
-  if (previo && Date.now() - previo.desde < VENTANA && previo.cuenta >= MAXIMO) {
+  const porEmail = `ingreso:email:${datos.data.email.toLowerCase()}`
+  const porIp = claveIp('ingreso', meta.ip)
+  if ((await superado([porEmail], POR_EMAIL, VENTANA)) || (await superado([porIp], POR_IP, VENTANA))) {
     return { error: 'Demasiados intentos fallidos. Esperá 15 minutos y probá de nuevo.', email }
   }
 
   const resultado = await iniciarSesion(datos.data.email, datos.data.clave, meta)
   if (!resultado.ok) {
-    const vigente = previo && Date.now() - previo.desde < VENTANA ? previo : { cuenta: 0, desde: Date.now() }
-    fallidos.set(clave, { ...vigente, cuenta: vigente.cuenta + 1 })
+    await anotar([porEmail, porIp])
     return { error: resultado.error, email }
   }
-  fallidos.delete(clave)
+  await olvidar(porEmail)
   await guardarCookieDeSesion(resultado.token, resultado.vence)
-  redirect(destinoSeguro(datos.data.volver))
+  redirect(await destinoSeguro(datos.data.volver))
 }
 
 export async function elegir(formData: FormData) {

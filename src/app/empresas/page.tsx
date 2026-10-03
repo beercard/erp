@@ -1,6 +1,7 @@
-import { Building2, ChevronRight, Plus } from 'lucide-react'
+import { ChevronRight, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 
+import { Logo } from '@/components/sitio/Logo'
 import { Boton, Panel } from '@/components/ui'
 import { requerirSesion } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
@@ -13,8 +14,11 @@ export const metadata: Metadata = { title: 'Elegir empresa' }
 export default async function PaginaEmpresas() {
   const sesion = await requerirSesion()
   return (
-    <main className="mx-auto w-full max-w-lg px-4 py-12">
-      <h1 className="text-xl font-semibold tracking-tight">Hola, {sesion.usuario.nombre.split(' ')[0]}</h1>
+    <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
+      <div className="mb-10">
+        <Logo />
+      </div>
+      <h1 className="text-[26px] leading-tight font-semibold tracking-tight">Hola, {sesion.usuario.nombre.split(' ')[0]}</h1>
       <p className="mt-1 mb-6 text-sm text-texto-2">
         {sesion.empresas.length ? 'Elegí la empresa en la que vas a trabajar.' : 'Todavía no tenés acceso a ninguna empresa.'}
       </p>
@@ -27,7 +31,12 @@ export default async function PaginaEmpresas() {
                 type="submit"
                 className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-superficie-2"
               >
-                <Building2 aria-hidden className="size-5 shrink-0 text-texto-3" />
+                <span
+                  aria-hidden
+                  className="grid size-10 shrink-0 place-items-center rounded-lg bg-acento-suave font-semibold text-acento"
+                >
+                  {e.razonSocial[0]}
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{e.razonSocial}</span>
                   <span className="cifras block text-xs text-texto-3">
@@ -40,7 +49,7 @@ export default async function PaginaEmpresas() {
           ))}
         </Panel>
       )}
-      <details className="mt-6 rounded-lg border border-borde bg-superficie" open={sesion.empresas.length === 0}>
+      <details className="mt-6 tarjeta" open={sesion.empresas.length === 0}>
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
           <Plus aria-hidden className="mr-1.5 inline size-4 align-[-3px]" />
           Crear una empresa

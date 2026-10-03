@@ -4,6 +4,13 @@ ERP en la nube para pymes argentinas: gestión comercial, facturación electrón
 
 - [Arquitectura](docs/01-arquitectura.md)
 - [Modelo de datos y etapas](docs/02-modelo-de-datos.md)
+- [Impuestos e informes (etapa 6)](docs/05-impuestos-e-informes.md)
+- [Contabilidad (etapa 7)](docs/06-contabilidad.md)
+- [Puesta en producción](docs/07-produccion.md)
+- [Tiendas online](docs/08-tiendas-online.md)
+- [Sitio comercial, SEO y suscripciones](docs/09-sitio-y-seo.md)
+- [Servidores: requisitos y proveedores](docs/10-servidores.md)
+- [Seguridad](docs/11-seguridad.md)
 - [Diseño de la interfaz](docs/03-diseno.md)
 
 ## Desarrollo
@@ -38,7 +45,12 @@ Se puede correr las veces que haga falta: actualiza por código y no duplica. Mi
 
 ## Variables del servidor
 
-| Variable            | Para qué                                                                                                                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`      | Postgres de producción. Sin ella se usa PGlite en `.data/`.                                                                                    |
-| `ERP_CLAVE_MAESTRA` | Cifra las claves privadas de ARCA (al menos 32 caracteres). Si se pierde, hay que volver a subir los certificados. No va en la base ni en git. |
+| Variable                  | Para qué                                                                                                                                                                                                                                                        |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`            | Postgres de producción. Sin ella se usa PGlite en `.data/`.                                                                                                                                                                                                     |
+| `ERP_CLAVE_MAESTRA`       | Cifra las claves privadas de ARCA (al menos 32 caracteres). Si se pierde, hay que volver a subir los certificados. No va en la base ni en git.                                                                                                                  |
+| `APP_URL`                 | Dirección pública del sistema (https://…), para los enlaces de los correos y de la encuesta de satisfacción.                                                                                                                                                    |
+| `SMTP_URL`                | Servidor de correo (smtp://usuario:clave@servidor:587). Sin ella los correos quedan en la bandeja de salida.                                                                                                                                                    |
+| `CORREO_REMITENTE`        | Remitente de los correos, por ejemplo "Servicio técnico <avisos@empresa.com.ar>".                                                                                                                                                                               |
+| `CRON_SECRET`             | Clave de la tarea programada `POST /api/cron/servicio` (Authorization: Bearer …), que conviene llamar cada 15 a 60 minutos: vencimientos, preventivos, avisos, alertas de SLA, recordatorios, avisos de vencimientos impositivos y envío de correos y webhooks. |
+| `WEBHOOKS_PERMITIR_LOCAL` | Solo desarrollo y pruebas: deja mandar webhooks por http y a direcciones internas (localhost, red privada). En producción no se carga.                                                                                                                          |

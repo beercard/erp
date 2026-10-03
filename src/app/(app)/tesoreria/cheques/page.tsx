@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import { ChevronLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -38,6 +38,17 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
       .from(cuentasTesoreria)
       .where(and(eq(cuentasTesoreria.tipo, 'banco'), eq(cuentasTesoreria.moneda, 'PES'), eq(cuentasTesoreria.activa, true)))
       .orderBy(asc(cuentasTesoreria.nombre)),
+    fondos: await tx
+      .select({ id: cuentasTesoreria.id, nombre: cuentasTesoreria.nombre })
+      .from(cuentasTesoreria)
+      .where(
+        and(
+          inArray(cuentasTesoreria.tipo, ['caja', 'banco', 'billetera']),
+          eq(cuentasTesoreria.moneda, 'PES'),
+          eq(cuentasTesoreria.activa, true),
+        ),
+      )
+      .orderBy(asc(cuentasTesoreria.tipo), asc(cuentasTesoreria.nombre)),
   }))
   const total = datos.cheques.reduce((s, c) => s + Number(c.importe), 0)
   return (
@@ -47,7 +58,7 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
       </Link>
       <EncabezadoPagina
         titulo="Cheques y ECHEQ de terceros"
-        bajada={`${datos.cheques.length} cheques por ${formatearMonto(total.toFixed(2), '$')}. Entran con las cobranzas; salen depositados o entregados en pagos.`}
+        bajada={`${datos.cheques.length} cheques por ${formatearMonto(total.toFixed(2), '$')}. Entran con las cobranzas; salen depositados, canjeados o entregados en pagos.`}
       />
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <form role="search" className="w-full max-w-xs">
@@ -57,7 +68,7 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
             defaultValue={q}
             placeholder="Cliente, banco o número, y Enter"
             aria-label="Buscar"
-            className="h-9 w-full rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+            className="h-9 w-full rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
           />
         </form>
         <nav aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
@@ -66,7 +77,7 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
               key={f.valor}
               href={`/tesoreria/cheques?${new URLSearchParams({ estado: f.valor, ...(q && { q }) })}`}
               aria-current={estado === f.valor ? 'page' : undefined}
-              className={`rounded-full border px-3 py-1 text-xs ${
+              className={`inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-medium transition-colors ${
                 estado === f.valor
                   ? 'border-acento bg-acento-suave text-acento'
                   : 'border-borde text-texto-2 hover:bg-superficie-2'
@@ -80,6 +91,7 @@ export default async function PaginaCheques({ searchParams }: PageProps<'/tesore
       <Cheques
         cheques={datos.cheques}
         bancos={datos.bancos}
+        fondos={datos.fondos}
         hoy={hoyArgentina()}
         puede={tienePermiso(sesion.permisos, 'tesoreria.mover')}
       />

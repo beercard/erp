@@ -16,10 +16,12 @@ import {
   Receipt,
   Scale,
   Search,
+  Target,
   Truck,
   UserPlus,
   Users,
   Wallet,
+  Wrench,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
@@ -42,6 +44,77 @@ const ACCIONES_CONTRATOS = [
     icono: Receipt,
     claves: 'abonos copias excedentes',
   },
+  {
+    id: 'servicio',
+    texto: 'Ir a servicio técnico',
+    href: '/servicio',
+    icono: Wrench,
+    claves: 'ordenes reparacion falla tecnico',
+  },
+  {
+    id: 'nueva-orden-servicio',
+    texto: 'Nueva orden de servicio',
+    href: '/servicio/nueva',
+    icono: Wrench,
+    claves: 'falla reparacion llamado tecnico',
+  },
+  {
+    id: 'calendario-servicio',
+    texto: 'Calendario de técnicos',
+    href: '/servicio/calendario',
+    icono: Wrench,
+    claves: 'agenda coordinacion asignar',
+  },
+  {
+    id: 'bandeja-servicio',
+    texto: 'Bandeja de entrada (formularios)',
+    href: '/servicio/bandeja',
+    icono: Wrench,
+    claves: 'formularios sueltos relevamiento checklist pedidos',
+  },
+  {
+    id: 'mapa-servicio',
+    texto: 'Mapa y hojas de ruta',
+    href: '/servicio/mapa',
+    icono: Wrench,
+    claves: 'ubicacion tecnicos recorrido gps',
+  },
+  { id: 'mi-agenda', texto: 'Mi agenda (técnico)', href: '/tecnico', icono: Wrench, claves: 'celular ordenes del dia' },
+  {
+    id: 'preventivos',
+    texto: 'Mantenimiento preventivo',
+    href: '/servicio/preventivos',
+    icono: Wrench,
+    claves: 'repetitiva periodica copias',
+  },
+  {
+    id: 'tipos-orden',
+    texto: 'Tipos de orden y formularios',
+    href: '/servicio/tipos',
+    icono: Wrench,
+    claves: 'plantilla checklist formulario',
+  },
+  {
+    id: 'tablero-servicio',
+    texto: 'Tablero de servicio técnico',
+    href: '/servicio/tablero',
+    icono: Wrench,
+    claves: 'indicadores kpi sla nps',
+  },
+  {
+    id: 'recordatorios',
+    texto: 'Recordatorios de clientes',
+    href: '/servicio/recordatorios',
+    icono: Wrench,
+    claves: 'seguimiento llamar',
+  },
+  {
+    id: 'config-servicio',
+    texto: 'Configuración del servicio técnico',
+    href: '/servicio/configuracion',
+    icono: Wrench,
+    claves: 'sla avisos correo encuesta',
+  },
 ]
 
 const ACCIONES = [
@@ -54,6 +127,20 @@ const ACCIONES = [
   },
   { id: 'nuevo-presupuesto', texto: 'Nuevo presupuesto', href: '/presupuestos/nuevo', icono: FilePlus, claves: 'cotizar crear' },
   { id: 'nuevo-pedido', texto: 'Nuevo pedido', href: '/pedidos/nuevo', icono: FilePlus, claves: 'nota venta crear' },
+  {
+    id: 'crm',
+    texto: 'Ir al embudo de ventas (CRM)',
+    href: '/crm',
+    icono: Target,
+    claves: 'crm oportunidades prospectos pipeline',
+  },
+  {
+    id: 'nueva-oportunidad',
+    texto: 'Nueva oportunidad',
+    href: '/crm/nueva',
+    icono: Target,
+    claves: 'crm prospecto lead venta posible',
+  },
   { id: 'nueva-factura', texto: 'Nueva factura', href: '/facturas/nueva', icono: Receipt, claves: 'facturar comprobante arca' },
   {
     id: 'nueva-cobranza',
@@ -173,13 +260,13 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
         type="button"
         onClick={() => setAbierta(true)}
         aria-label="Buscar (Ctrl + K)"
-        className="flex h-9 w-full max-w-md items-center gap-2 rounded-md border border-borde bg-superficie-2 px-3 text-sm text-texto-3 transition-colors hover:border-texto-3"
+        className="flex h-9 w-full max-w-xl items-center gap-2 rounded-lg bg-barra-2 px-3 text-sm text-sobre-barra-2 ring-1 ring-white/10 transition-colors ring-inset hover:bg-white/15 hover:text-sobre-barra"
       >
         <Search aria-hidden className="size-4" />
-        <span className="flex-1 text-left">Buscar clientes, artículos o acciones…</span>
-        <span className="hidden items-center gap-1 sm:flex">
-          <Tecla>Ctrl</Tecla>
-          <Tecla>K</Tecla>
+        <span className="flex-1 truncate text-left">Buscar clientes, artículos o acciones…</span>
+        <span className="hidden items-center gap-1 text-[11px] font-medium sm:flex">
+          <kbd className="rounded-md bg-white/10 px-1.5 py-px font-sans">Ctrl</kbd>
+          <kbd className="rounded-md bg-white/10 px-1.5 py-px font-sans">K</kbd>
         </span>
       </button>
       <Command.Dialog
@@ -187,8 +274,8 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
         onOpenChange={setAbierta}
         label="Búsqueda universal"
         shouldFilter={false}
-        overlayClassName="fixed inset-0 z-40 bg-black/30"
-        contentClassName="fixed top-[12vh] left-1/2 z-50 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-xl border border-borde bg-superficie shadow-panel"
+        overlayClassName="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+        contentClassName="fixed top-[12vh] left-1/2 z-50 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-xl border border-borde bg-superficie shadow-flotante"
       >
         <div className="flex items-center gap-2 border-b border-borde px-4">
           <Search aria-hidden className="size-4 text-texto-3" />
@@ -196,7 +283,7 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
             value={texto}
             onValueChange={alEscribir}
             placeholder="Nombre, código, CUIT o acción…"
-            className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-3"
+            className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-3 focus-visible:shadow-none"
           />
           {buscando && <span className="text-xs text-texto-3">Buscando…</span>}
         </div>
@@ -254,6 +341,18 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
             </Command.Group>
           )}
         </Command.List>
+        <div className="flex items-center gap-4 border-t border-borde bg-superficie-2/60 px-4 py-2 text-[11px] text-texto-3">
+          <span className="flex items-center gap-1">
+            <Tecla>↑</Tecla>
+            <Tecla>↓</Tecla> moverse
+          </span>
+          <span className="flex items-center gap-1">
+            <Tecla>Enter</Tecla> abrir
+          </span>
+          <span className="flex items-center gap-1">
+            <Tecla>Esc</Tecla> cerrar
+          </span>
+        </div>
       </Command.Dialog>
     </>
   )

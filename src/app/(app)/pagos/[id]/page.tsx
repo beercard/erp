@@ -29,7 +29,7 @@ export default async function Pago({ params, searchParams }: PageProps<'/pagos/[
   if (!p) notFound()
   const simbolo = SIMBOLO[p.moneda] ?? p.moneda
   const numero = String(p.numero).padStart(6, '0')
-  const retencion = p.retenciones.find((r) => r.impuesto === 'ganancias')
+  const retencion = p.retenciones.length > 0
 
   return (
     <>
@@ -52,11 +52,11 @@ export default async function Pago({ params, searchParams }: PageProps<'/pagos/[
             <BotonEnlace href={`/imprimir/pago/${p.id}`} target="_blank">
               <Printer aria-hidden className="size-4" /> Imprimir
             </BotonEnlace>
-            {retencion && (
-              <BotonEnlace href={`/imprimir/retencion/${retencion.id}`} target="_blank">
-                <FileText aria-hidden className="size-4" /> Certificado de retención
+            {p.retenciones.map((r) => (
+              <BotonEnlace key={r.id} href={`/imprimir/retencion/${r.id}`} target="_blank">
+                <FileText aria-hidden className="size-4" /> Certificado {r.impuesto === 'iibb' ? 'de IIBB' : 'de Ganancias'}
               </BotonEnlace>
-            )}
+            ))}
           </>
         }
       />
@@ -109,7 +109,9 @@ export default async function Pago({ params, searchParams }: PageProps<'/pagos/[
               ))}
               {p.retenciones.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3 px-4 py-2">
-                  <span>Retención de Ganancias (régimen {r.regimen})</span>
+                  <span>
+                    {r.impuesto === 'iibb' ? `Retención de IIBB (${r.regimen})` : `Retención de Ganancias (régimen ${r.regimen})`}
+                  </span>
                   <span className="cifras text-texto-2">Certificado {String(r.numero).padStart(6, '0')}</span>
                   <span className="cifras">{formatearMonto(r.importe, '$')}</span>
                 </li>
@@ -134,7 +136,7 @@ export default async function Pago({ params, searchParams }: PageProps<'/pagos/[
               <BotonConfirmar
                 variante="fantasma"
                 className="w-full"
-                pregunta={`¿Anular la orden de pago ${numero}? La deuda vuelve, los cheques de terceros vuelven a la cartera${retencion ? ' y el certificado de retención queda anulado' : ''}.`}
+                pregunta={`¿Anular la orden de pago ${numero}? La deuda vuelve, los cheques de terceros vuelven a la cartera${retencion ? ' y los certificados de retención quedan anulados' : ''}.`}
               >
                 Anular la orden de pago
               </BotonConfirmar>

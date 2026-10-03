@@ -13,21 +13,24 @@ export const precioDelCiclo = (mensual: number, ciclo: 'mensual' | 'anual') =>
 const FILAS: Funcion[] = ['facturacion', 'comercial', 'stock', 'compras', 'tesoreria', 'informes', 'roles', 'api']
 
 const limite = (n: number | null, unidad: string) =>
-  n === null ? `${unidad} sin límite` : `${n.toLocaleString('es-AR')} ${unidad}`
+  n === null ? `Sin límite de ${unidad.replace(/ por mes$/, '')}` : `${n.toLocaleString('es-AR')} ${unidad}`
 
-/** Tarjetas de los cuatro planes. El pie de cada una (botón) lo pone quien las usa. */
+/** Tarjetas de los planes (todos, o los que se pasen). El pie de cada una (botón) lo pone quien las usa. */
 export function TarjetasPlanes({
   ciclo,
   actual,
   pie,
+  planes = PLANES,
 }: {
   ciclo: 'mensual' | 'anual'
   actual?: string
   pie: (plan: Plan) => ReactNode
+  /** Los planes a mostrar (en el sitio, los tres pagos; el gratis va aparte). */
+  planes?: Plan[]
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {PLANES.map((p) => (
+    <div className={`grid gap-4 ${planes.length === 3 ? 'md:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-4'}`}>
+      {planes.map((p) => (
         <section
           key={p.id}
           className={`flex flex-col gap-4 rounded-lg border bg-superficie p-5 ${
@@ -81,7 +84,7 @@ export function TarjetasPlanes({
 /** Tabla comparativa de funciones por plan. */
 export function ComparativaPlanes() {
   return (
-    <div className="overflow-x-auto rounded-lg border border-borde bg-superficie">
+    <div className="overflow-x-auto tarjeta">
       <table className="w-full min-w-[640px] text-sm">
         <thead className="border-b border-borde text-left text-xs text-texto-2">
           <tr>

@@ -19,13 +19,26 @@ export type Transaccion = Parameters<Parameters<BaseDeDatos['transaction']>[0]>[
  */
 function crear(): BaseDeDatos {
   const url = process.env.DATABASE_URL
-  if (url) {
-    return drizzlePostgres(postgres(url, { max: 10, prepare: false }), { schema }) as unknown as BaseDeDatos
-  }
+  if (url) return conectarPostgres(url, 10)
   const carpeta = process.env.DATA_DIR ?? '.data/pglite'
   mkdirSync(carpeta, { recursive: true })
   const cliente = new PGlite(carpeta)
   return drizzlePglite(cliente, { schema }) as unknown as BaseDeDatos
+}
+
+/**
+ * Postgres real. Drizzle deja pasar tal cual los parámetros de fecha (para no
+ * convertir los strings): un Date en un sql`...` llegaba crudo al driver y
+ * fallaba (PGlite sí lo aceptaba). Acá se convierte a ISO, para toda consulta.
+ */
+export function conectarPostgres(url: string, max: number): BaseDeDatos {
+  const cliente = postgres(url, { max, prepare: false, onnotice: () => {} })
+  const base = drizzlePostgres(cliente, { schema }) as unknown as BaseDeDatos
+  const aTexto = (v: unknown) => (v instanceof Date ? v.toISOString() : v)
+  for (const tipo of ['1184', '1082', '1083', '1114', '1182', '1185', '1115', '1231']) {
+    ;(cliente.options.serializers as Record<string, (v: unknown) => unknown>)[tipo] = aTexto
+  }
+  return base
 }
 
 // En desarrollo Next recarga los módulos: se reutiliza la misma conexión.

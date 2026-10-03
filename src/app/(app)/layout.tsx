@@ -1,13 +1,16 @@
-import { LogOut, Server } from 'lucide-react'
+import { ChevronsUpDown } from 'lucide-react'
 import Link from 'next/link'
 
+import { Lanzador } from '@/components/shell/Lanzador'
 import { MenuMovil } from '@/components/shell/MenuMovil'
+import { MenuUsuario } from '@/components/shell/MenuUsuario'
+import { Migas } from '@/components/shell/Migas'
 import { Navegacion } from '@/components/shell/Navegacion'
 import { PaletaComandos } from '@/components/shell/PaletaComandos'
+import { Isotipo } from '@/components/sitio/Logo'
 import { requerirEmpresa } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
-
-import { salir } from '../ingresar/acciones'
+import { MARCA } from '@/lib/marca'
 
 const TONO_AVISO = {
   info: 'border-info/30 bg-info-suave text-info',
@@ -19,80 +22,74 @@ const TONO_AVISO = {
 export default async function LayoutApp({ children }: LayoutProps<'/'>) {
   const sesion = await requerirEmpresa()
   const aviso = sesion.suscripcion.aviso
-  const iniciales = sesion.usuario.nombre
-    .split(' ')
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
 
   return (
-    <div className="grid min-h-full grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)]">
-      <aside className="hidden border-r border-borde bg-superficie lg:flex lg:flex-col">
-        <div className="sticky top-0 flex h-screen flex-col gap-5 overflow-y-auto px-3 py-4">
-          <Link href="/empresas" className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-superficie-2">
-            <span
-              aria-hidden
-              className="grid size-8 shrink-0 place-items-center rounded-md bg-acento text-sm font-bold text-sobre-acento"
-            >
-              {sesion.empresa.razonSocial[0]}
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">{sesion.empresa.razonSocial}</span>
-              <span className="cifras block text-[11px] text-texto-3">{formatearCuit(sesion.empresa.cuit)}</span>
-            </span>
-          </Link>
-          <Navegacion funciones={sesion.suscripcion.funciones} />
+    <div className="flex min-h-full flex-col">
+      {/* Barra superior oscura de lado a lado: marca, búsqueda, aplicaciones y la persona. */}
+      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 bg-barra px-3 text-sobre-barra sm:px-4">
+        <MenuMovil funciones={sesion.suscripcion.funciones} permisos={sesion.permisos} />
+        <Link href="/" className="flex shrink-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-white/10 lg:w-[232px]">
+          <Isotipo className="size-7" />
+          <span className="hidden text-[15px] font-semibold tracking-tight sm:inline">
+            {MARCA.corto}
+            <span className="font-normal text-sobre-barra-2"> ERP</span>
+          </span>
+        </Link>
+        <div className="flex min-w-0 flex-1 justify-end md:justify-center">
+          <PaletaComandos funciones={sesion.suscripcion.funciones} />
         </div>
-      </aside>
+        <div className="flex items-center gap-1 lg:w-[232px] lg:justify-end">
+          <Lanzador funciones={sesion.suscripcion.funciones} permisos={sesion.permisos} />
+          <MenuUsuario
+            nombre={sesion.usuario.nombre}
+            email={sesion.usuario.email}
+            rol={sesion.rol ?? ''}
+            empresa={sesion.empresa.razonSocial}
+            adminPlataforma={sesion.usuario.adminPlataforma}
+          />
+        </div>
+      </header>
 
-      <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-borde bg-superficie/95 px-4 backdrop-blur sm:px-6">
-          <MenuMovil funciones={sesion.suscripcion.funciones} />
-          <Link href="/empresas" className="hidden truncate text-sm font-semibold sm:block lg:hidden">
-            {sesion.empresa.razonSocial}
-          </Link>
-          <div className="flex flex-1 justify-center lg:justify-start">
-            <PaletaComandos funciones={sesion.suscripcion.funciones} />
-          </div>
-          <div className="flex items-center gap-2">
-            {sesion.usuario.adminPlataforma && (
-              <Link
-                href="/plataforma"
-                title="Administración de la plataforma"
-                className="grid size-8 place-items-center rounded-md text-texto-3 hover:bg-superficie-2 hover:text-texto"
-              >
-                <Server aria-hidden className="size-4" />
-                <span className="sr-only">Plataforma</span>
-              </Link>
-            )}
-            <span
-              title={`${sesion.usuario.nombre} · ${sesion.rol}`}
-              className="grid size-8 place-items-center rounded-full bg-superficie-2 text-xs font-semibold text-texto-2"
+      <div className="grid flex-1 grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)]">
+        <aside className="hidden bg-lateral lg:block">
+          <div className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col">
+            <Link
+              href="/empresas"
+              title="Cambiar de empresa"
+              className="tarjeta mx-3 mt-3 mb-3 flex items-center gap-2.5 px-2.5 py-2 transition-colors hover:bg-superficie-2"
             >
-              {iniciales}
-            </span>
-            <form action={salir}>
-              <button
-                type="submit"
-                title="Cerrar sesión"
-                className="grid size-8 place-items-center rounded-md text-texto-3 hover:bg-superficie-2 hover:text-texto"
+              <span
+                aria-hidden
+                className="grid size-8 shrink-0 place-items-center rounded-lg bg-acento-suave text-sm font-bold text-acento"
               >
-                <LogOut aria-hidden className="size-4" />
-                <span className="sr-only">Cerrar sesión</span>
-              </button>
-            </form>
-          </div>
-        </header>
-        {aviso && (
-          <div role="status" className={`border-b px-4 py-2 text-sm sm:px-6 ${TONO_AVISO[aviso.tono]}`}>
-            {aviso.texto}{' '}
-            <Link href="/configuracion/suscripcion" className="font-medium underline">
-              {sesion.suscripcion.soloLectura ? 'Elegir un plan' : 'Ver planes'}
+                {sesion.empresa.razonSocial[0]}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] leading-tight font-semibold">{sesion.empresa.razonSocial}</span>
+                <span className="cifras block text-[11px] text-texto-3">{formatearCuit(sesion.empresa.cuit)}</span>
+              </span>
+              <ChevronsUpDown aria-hidden className="size-3.5 shrink-0 text-texto-3" />
             </Link>
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3">
+              <Navegacion funciones={sesion.suscripcion.funciones} permisos={sesion.permisos} />
+            </div>
           </div>
-        )}
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">{children}</main>
+        </aside>
+
+        <div className="flex min-w-0 flex-col">
+          {aviso && (
+            <div role="status" className={`border-b px-4 py-2 text-sm sm:px-8 ${TONO_AVISO[aviso.tono]}`}>
+              {aviso.texto}{' '}
+              <Link href="/configuracion/suscripcion" className="font-medium underline">
+                {sesion.suscripcion.soloLectura ? 'Elegir un plan' : 'Ver planes'}
+              </Link>
+            </div>
+          )}
+          <main id="contenido" className="contenido mx-auto w-full max-w-[1320px] px-4 pt-4 pb-10 sm:px-8 sm:pt-5">
+            <Migas funciones={sesion.suscripcion.funciones} permisos={sesion.permisos} />
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   )

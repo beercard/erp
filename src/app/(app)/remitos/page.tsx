@@ -39,7 +39,7 @@ export default async function Remitos({ searchParams }: PageProps<'/remitos'>) {
           name="q"
           defaultValue={texto}
           placeholder="Número o cliente, y Enter"
-          className="h-9 w-full max-w-sm rounded-md border border-borde bg-superficie px-3 text-sm placeholder:text-texto-3 focus:border-acento"
+          className="h-9 w-full max-w-sm rounded-lg border border-borde-fuerte/80 bg-superficie shadow-suave px-3 text-sm placeholder:text-texto-3 focus:border-acento"
         />
       </form>
       <Panel className="overflow-x-auto">

@@ -1,10 +1,10 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react'
 
 import { Aviso, Boton, BotonEnlace, Campo, Panel, Selector, Tecla } from '@/components/ui'
 
-import { guardar } from './acciones'
+import { consultarPadronAccion, guardar } from './acciones'
 
 type Opcion = { valor: string | number; texto: string }
 
@@ -18,6 +18,7 @@ export type OpcionesFormulario = {
   zonas: Opcion[]
   transportes: Opcion[]
   regimenes: Opcion[]
+  grupos: Opcion[]
 }
 
 export type ValoresTercero = Record<string, string | boolean | null | undefined>
@@ -45,7 +46,42 @@ export function FormularioTercero({
   const [estado, accion, enviando] = useActionState(guardar.bind(null, id), undefined)
   const [modificado, setModificado] = useState(false)
   const formulario = useRef<HTMLFormElement>(null)
+  const [padron, setPadron] = useState<{ ok: boolean; texto: string } | null>(null)
+  const [consultando, consultar] = useTransition()
   const e = estado?.errores ?? {}
+
+  /** Completa la ficha con la constancia de inscripción de ARCA. */
+  const completarDesdeArca = () => {
+    const f = formulario.current
+    if (!f) return
+    const campo = (n: string) => f.elements.namedItem(n) as HTMLInputElement | HTMLSelectElement | null
+    const cuit = campo('numeroDocumento')?.value ?? ''
+    consultar(async () => {
+      const r = await consultarPadronAccion(cuit)
+      if (!r.ok) {
+        setPadron({ ok: false, texto: r.error })
+        return
+      }
+      const d = r.datos
+      const poner = (n: string, v: string | number | null) => {
+        const el = campo(n)
+        if (el && v !== null && v !== '') el.value = String(v)
+      }
+      poner('tipoDocumento', 80)
+      poner('numeroDocumento', d.cuit)
+      poner('razonSocial', d.razonSocial)
+      poner('condicionIva', d.condicionIva)
+      poner('domicilio', d.domicilio)
+      poner('localidad', d.localidad)
+      poner('codigoPostal', d.codigoPostal)
+      poner('provincia', d.provincia)
+      setModificado(true)
+      setPadron({
+        ok: d.activo,
+        texto: `${d.condicionTexto}${d.impuestos.length ? ` · ${d.impuestos.join(', ')}` : ''}${d.activo ? '' : ' · ¡CUIT INACTIVO en ARCA!'}${d.avisos.length ? ` · ${d.avisos.join(' ')}` : ''}`,
+      })
+    })
+  }
   // Tras un error, el formulario muestra lo que se había escrito.
   const v = (campo: string) => {
     const valor = estado?.valores?.[campo] ?? inicial[campo]
@@ -153,6 +189,14 @@ export function FormularioTercero({
             inputMode="numeric"
             className="cifras"
           />
+          {!soloLectura && (
+            <div className="flex flex-col justify-end gap-1 sm:col-span-2 lg:col-span-1">
+              <Boton type="button" onClick={completarDesdeArca} disabled={consultando}>
+                {consultando ? 'Consultando a ARCA…' : 'Completar desde ARCA'}
+              </Boton>
+              {padron && <p className={`text-xs ${padron.ok ? 'text-texto-2' : 'text-error'}`}>{padron.texto}</p>}
+            </div>
+          )}
           <Selector
             id="iibbRegimen"
             name="iibbRegimen"
@@ -246,6 +290,16 @@ export function FormularioTercero({
             opciones={opciones.zonas}
             defaultValue={v('zonaId')}
           />
+          {opciones.grupos.length > 0 && (
+            <Selector
+              id="grupoClienteId"
+              name="grupoClienteId"
+              etiqueta="Grupo de clientes"
+              vacio="Sin grupo"
+              opciones={opciones.grupos}
+              defaultValue={v('grupoClienteId')}
+            />
+          )}
           <Selector
             id="transporteId"
             name="transporteId"

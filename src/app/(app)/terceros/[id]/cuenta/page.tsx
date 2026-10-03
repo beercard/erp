@@ -1,15 +1,16 @@
 import { eq } from 'drizzle-orm'
-import { ChevronLeft, Wallet } from 'lucide-react'
+import { ChevronLeft, FileText, Send, Wallet } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { BotonEnlace, EncabezadoPagina, Panel } from '@/components/ui'
+import { Boton, BotonEnlace, EncabezadoPagina, Panel } from '@/components/ui'
 import { terceros } from '@/db/schema'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
 import { formatearMonto } from '@/lib/dinero'
 import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
+import { enviarEstadoAccion } from '@/app/(app)/cobranzas/automatica/acciones'
 import { formatearNumero } from '@/modulos/comercial/formato'
 import { cuentaCorriente } from '@/modulos/facturacion/cuentas'
 import { abreviatura } from '@/modulos/facturacion/tipos'
@@ -39,11 +40,23 @@ export default async function CuentaCorriente({ params }: PageProps<'/terceros/[
         titulo="Cuenta corriente"
         bajada={`${t.razonSocial} · en pesos`}
         acciones={
-          tienePermiso(sesion.permisos, 'ventas.cobrar') && (
-            <BotonEnlace href={`/cobranzas/nueva?cliente=${id}`} variante="primario">
-              <Wallet aria-hidden className="size-4" /> Cobrar
+          <>
+            <BotonEnlace href={`/terceros/${id}/cuenta/estado`}>
+              <FileText aria-hidden className="size-4" /> Estado de cuenta
             </BotonEnlace>
-          )
+            {tienePermiso(sesion.permisos, 'ventas.cobrar') && (
+              <>
+                <form action={enviarEstadoAccion.bind(null, id)}>
+                  <Boton type="submit">
+                    <Send aria-hidden className="size-4" /> Mandar
+                  </Boton>
+                </form>
+                <BotonEnlace href={`/cobranzas/nueva?cliente=${id}`} variante="primario">
+                  <Wallet aria-hidden className="size-4" /> Cobrar
+                </BotonEnlace>
+              </>
+            )}
+          </>
         }
       />
       <div className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-borde bg-borde lg:grid-cols-4">

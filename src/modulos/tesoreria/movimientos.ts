@@ -3,12 +3,13 @@ import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import * as z from 'zod'
 
+import { controlarBloqueo } from '../empresa/bloqueos'
 import type { Transaccion } from '../../db/conexion'
 import { arqueos, cuentasTesoreria, movimientosTesoreria } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { aImporte, monto } from '../../lib/dinero'
 import { decimal, primerError } from '../comercial/documentos'
-import { saldoCuenta } from './cuentas'
+import { cajaCerrada, saldoCuenta } from './cuentas'
 
 /**
  * Movimientos de tesorería que no son cobranzas ni pagos a proveedores:
@@ -47,8 +48,12 @@ export async function registrarMovimiento(tx: Transaccion, usuarioId: string, en
   const p = EsquemaMovimiento.safeParse(entrada)
   if (!p.success) return { ok: false, error: primerError(p.error) }
   const d = p.data
+  const cerrado = await controlarBloqueo(tx, 'tesoreria', d.fecha)
+  if (cerrado) return { ok: false, error: cerrado }
   const c = await cuenta(tx, d.cuentaId)
   if (!c || !c.activa) return { ok: false, error: 'Esa cuenta no existe o está inactiva.' }
+  const cerrada = await cajaCerrada(tx, c)
+  if (cerrada) return { ok: false, error: cerrada }
   const [m] = await tx
     .insert(movimientosTesoreria)
     .values({
@@ -86,6 +91,8 @@ export async function transferir(tx: Transaccion, usuarioId: string, entrada: un
   if (!p.success) return { ok: false, error: primerError(p.error) }
   const d = p.data
   if (d.origenId === d.destinoId) return { ok: false, error: 'La cuenta de origen y la de destino son la misma.' }
+  const cerrado = await controlarBloqueo(tx, 'tesoreria', d.fecha)
+  if (cerrado) return { ok: false, error: cerrado }
   const [o, de] = [await cuenta(tx, d.origenId), await cuenta(tx, d.destinoId)]
   if (!o || !de) return { ok: false, error: 'Una de las cuentas ya no existe.' }
   if (o.moneda !== de.moneda && !(d.importeDestino && monto(d.importeDestino).gt(0))) {
@@ -129,6 +136,8 @@ export async function acreditarCupones(tx: Transaccion, usuarioId: string, entra
   if (!p.success) return { ok: false, error: primerError(p.error) }
   const d = p.data
   if (monto(d.neto).gt(d.bruto)) return { ok: false, error: 'Lo acreditado no puede ser más que los cupones.' }
+  const cerrado = await controlarBloqueo(tx, 'tesoreria', d.fecha)
+  if (cerrado) return { ok: false, error: cerrado }
   const [cup, banco] = [await cuenta(tx, d.cuponesId), await cuenta(tx, d.bancoId)]
   if (!cup || !banco) return { ok: false, error: 'Una de las cuentas ya no existe.' }
   const transferenciaId = randomUUID()
@@ -165,6 +174,8 @@ export async function anularMovimiento(tx: Transaccion, usuarioId: string, id: s
   const [m] = await tx.select().from(movimientosTesoreria).where(eq(movimientosTesoreria.id, id))
   if (!m) return { ok: false as const, error: 'Ese movimiento ya no existe.' }
   if (m.estado === 'anulado') return { ok: false as const, error: 'El movimiento ya está anulado.' }
+  const cerrado = await controlarBloqueo(tx, 'tesoreria', m.fecha)
+  if (cerrado) return { ok: false as const, error: cerrado }
   if (m.tipo === 'deposito_cheque' || m.tipo === 'rechazo_cheque') {
     return { ok: false as const, error: 'Los depósitos y rechazos de cheques se anulan desde el cheque.' }
   }
@@ -199,6 +210,8 @@ export async function arquear(tx: Transaccion, usuarioId: string, entrada: unkno
   const p = EsquemaArqueo.safeParse(entrada)
   if (!p.success) return { ok: false as const, error: primerError(p.error) }
   const d = p.data
+  const cerrado = await controlarBloqueo(tx, 'tesoreria', d.fecha)
+  if (cerrado) return { ok: false as const, error: cerrado }
   const c = await cuenta(tx, d.cuentaId)
   if (!c) return { ok: false as const, error: 'Esa cuenta ya no existe.' }
   const saldoSistema = await saldoCuenta(tx, d.cuentaId, d.fecha)

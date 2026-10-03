@@ -78,6 +78,8 @@ describe('invitaciones', () => {
   })
 
   it('a una cuenta existente le pide su clave para sumarle la empresa', async () => {
+    // Para invitar a la empresa B, la dueña tiene que estar en ella.
+    await base.insert(membresias).values({ usuarioId: dueno, empresaId: empresaB, rolId: rolDueno })
     const inv = await invitar(empresaB, dueno, { email: 'vendedor@alfa.com', rolId: rolVentas })
     if (!inv.ok) throw new Error(inv.error)
     expect((await leerInvitacion(inv.token))?.usuarioExistente?.nombre).toBe('Vendedor')
@@ -124,5 +126,30 @@ describe('roles y acceso', () => {
     const { roles: disponibles } = await miembros(empresaA)
     expect(disponibles.map((x) => x.nombre)).toContain('Cobranzas')
     expect(disponibles.map((x) => x.nombre)).not.toContain('Solo B')
+  })
+})
+
+describe('nadie reparte permisos que no tiene', () => {
+  it('quien administra usuarios sin ser dueño no se hace dueño ni toca a un dueño', async () => {
+    // Un rol que solo administra usuarios.
+    const rrhh = await guardarRol(empresaA, dueno, { nombre: 'RRHH', descripcion: '', permisos: ['empresa.usuarios'] })
+    if (!rrhh.ok) throw new Error(rrhh.error)
+    const [u] = await base
+      .insert(usuarios)
+      .values({ email: 'rrhh@alfa.com', nombre: 'RRHH', hashClave: await hashearClave('clave-rrhh-2026') })
+      .returning()
+    const [m] = await base.insert(membresias).values({ usuarioId: u.id, empresaId: empresaA, rolId: rrhh.id }).returning()
+    // No puede darse más permisos, ni invitar como dueño, ni armar un rol con más de lo que tiene.
+    expect(await cambiarRol(empresaA, u.id, m.id, rolDueno)).toMatchObject({ ok: false })
+    expect(await invitar(empresaA, u.id, { email: 'otro@alfa.com', rolId: rolDueno })).toMatchObject({ ok: false })
+    expect(await invitar(empresaA, u.id, { email: 'otro@alfa.com', rolId: rolVentas })).toMatchObject({ ok: false })
+    expect(await guardarRol(empresaA, u.id, { nombre: 'Todo', descripcion: '', permisos: ['ventas.facturar'] })).toMatchObject({
+      ok: false,
+    })
+    // Ni bajarle el rol o quitarle el acceso a la dueña.
+    expect(await cambiarRol(empresaA, u.id, membresiaDueno, rrhh.id)).toMatchObject({ ok: false })
+    expect(await cambiarAcceso(empresaA, u.id, membresiaDueno, false)).toMatchObject({ ok: false })
+    // Sí puede invitar con un rol que no le da más de lo que tiene.
+    expect((await invitar(empresaA, u.id, { email: 'rrhh2@alfa.com', rolId: rrhh.id })).ok).toBe(true)
   })
 })

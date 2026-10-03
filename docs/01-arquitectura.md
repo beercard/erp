@@ -19,6 +19,7 @@ ERP en la nube para pymes argentinas, vendido como servicio (SaaS). El primer cl
   - Cada operación corre dentro de una transacción que fija `app.empresa_id`. Postgres solo devuelve y acepta filas de esa empresa, aunque el código se olvide de filtrar.
 - `empresa_id` toma su valor por defecto de `app.empresa_id`, así que un alta no puede quedar en otra empresa.
 - Una prueba recorre todas las tablas con `empresa_id` y falla si alguna no tiene RLS forzado y su política.
+- Las pantallas fijan además `app.usuario_id`. Un usuario con grupos de clientes asignados solo ve los clientes de esos grupos, con sus órdenes de servicio, contratos, equipos y formularios: lo controlan políticas restrictivas en Postgres (`drizzle/0048_grupos_clientes_seguridad.sql` y `0055_endurecimiento.sql`, que suma presupuestos, pedidos, remitos, contactos y lo que cuelga de órdenes, equipos y contratos). Los comprobantes y recibos no se filtran por grupo. La API usa el usuario que creó la clave; los procesos automáticos y el portal no fijan usuario y ven todo.
 
 ### 3. Usuarios y permisos
 - Los **usuarios son globales**: una persona puede trabajar en varias empresas, como un contador con varios clientes.
