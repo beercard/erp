@@ -8,8 +8,8 @@ import { SOLUCIONES } from './soluciones'
 export function Pie() {
   const c = contacto()
   return (
-    <footer className="border-t border-borde bg-superficie">
-      <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+    <footer className="border-t border-borde bg-fondo-sitio">
+      <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-16 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div className="flex flex-col gap-3">
           <Logo />
           <p className="text-sm text-texto-2">
@@ -17,8 +17,8 @@ export function Pie() {
             tiendas online.
           </p>
         </div>
-        <nav aria-label="Producto" className="flex flex-col gap-2 text-sm">
-          <span className="font-semibold">Producto</span>
+        <nav aria-label="Producto" className="flex flex-col gap-3 text-sm">
+          <span className="font-mono text-xs font-medium tracking-[0.18em] text-texto-3 uppercase">Producto</span>
           <Link href="/funciones" className="text-texto-2 hover:text-texto">
             Funciones
           </Link>
@@ -32,16 +32,16 @@ export function Pie() {
             Prueba gratis
           </Link>
         </nav>
-        <nav aria-label="Soluciones" className="flex flex-col gap-2 text-sm">
-          <span className="font-semibold">Soluciones</span>
+        <nav aria-label="Soluciones" className="flex flex-col gap-3 text-sm">
+          <span className="font-mono text-xs font-medium tracking-[0.18em] text-texto-3 uppercase">Soluciones</span>
           {SOLUCIONES.map((s) => (
             <Link key={s.slug} href={`/soluciones/${s.slug}`} className="text-texto-2 hover:text-texto">
               {s.menu}
             </Link>
           ))}
         </nav>
-        <div className="flex flex-col gap-2 text-sm">
-          <span className="font-semibold">Empresa</span>
+        <div className="flex flex-col gap-3 text-sm">
+          <span className="font-mono text-xs font-medium tracking-[0.18em] text-texto-3 uppercase">Empresa</span>
           <Link href="/contacto" className="text-texto-2 hover:text-texto">
             Contacto
           </Link>
@@ -62,7 +62,7 @@ export function Pie() {
         </div>
       </div>
       <div className="border-t border-borde">
-        <p className="mx-auto w-full max-w-6xl px-4 py-5 text-xs text-texto-3 sm:px-6">
+        <p className="mx-auto w-full max-w-6xl px-4 py-6 text-xs text-texto-3 sm:px-6">
           © {new Date().getFullYear()} {MARCA.empresa} · CUIT {MARCA.cuit} · {MARCA.pais}
         </p>
       </div>

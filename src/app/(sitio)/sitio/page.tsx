@@ -1,40 +1,32 @@
 import {
-  ArrowRight,
-  ArrowUpRight,
-  BadgeCheck,
   Banknote,
-  Bell,
+  BellRing,
   Boxes,
   Calculator,
-  ChartPie,
   Check,
-  CircleCheck,
   FileSpreadsheet,
   HandCoins,
   Landmark,
   MessageCircle,
-  PlayCircle,
+  Minus,
   Receipt,
-  Rocket,
   ShoppingBag,
   ShoppingCart,
-  Smartphone,
   Store,
-  Upload,
-  UserPlus,
   Wallet,
   Wrench,
+  X,
 } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
-import { Contenedor, Lista, Preguntas, Rotulo, TituloSeccion } from '@/components/sitio/Bloques'
+import { Contenedor, Destacado, Llamado, Pildora, Preguntas, Rotulo, TituloSeccion } from '@/components/sitio/Bloques'
+import { Calculadora, NumerosEnVivo, PlanesPortada } from '@/components/sitio/Interactivos'
 import { JsonLd } from '@/components/sitio/JsonLd'
-import { Maqueta } from '@/components/sitio/Maqueta'
+import { MarcoNavegador, VistaFactura, VistaPanel, VistaTiendas } from '@/components/sitio/Maqueta'
 import {
-  AvisoFlotante,
   BotonWhatsapp,
-  MaquetaCelular,
+  ChatSoporte,
   MiniAvisos,
   MiniCuentas,
   MiniFactura,
@@ -43,6 +35,7 @@ import {
   MiniStock,
 } from '@/components/sitio/Portada'
 import { SOLUCIONES } from '@/components/sitio/soluciones'
+import { Vitrina } from '@/components/sitio/Vitrina'
 import { MARCA, URL_SITIO } from '@/lib/marca'
 import { DIAS_DE_PRUEBA, PLANES } from '@/lib/planes'
 
@@ -133,6 +126,14 @@ const PREGUNTAS = [
     p: '¿Me ayudan a empezar?',
     r: 'Sí. Importamos tus clientes, artículos y saldos, y en los planes Pyme y Empresa hay capacitación incluida.',
   },
+  {
+    p: '¿Puedo cancelar cuando quiera?',
+    r: 'Sí. No hay permanencia ni contrato: cambiás de plan o das de baja desde la configuración, y podés descargar tus datos.',
+  },
+  {
+    p: '¿Cómo manejo a mis empleados?',
+    r: 'Cada persona entra con su usuario y ve solo lo que su rol permite: el que vende no toca la caja y el contador entra a sus libros. Todo cambio queda registrado.',
+  },
 ]
 
 const INTEGRACIONES = [
@@ -146,63 +147,58 @@ const INTEGRACIONES = [
   { nombre: 'Bancos y ECHEQ', icono: Banknote },
 ]
 
-const EQUIPO = [
-  {
-    icono: ChartPie,
-    quien: 'Para vos',
-    titulo: 'Los números del negocio',
-    app: 'bg-app-ventas',
-    puntos: ['Ventas, cobranzas y caja del día', 'Quién te debe y desde cuándo', 'Qué se vende y qué se queda'],
-  },
-  {
-    icono: Receipt,
-    quien: 'Para el mostrador y ventas',
-    titulo: 'Vender rápido y sin errores',
-    app: 'bg-app-facturacion',
-    puntos: ['Factura en tres pasos', 'Precios y stock a la vista', 'Presupuestos y pedidos por WhatsApp'],
-  },
-  {
-    icono: Calculator,
-    quien: 'Para tu contador',
-    titulo: 'Todo listo para presentar',
-    app: 'bg-app-impuestos',
-    puntos: ['Libro IVA Digital y SICORE', 'Asientos contables automáticos', 'Paquete mensual en un clic'],
-  },
+const SOPORTE = [
+  ['Te ayudamos a arrancar', 'Importamos tus clientes, artículos y saldos, y te guiamos con el certificado de ARCA.'],
+  ['Por WhatsApp y email', 'Escribís como le escribís a cualquiera. Sin formularios ni números de ticket.'],
+  ['Capacitación incluida', 'En los planes Pyme y Empresa, una sesión para tu equipo al empezar.'],
+  ['Equipo argentino', 'Conocemos ARCA, el IVA, IIBB y las retenciones porque trabajamos con eso todos los días.'],
 ]
 
-/** Tarjeta del bento de funciones: texto arriba y una mini pantalla de ejemplo. */
+const COMPARACION: { q: string; v: boolean | 'parcial'; p: boolean | 'parcial'; s: boolean | 'parcial' }[] = [
+  { q: '¿Se usa desde el primer día, sin cursos?', v: true, p: true, s: false },
+  { q: '¿Factura con CAE de ARCA en el mismo paso?', v: true, p: false, s: 'parcial' },
+  { q: '¿El stock se descuenta solo, también en tus tiendas online?', v: true, p: false, s: 'parcial' },
+  { q: '¿Sabés al instante quién te debe y desde cuándo?', v: true, p: false, s: true },
+  { q: '¿Libro IVA y paquete del contador sin planillas?', v: true, p: false, s: 'parcial' },
+  { q: '¿Desde el celular y sin instalar nada?', v: true, p: 'parcial', s: false },
+  { q: '¿Un solo sistema para ventas, compras, bancos y servicio técnico?', v: true, p: false, s: false },
+]
+
+function Marca({ v }: { v: boolean | 'parcial' }) {
+  if (v === 'parcial') return <Minus aria-label="En parte" className="mx-auto size-5 text-aviso" />
+  return v ? (
+    <Check aria-label="Sí" className="mx-auto size-5 text-ok" strokeWidth={2.5} />
+  ) : (
+    <X aria-label="No" className="mx-auto size-5 text-texto-3" />
+  )
+}
+
+/** Tarjeta del mosaico: la mini pantalla arriba, el texto abajo. */
 function Bento({
   icono: I,
   titulo,
   texto,
   visual,
+  tinte,
   className = '',
-  horizontal = false,
 }: {
   icono: typeof Receipt
   titulo: string
   texto: string
   visual: React.ReactNode
+  tinte: string
   className?: string
-  horizontal?: boolean
 }) {
   return (
-    <div
-      className={`tarjeta group flex gap-6 overflow-hidden p-6 transition hover:shadow-panel ${
-        horizontal ? 'flex-col sm:flex-row sm:items-center' : 'flex-col'
-      } ${className}`}
-    >
-      <div className={horizontal ? 'sm:w-1/2' : ''}>
-        <span className="grid size-10 place-items-center rounded-xl bg-acento-suave text-acento">
-          <I aria-hidden className="size-5" />
+    <div className={`group relative flex flex-col overflow-hidden rounded-3xl bg-superficie ring-1 ring-borde ${className}`}>
+      <div aria-hidden className={`pointer-events-none absolute inset-x-0 top-0 h-2/3 ${tinte}`} />
+      <div className="relative flex min-h-48 flex-1 items-center justify-center p-6 pb-2">{visual}</div>
+      <div className="relative p-6 pt-4">
+        <span className="grid size-9 place-items-center rounded-xl bg-superficie text-acento ring-1 ring-borde">
+          <I aria-hidden className="size-[18px]" />
         </span>
-        <h3 className="mt-4 text-xl font-bold tracking-tight">{titulo}</h3>
+        <h3 className="mt-4 text-xl font-semibold tracking-tight">{titulo}</h3>
         <p className="mt-1.5 text-texto-2">{texto}</p>
-      </div>
-      <div
-        className={`flex flex-1 items-center rounded-2xl bg-fondo p-5 ring-1 ring-borde/70 ${horizontal ? 'sm:w-1/2 sm:py-8' : 'mt-auto'}`}
-      >
-        {visual}
       </div>
     </div>
   )
@@ -243,81 +239,103 @@ export default function Inicio() {
       />
 
       {/* Portada */}
-      <section className="relative overflow-hidden">
-        <div aria-hidden className="fondo-sitio pointer-events-none absolute inset-0" />
-        <div aria-hidden className="rejilla-sitio pointer-events-none absolute inset-0" />
-        <Contenedor className="relative grid items-center gap-14 pt-12 pb-20 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 lg:pt-20 lg:pb-28">
-          <div className="flex flex-col items-start gap-7">
-            <Link
-              href="/integraciones"
-              className="inline-flex items-center gap-2 rounded-full bg-superficie/80 py-1 pr-3 pl-1 text-xs font-medium text-texto-2 shadow-suave ring-1 ring-borde backdrop-blur hover:text-texto"
-            >
-              <span className="rounded-full bg-acento px-2 py-0.5 text-[11px] font-semibold text-sobre-acento">Nuevo</span>
-              Mercado Libre, Tienda Nube y WooCommerce conectados
-              <ArrowRight aria-hidden className="size-3.5" />
-            </Link>
-            <h1 className="text-[2.6rem] leading-[1.05] font-extrabold tracking-[-0.035em] text-balance sm:text-6xl lg:text-[4.1rem]">
-              Tu negocio entero, <span className="texto-degradado">en un solo sistema.</span>
-            </h1>
-            <p className="max-w-xl text-lg text-pretty text-texto-2 sm:text-xl">
-              Facturá con ARCA en segundos, controlá el stock, cobrá y sabé quién te debe. Fácil desde el primer día, aunque nunca
-              hayas usado un sistema.
-            </p>
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-              <Link
-                href="/registro"
-                className="boton-lleno inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-acento px-6 font-semibold text-sobre-acento hover:bg-acento-hover"
-              >
-                Empezar gratis <ArrowRight aria-hidden className="size-4" />
-              </Link>
-              <a
-                href="#como-funciona"
-                className="boton-relieve inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-superficie px-6 font-semibold hover:bg-superficie-2"
-              >
-                <PlayCircle aria-hidden className="size-4 text-acento" /> Ver cómo funciona
-              </a>
-            </div>
-            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-texto-2">
-              {[`${DIAS_DE_PRUEBA} días gratis`, 'Sin tarjeta', 'Sin instalar nada', 'Factura A, B y C'].map((t) => (
-                <li key={t} className="flex items-center gap-1.5">
-                  <CircleCheck aria-hidden className="size-4 text-ok" /> {t}
-                </li>
-              ))}
-            </ul>
+      <section className="relative overflow-hidden pt-14 sm:pt-20">
+        <div aria-hidden className="fondo-sitio pointer-events-none absolute inset-0 opacity-60" />
+        <Contenedor className="relative flex flex-col items-center gap-8 text-center">
+          <Link
+            href="/integraciones"
+            className="inline-flex items-center gap-2 rounded-full bg-superficie py-1 pr-3.5 pl-1 text-sm text-texto-2 ring-1 ring-borde transition hover:ring-borde-fuerte"
+          >
+            <span className="flex items-center gap-1.5 rounded-full bg-ok-suave px-2.5 py-0.5 text-xs font-semibold text-ok">
+              <span className="size-1.5 rounded-full bg-ok" /> Nuevo
+            </span>
+            <span className="sm:hidden">Tiendas online conectadas →</span>
+            <span className="hidden sm:inline">Mercado Libre, Tienda Nube y WooCommerce conectados →</span>
+          </Link>
+          <h1 className="max-w-5xl text-[3.1rem] leading-[0.98] font-bold tracking-[-0.055em] text-balance sm:text-7xl lg:text-[6.2rem]">
+            Dejá las planillas. Facturá, controlá y <Destacado>crecé</Destacado>.
+          </h1>
+          <p className="max-w-2xl text-lg leading-relaxed text-pretty text-texto-2 sm:text-xl">
+            {MARCA.producto} es el sistema de gestión en la nube para pymes de Argentina: facturá con ARCA en segundos, controlá
+            el stock, cobrá y sabé quién te debe. Fácil desde el primer día, aunque nunca hayas usado un sistema.
+          </p>
+          <div className="flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
+            <Pildora href="/registro">Probar {DIAS_DE_PRUEBA} días gratis</Pildora>
+            <Pildora href="/precios" variante="contorno">
+              Ver precios
+            </Pildora>
           </div>
+        </Contenedor>
 
-          <div className="relative mx-auto w-full max-w-2xl lg:mr-0">
+        {/* Vitrina del producto */}
+        <Contenedor className="relative mt-16 sm:mt-20">
+          <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-marca to-marca-2 px-3 pt-8 pb-8 sm:px-12 sm:pt-10">
+            <div aria-hidden className="puntos-sitio pointer-events-none absolute inset-0" />
             <div
               aria-hidden
-              className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-acento/25 via-info/10 to-transparent blur-2xl"
+              className="absolute -top-40 left-1/2 size-[40rem] -translate-x-1/2 rounded-full bg-white/10 blur-3xl"
             />
-            <div className="relative sm:pl-24 lg:pl-28">
-              <Maqueta />
+            <div className="relative mx-auto max-w-4xl">
+              <Vitrina
+                vistas={[
+                  {
+                    titulo: 'Panel',
+                    contenido: (
+                      <MarcoNavegador ruta="inicio" activo="Inicio" etiqueta="Panel de Vektra ERP con las cifras del mes">
+                        <VistaPanel />
+                      </MarcoNavegador>
+                    ),
+                  },
+                  {
+                    titulo: 'Facturar',
+                    contenido: (
+                      <MarcoNavegador ruta="facturas/nueva" activo="Facturas" etiqueta="Factura A con CAE de ARCA en Vektra ERP">
+                        <VistaFactura />
+                      </MarcoNavegador>
+                    ),
+                  },
+                  {
+                    titulo: 'Tiendas online',
+                    contenido: (
+                      <MarcoNavegador
+                        ruta="tiendas"
+                        activo="Tiendas online"
+                        etiqueta="Pedidos de Mercado Libre, Tienda Nube y WooCommerce en Vektra ERP"
+                      >
+                        <VistaTiendas />
+                      </MarcoNavegador>
+                    ),
+                  },
+                ]}
+              />
             </div>
-            <MaquetaCelular className="absolute -bottom-12 left-0 hidden rotate-[-4deg] sm:block" />
-            <AvisoFlotante
-              className="absolute -top-8 right-0 hidden sm:flex"
-              icono={<ShoppingBag aria-hidden className="size-4" />}
-              tono="bg-aviso-suave text-aviso"
-              titulo="Venta en Mercado Libre"
-              texto="Stock actualizado en todas tus tiendas"
-            />
-            <AvisoFlotante
-              className="flotar-lento absolute right-4 -bottom-10 hidden sm:flex"
-              icono={<BadgeCheck aria-hidden className="size-4" />}
-              tono="bg-ok-suave text-ok"
-              titulo="Factura B autorizada por ARCA"
-              texto="CAE recibido en 2 segundos"
-            />
           </div>
         </Contenedor>
       </section>
 
+      {/* Cifras del producto: datos de Vektra, no de clientes */}
+      <section aria-label="Vektra en números" className="mt-16 bg-barra py-14 text-sobre-barra sm:mt-20">
+        <Contenedor>
+          <dl className="grid grid-cols-2 gap-y-10 text-center lg:grid-cols-4">
+            {[
+              [`${MODULOS.length}`, 'módulos en un solo sistema'],
+              [`${DIAS_DE_PRUEBA} días`, 'de prueba, sin tarjeta'],
+              ['$ 0', 'para empezar a facturar'],
+              ['A, B y C', 'facturas con CAE de ARCA'],
+            ].map(([v, t]) => (
+              <div key={t} className="flex flex-col gap-2">
+                <dt className="order-2 text-sm text-sobre-barra-2">{t}</dt>
+                <dd className="font-mono text-4xl font-semibold tracking-tight sm:text-5xl">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </Contenedor>
+      </section>
+
       {/* Integraciones */}
-      <section aria-label="Integraciones" className="border-y border-borde bg-superficie py-7">
-        <p className="mb-5 text-center text-sm font-medium text-texto-3">Conectado con lo que ya usás todos los días</p>
+      <section aria-label="Integraciones" className="border-b border-borde py-8">
         <div className="relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
-          <ul className="marquesina flex w-max gap-14 pr-14 text-xl font-bold tracking-tight text-texto-3">
+          <ul className="marquesina flex w-max gap-14 pr-14 text-lg font-semibold tracking-tight text-texto-3">
             {[...INTEGRACIONES, ...INTEGRACIONES].map((m, n) => (
               <li
                 key={n}
@@ -331,32 +349,18 @@ export default function Inicio() {
         </div>
       </section>
 
-      {/* Cifras del producto (datos del producto, no de clientes) */}
-      <section aria-label="Vektra en números" className="py-14">
-        <Contenedor>
-          <dl className="grid grid-cols-2 gap-6 text-center lg:grid-cols-4">
-            {[
-              [`${MODULOS.length}`, 'módulos en un solo sistema'],
-              [`${DIAS_DE_PRUEBA}`, 'días de prueba con todo incluido'],
-              ['$ 0', 'para empezar a facturar'],
-              ['24/7', 'en la nube, desde la compu o el celular'],
-            ].map(([v, t]) => (
-              <div key={t} className="flex flex-col gap-1">
-                <dt className="order-2 text-sm text-texto-2">{t}</dt>
-                <dd className="cifras text-4xl font-extrabold tracking-tight sm:text-5xl">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </Contenedor>
-      </section>
-
-      {/* Funciones en bento */}
-      <section className="pb-20 sm:pb-28">
-        <Contenedor className="flex flex-col gap-12">
+      {/* 01 · Lo esencial */}
+      <section className="py-24 sm:py-32">
+        <Contenedor className="flex flex-col gap-14">
           <TituloSeccion
-            rotulo="Todo lo que necesitás"
-            titulo="Dejá las planillas. Todo tu negocio se ordena solo."
-            bajada="Cada venta se carga una vez y llega a donde tiene que llegar: stock, cuenta corriente, caja, libros de IVA y contabilidad."
+            numero={1}
+            rotulo="Lo esencial"
+            titulo={
+              <>
+                Todo tu negocio, <Destacado>ordenado</Destacado>.
+              </>
+            }
+            bajada="Lo que hoy tenés repartido en cuadernos, planillas y sistemas sueltos. Cada venta se carga una vez y llega sola a donde tiene que llegar."
           />
           <div className="grid gap-4 md:grid-cols-6">
             <Bento
@@ -365,14 +369,7 @@ export default function Inicio() {
               titulo="Facturá en segundos con ARCA"
               texto="Factura A, B y C, notas de crédito y FCE MiPyME con CAE. Mandala por email o WhatsApp en un toque."
               visual={<MiniFactura />}
-              horizontal
-            />
-            <Bento
-              className="md:col-span-2"
-              icono={Boxes}
-              titulo="Stock siempre al día"
-              texto="Por depósito, con aviso cuando algo se está terminando."
-              visual={<MiniStock />}
+              tinte="bg-gradient-to-b from-acento-suave to-transparent"
             />
             <Bento
               className="md:col-span-2"
@@ -380,6 +377,15 @@ export default function Inicio() {
               titulo="Sabé quién te debe"
               texto="Cuentas corrientes con antigüedad de deuda y cobranzas."
               visual={<MiniCuentas />}
+              tinte="bg-gradient-to-b from-aviso-suave to-transparent"
+            />
+            <Bento
+              className="md:col-span-2"
+              icono={Boxes}
+              titulo="Stock en vivo"
+              texto="Por depósito, con aviso cuando algo se está terminando."
+              visual={<MiniStock />}
+              tinte="bg-gradient-to-b from-ok-suave to-transparent"
             />
             <Bento
               className="md:col-span-2"
@@ -387,6 +393,7 @@ export default function Inicio() {
               titulo="Vendé online sin cargar dos veces"
               texto="Los pedidos entran solos y el stock se descuenta en todas las tiendas."
               visual={<MiniPedidos />}
+              tinte="bg-gradient-to-b from-info-suave to-transparent"
             />
             <Bento
               className="md:col-span-2"
@@ -394,195 +401,141 @@ export default function Inicio() {
               titulo="Impuestos sin planillas"
               texto="Libro IVA Digital, retenciones e IIBB listos para presentar."
               visual={<MiniIva />}
+              tinte="bg-gradient-to-b from-app-impuestos/12 to-transparent"
             />
-            <div className="tarjeta relative flex flex-col justify-between gap-6 overflow-hidden bg-barra p-6 text-sobre-barra md:col-span-3">
-              <div aria-hidden className="absolute -top-20 -right-20 size-64 rounded-full bg-acento/40 blur-3xl" />
-              <div className="relative">
-                <Smartphone aria-hidden className="size-6 text-acento" />
-                <h3 className="mt-3 text-xl font-bold">En la compu y en el celular</h3>
-                <p className="mt-1.5 text-sobre-barra-2">
-                  Consultá ventas, saldos, stock y precios desde donde estés. Los técnicos trabajan desde el teléfono, también sin
-                  señal.
-                </p>
-              </div>
-              <div className="relative flex flex-wrap gap-2 text-xs">
-                {['Sin instalar', 'Copias diarias', 'Datos cifrados', 'Permisos por usuario'].map((t) => (
-                  <span key={t} className="rounded-full bg-white/10 px-3 py-1 font-medium">
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </div>
             <Bento
               className="md:col-span-3"
-              icono={Bell}
+              icono={BellRing}
               titulo="Te avisa antes de que se te pase"
               texto="Vencimientos de impuestos, cheques a depositar y clientes atrasados."
               visual={<MiniAvisos />}
+              tinte="bg-gradient-to-b from-error-suave to-transparent"
             />
-          </div>
-          <div className="flex flex-wrap justify-center gap-2">
-            {MODULOS.map(({ icono: I, titulo, ancla }) => (
-              <Link
-                key={titulo}
-                href={`/funciones#${ancla}`}
-                className="inline-flex items-center gap-2 rounded-full bg-superficie px-3.5 py-1.5 text-sm font-medium text-texto-2 shadow-suave ring-1 ring-borde hover:text-acento"
-              >
-                <I aria-hidden className="size-4" /> {titulo}
+            <div className="relative flex flex-col justify-end gap-4 overflow-hidden rounded-3xl bg-barra p-7 text-sobre-barra md:col-span-3">
+              <div aria-hidden className="absolute -top-24 -right-16 size-72 rounded-full bg-marca/60 blur-3xl" />
+              <Wrench aria-hidden className="relative size-6 text-acento-claro" />
+              <h3 className="relative text-2xl font-semibold tracking-tight">Y mucho más cuando lo necesites</h3>
+              <p className="relative text-sobre-barra-2">
+                Compras y pagos con retenciones, bancos y cheques, contabilidad automática, servicio técnico con app para el
+                celular y contratos de equipos.
+              </p>
+              <Link href="/funciones" className="relative font-semibold text-acento-claro hover:underline">
+                Ver todas las funciones →
               </Link>
-            ))}
+            </div>
           </div>
         </Contenedor>
       </section>
 
-      {/* Cómo funciona */}
-      <section id="como-funciona" className="scroll-mt-20 bg-superficie py-20 sm:py-28">
+      {/* 02 · Acompañamiento */}
+      <section className="bg-superficie py-24 sm:py-32">
         <Contenedor className="flex flex-col gap-14">
-          <TituloSeccion rotulo="Empezar es simple" titulo="Facturando el mismo día" />
-          <ol className="relative grid gap-10 md:grid-cols-3 md:gap-6">
-            <div
-              aria-hidden
-              className="absolute top-7 right-[16%] left-[16%] hidden border-t-2 border-dashed border-borde-fuerte md:block"
-            />
-            {[
-              ['Creá tu cuenta', 'Con el CUIT y un email, en dos minutos. Tenés todo el plan Pyme para probar.', UserPlus],
-              ['Traé tus datos', 'Importá clientes, artículos y precios desde Excel, o pedinos que lo hagamos por vos.', Upload],
-              ['Conectá ARCA y facturá', 'Cargás tu certificado una vez y emitís la primera factura con CAE.', Rocket],
-            ].map(([t, d, I], n) => {
-              const Icono = I as typeof Rocket
-              return (
-                <li key={t as string} className="relative flex flex-col items-center gap-3 text-center">
-                  <span className="relative grid size-14 place-items-center rounded-2xl bg-acento text-sobre-acento shadow-panel boton-lleno">
-                    <Icono aria-hidden className="size-6" />
-                    <span className="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full bg-barra text-xs font-bold text-sobre-barra ring-2 ring-superficie">
-                      {n + 1}
-                    </span>
-                  </span>
-                  <h3 className="mt-2 text-lg font-bold">{t as string}</h3>
-                  <p className="max-w-xs text-texto-2">{d as string}</p>
-                </li>
-              )
-            })}
-          </ol>
-          <div className="flex justify-center">
-            <Link
-              href="/registro"
-              className="boton-lleno inline-flex h-12 items-center gap-2 rounded-xl bg-acento px-6 font-semibold text-sobre-acento hover:bg-acento-hover"
-            >
-              Crear mi cuenta gratis <ArrowRight aria-hidden className="size-4" />
-            </Link>
-          </div>
-        </Contenedor>
-      </section>
-
-      {/* Para todo el equipo */}
-      <section className="py-20 sm:py-28">
-        <Contenedor className="flex flex-col gap-12">
           <TituloSeccion
-            rotulo="Para todo tu equipo"
-            titulo="Cada uno ve lo suyo, todos trabajan sobre lo mismo"
-            bajada="Permisos por persona: el que vende no toca la caja, el contador entra a sus libros y vos lo ves todo."
+            numero={2}
+            rotulo="Acompañamiento"
+            titulo={
+              <>
+                Soporte que <Destacado>te entiende</Destacado>.
+              </>
+            }
+            bajada="Personas reales que conocen tu negocio y la normativa argentina. Sin bots ni formularios eternos."
           />
-          <div className="grid gap-4 md:grid-cols-3">
-            {EQUIPO.map(({ icono: I, quien, titulo, puntos, app }) => (
-              <div key={quien} className="tarjeta flex flex-col gap-4 p-6">
-                <span className={`grid size-11 place-items-center rounded-xl text-white ${app}`}>
-                  <I aria-hidden className="size-5" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-texto-3">{quien}</p>
-                  <h3 className="text-xl font-bold">{titulo}</h3>
-                </div>
-                <Lista items={puntos} />
-              </div>
-            ))}
+          <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
+            <ol className="flex flex-col border-t border-borde">
+              {SOPORTE.map(([t, d], n) => (
+                <li key={t} className="flex gap-6 border-b border-borde py-6">
+                  <span className="font-mono text-sm text-texto-3">{String(n + 1).padStart(2, '0')}</span>
+                  <span>
+                    <span className="block text-xl font-semibold tracking-tight">{t}</span>
+                    <span className="mt-1 block text-texto-2">{d}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <ChatSoporte />
           </div>
         </Contenedor>
       </section>
 
-      {/* Rubros */}
-      <section className="bg-superficie py-20 sm:py-28">
-        <Contenedor className="flex flex-col gap-12">
-          <TituloSeccion rotulo="Para tu rubro" titulo="Pensado para cómo trabaja tu empresa" />
+      {/* 03 · En vivo */}
+      <section className="py-24 sm:py-32">
+        <Contenedor className="flex flex-col gap-14">
+          <TituloSeccion
+            numero={3}
+            rotulo="En vivo"
+            titulo={
+              <>
+                Tus números, en <Destacado>tiempo real</Destacado>.
+              </>
+            }
+            bajada="No esperes al cierre del mes: abrís el sistema y ves cuánto vendiste, cuánto cobraste y qué falta facturar."
+          />
+          <NumerosEnVivo />
+        </Contenedor>
+      </section>
+
+      {/* 04 · Calculadora */}
+      <section className="bg-superficie py-24 sm:py-32">
+        <Contenedor className="flex flex-col gap-14">
+          <TituloSeccion
+            numero={4}
+            rotulo="Calculadora"
+            titulo={
+              <>
+                ¿Cuánto <Destacado>tiempo</Destacado> perdés con planillas?
+              </>
+            }
+            bajada="Mové los valores según cómo trabajás hoy y mirá cuántas horas por mes te devuelve el sistema."
+          />
+          <Calculadora />
+        </Contenedor>
+      </section>
+
+      {/* 05 · Rubros */}
+      <section className="py-24 sm:py-32">
+        <Contenedor className="flex flex-col gap-14">
+          <TituloSeccion
+            numero={5}
+            rotulo="Para tu rubro"
+            titulo={
+              <>
+                Pensado para <Destacado>cómo trabajás</Destacado>.
+              </>
+            }
+          />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SOLUCIONES.map((s) => (
               <Link
                 key={s.slug}
                 href={`/soluciones/${s.slug}`}
-                className="group flex flex-col gap-2 rounded-2xl bg-fondo p-6 ring-1 ring-borde transition hover:-translate-y-0.5 hover:bg-superficie hover:shadow-panel"
+                className="group flex flex-col gap-3 rounded-3xl bg-superficie p-7 ring-1 ring-borde transition hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-20px_rgb(0_0_0/0.25)]"
               >
-                <h3 className="flex items-center justify-between gap-2 text-lg font-bold">
-                  {s.menu}
-                  <ArrowUpRight aria-hidden className="size-4 text-texto-3 transition group-hover:text-acento" />
-                </h3>
-                <p className="text-sm text-texto-2">{s.bajada}</p>
+                <span className="font-mono text-xs tracking-[0.18em] text-acento uppercase">Solución</span>
+                <h3 className="text-xl font-semibold tracking-tight">{s.menu}</h3>
+                <p className="text-texto-2">{s.bajada}</p>
+                <span className="mt-auto pt-2 font-semibold text-texto group-hover:text-acento">Conocer más →</span>
               </Link>
             ))}
           </div>
         </Contenedor>
       </section>
 
-      {/* Planes */}
-      <section className="py-20 sm:py-28">
+      {/* 06 · Planes */}
+      <section className="bg-superficie py-24 sm:py-32">
         <Contenedor className="flex flex-col gap-12">
           <TituloSeccion
-            rotulo="Precios claros"
-            titulo="Empezá gratis y crecé cuando lo necesites"
-            bajada="Sin permanencia: cambiás de plan o das de baja cuando quieras. Precios por mes más IVA."
+            numero={6}
+            rotulo="Planes simples"
+            titulo={
+              <>
+                Elegí tu <Destacado>plan</Destacado>.
+              </>
+            }
+            bajada="Empezá gratis y crecé cuando lo necesites. Sin permanencia ni letra chica."
           />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {PLANES.map((p) => (
-              <div
-                key={p.id}
-                className={`relative flex flex-col gap-5 rounded-2xl p-6 ${
-                  p.destacado ? 'bg-barra text-sobre-barra shadow-flotante ring-2 ring-acento' : 'tarjeta'
-                }`}
-              >
-                {p.destacado && (
-                  <span className="absolute -top-3 left-6 rounded-full bg-acento px-3 py-0.5 text-xs font-bold text-sobre-acento">
-                    El más elegido
-                  </span>
-                )}
-                <div>
-                  <h3 className="text-lg font-bold">{p.nombre}</h3>
-                  <p className={`mt-1 min-h-10 text-sm ${p.destacado ? 'text-sobre-barra-2' : 'text-texto-2'}`}>{p.lema}</p>
-                </div>
-                <p className="flex flex-wrap items-baseline gap-x-1">
-                  <span className="cifras text-[2rem] font-extrabold tracking-tight whitespace-nowrap">
-                    {p.precioMensual ? `$ ${p.precioMensual.toLocaleString('es-AR')}` : 'Gratis'}
-                  </span>
-                  {p.precioMensual > 0 && (
-                    <span className={`text-sm ${p.destacado ? 'text-sobre-barra-2' : 'text-texto-2'}`}>/mes</span>
-                  )}
-                </p>
-                <ul className={`flex flex-col gap-2 text-sm ${p.destacado ? 'text-sobre-barra' : 'text-texto-2'}`}>
-                  {[
-                    `${p.limites.usuarios} ${p.limites.usuarios === 1 ? 'usuario' : 'usuarios'}`,
-                    p.limites.comprobantesMes
-                      ? `${p.limites.comprobantesMes.toLocaleString('es-AR')} comprobantes por mes`
-                      : 'Comprobantes sin límite',
-                    ...p.beneficios.slice(0, 2),
-                  ].map((b) => (
-                    <li key={b} className="flex gap-2">
-                      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-acento" /> {b}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/registro"
-                  className={`mt-auto inline-flex h-11 items-center justify-center rounded-xl font-semibold ${
-                    p.destacado
-                      ? 'boton-lleno bg-acento text-sobre-acento hover:bg-acento-hover'
-                      : 'boton-relieve bg-superficie hover:bg-superficie-2'
-                  }`}
-                >
-                  {p.precioMensual ? 'Probar gratis' : 'Empezar gratis'}
-                </Link>
-              </div>
-            ))}
-          </div>
+          <PlanesPortada />
           <p className="text-center text-sm text-texto-2">
-            ¿Necesitás tiendas online o contratos y equipos?{' '}
+            ¿Tiendas online, contratos y equipos o más usuarios?{' '}
             <Link href="/precios" className="font-semibold text-acento hover:underline">
               Mirá las aplicaciones y la comparación completa
             </Link>
@@ -590,60 +543,88 @@ export default function Inicio() {
         </Contenedor>
       </section>
 
-      {/* Preguntas */}
-      <section className="bg-superficie py-20 sm:py-28">
-        <Contenedor className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-          <div className="flex flex-col items-start gap-4">
-            <Rotulo>Preguntas frecuentes</Rotulo>
-            <h2 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">Lo que más nos consultan</h2>
-            <p className="text-texto-2">¿Te quedó alguna duda? Te respondemos y te mostramos el sistema con tus datos.</p>
-            <Link
-              href="/contacto"
-              className="boton-relieve inline-flex h-11 items-center gap-2 rounded-xl bg-superficie px-5 font-semibold hover:bg-superficie-2"
-            >
-              Hablar con un asesor <ArrowRight aria-hidden className="size-4" />
+      {/* 07 · Comparativa */}
+      <section className="py-24 sm:py-32">
+        <Contenedor className="flex flex-col gap-14">
+          <TituloSeccion
+            numero={7}
+            rotulo="Comparativa"
+            titulo={
+              <>
+                Mirá por qué <Destacado>conviene</Destacado>.
+              </>
+            }
+            bajada="Una comparación honesta con las formas más comunes de llevar una pyme."
+          />
+          <div className="overflow-x-auto rounded-3xl bg-superficie ring-1 ring-borde">
+            <table className="w-full min-w-[640px] text-left">
+              <thead>
+                <tr>
+                  <th scope="col" className="p-5 font-mono text-xs font-medium tracking-[0.18em] text-texto-3 uppercase sm:p-6">
+                    Lo que importa
+                  </th>
+                  <th scope="col" className="w-40 bg-acento p-5 text-center text-sobre-acento">
+                    <span className="mb-1 inline-block rounded-full bg-white/20 px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase">
+                      Recomendado
+                    </span>
+                    <span className="block font-semibold">{MARCA.producto}</span>
+                  </th>
+                  <th scope="col" className="w-40 p-5 text-center font-semibold">
+                    Planillas y cuaderno
+                  </th>
+                  <th scope="col" className="w-40 p-5 text-center font-semibold">
+                    Sistemas sueltos
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARACION.map((f) => (
+                  <tr key={f.q} className="border-t border-borde">
+                    <th scope="row" className="p-5 font-medium sm:px-6">
+                      {f.q}
+                    </th>
+                    <td className="bg-acento-suave/60 p-5">
+                      <Marca v={f.v} />
+                    </td>
+                    <td className="p-5">
+                      <Marca v={f.p} />
+                    </td>
+                    <td className="p-5">
+                      <Marca v={f.s} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Contenedor>
+      </section>
+
+      {/* 08 · Preguntas */}
+      <section className="bg-superficie py-24 sm:py-32">
+        <Contenedor className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="flex flex-col items-start gap-6">
+            <Rotulo numero={8}>Preguntas</Rotulo>
+            <h2 className="text-5xl leading-[1] font-bold tracking-[-0.05em] sm:text-6xl">
+              ¿Dudas?
+              <br />
+              <Destacado>Las resolvemos.</Destacado>
+            </h2>
+            <p className="max-w-sm text-lg text-texto-2">
+              ¿Algo sin respuesta? Escribinos y te mostramos el sistema funcionando con tus propios datos.
+            </p>
+            <Link href="/contacto" className="font-semibold text-acento hover:underline">
+              Hablar con un asesor →
             </Link>
           </div>
           <Preguntas preguntas={PREGUNTAS} />
         </Contenedor>
       </section>
 
-      {/* Llamado final */}
-      <section className="px-4 py-20 sm:px-6">
-        <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-barra px-6 py-16 text-center text-sobre-barra sm:py-20">
-          <div
-            aria-hidden
-            className="absolute -top-32 left-1/2 size-[36rem] -translate-x-1/2 rounded-full bg-acento/35 blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] [background-size:48px_48px]"
-          />
-          <div className="relative flex flex-col items-center gap-6">
-            <h2 className="max-w-3xl text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">
-              Ordená tu negocio hoy. Empezá gratis.
-            </h2>
-            <p className="max-w-xl text-lg text-sobre-barra-2">
-              {DIAS_DE_PRUEBA} días con todo el plan Pyme. Si no te convence, no pagás nada y tus datos siguen siendo tuyos.
-            </p>
-            <div className="flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
-              <Link
-                href="/registro"
-                className="boton-lleno inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-acento px-7 font-semibold text-sobre-acento hover:bg-acento-hover"
-              >
-                Crear mi cuenta gratis <ArrowRight aria-hidden className="size-4" />
-              </Link>
-              <Link
-                href="/contacto"
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-white/10 px-7 font-semibold ring-1 ring-white/15 hover:bg-white/15"
-              >
-                Hablar con un asesor
-              </Link>
-            </div>
-            <p className="text-xs text-sobre-barra-2">Sin tarjeta · Sin permanencia · Soporte en castellano</p>
-          </div>
-        </div>
-      </section>
+      <Llamado
+        titulo="Manejá tu pyme sin que te consuma el día."
+        bajada={`Ordená ventas, stock, cobranzas e impuestos en un solo lugar. ${DIAS_DE_PRUEBA} días gratis con todo el plan Pyme.`}
+      />
       <BotonWhatsapp />
     </>
   )

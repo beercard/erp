@@ -22,7 +22,7 @@ export function Logo() {
   return (
     <span className="flex items-center gap-2.5">
       <Isotipo />
-      <span className="text-[17px] font-semibold tracking-tight">
+      <span className="text-[17px] font-semibold tracking-tight whitespace-nowrap">
         {MARCA.corto}
         <span className="font-normal text-texto-2"> ERP</span>
       </span>

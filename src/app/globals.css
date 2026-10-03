@@ -62,14 +62,24 @@
   /* Paño de la marca (pantallas de acceso): el mismo petróleo oscuro en los dos temas. */
   --marca: #0b6b77;
   --marca-2: #063c43;
+  /* Acento legible sobre paneles oscuros (igual en los dos temas). */
+  --acento-claro: #6cc6d0;
+  /* Fondo del sitio comercial: más claro que el del sistema. */
+  --fondo-sitio: #f8fafc;
   /* Verde de WhatsApp (botón de contacto del sitio). */
   --whatsapp: #25d366;
   --sobre-whatsapp: #06301a;
+  /* Chat de ejemplo con los colores del modo oscuro de WhatsApp. */
+  --chat-fondo: #0b141a;
+  --chat-barra: #202c33;
+  --chat-propio: #005c4b;
+  --chat-campo: #2a3942;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema='claro']) {
     --fondo: #111415;
+    --fondo-sitio: #0b0e10;
     --lateral: #0c0f10;
     --superficie: #1b1f21;
     --superficie-2: #22272a;
@@ -109,6 +119,7 @@
 
 :root[data-tema='oscuro'] {
   --fondo: #111415;
+  --fondo-sitio: #0b0e10;
   --lateral: #0c0f10;
   --superficie: #1b1f21;
   --superficie-2: #22272a;
@@ -185,8 +196,14 @@
   --color-sobre-barra: var(--sobre-barra);
   --color-sobre-barra-2: var(--sobre-barra-2);
   --color-marca-2: var(--marca-2);
+  --color-acento-claro: var(--acento-claro);
   --color-whatsapp: var(--whatsapp);
+  --color-fondo-sitio: var(--fondo-sitio);
   --color-sobre-whatsapp: var(--sobre-whatsapp);
+  --color-chat-fondo: var(--chat-fondo);
+  --color-chat-barra: var(--chat-barra);
+  --color-chat-propio: var(--chat-propio);
+  --color-chat-campo: var(--chat-campo);
   --shadow-panel: var(--sombra);
   --shadow-suave: var(--sombra-xs);
   --shadow-flotante: var(--sombra-lg);
@@ -450,6 +467,11 @@ form[role='search'] input[name='q'] {
   background:
     radial-gradient(60% 50% at 15% 0%, color-mix(in oklab, var(--acento) 18%, transparent), transparent 70%),
     radial-gradient(50% 40% at 90% 10%, color-mix(in oklab, var(--info) 14%, transparent), transparent 70%);
+}
+.puntos-sitio {
+  background-image: radial-gradient(currentColor 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  color: rgb(255 255 255 / 0.35);
 }
 .rejilla-sitio {
   background-image:

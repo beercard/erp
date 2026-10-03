@@ -11,16 +11,25 @@ Variables: `SITIO_URL` (la dirección pública del sitio; si falta, se usa `APP_
 
 ## Portada
 
-Estructura (`src/app/(sitio)/sitio/page.tsx`, piezas visuales en `src/components/sitio/Portada.tsx`), en el estilo de las portadas de software de gestión argentino actuales:
+Referencia de estilo: las portadas de software argentino actuales (cobrando.app). Se toma el lenguaje visual, nunca textos, marca ni cifras de otros.
 
-1. Portada en dos columnas: título grande con degradado, bajada, dos botones (empezar gratis y ver cómo funciona) y, a la derecha, la pantalla del sistema con el celular y avisos que flotan.
-2. Cinta animada de integraciones.
-3. Cifras **del producto** (módulos, días de prueba, plan gratis), nunca métricas de clientes inventadas.
-4. Funciones en mosaico ("bento") con mini pantallas de ejemplo.
-5. Cómo funciona en tres pasos, para quién (dueño, ventas, contador), rubros, planes, preguntas frecuentes y llamado final oscuro.
-6. Botón flotante de WhatsApp si está configurado `CONTACTO_WHATSAPP`.
+- **Tipografía Geist** solo en el sitio (el sistema sigue con Inter): títulos enormes y apretados, y la palabra clave en **mono itálica** del color de acento (`Destacado` en `Bloques.tsx`).
+- **Rótulos en mono entre corchetes:** `[ 01 · LO ESENCIAL ]` (`Rotulo`).
+- **Botones píldora** (`Pildora`): tinta llena o contorno; en paneles de color, blanco o translúcido.
+- **Encabezado** con botón de tema claro/oscuro (comparte la elección con el sistema, `src/lib/tema.ts`).
 
-Las animaciones se apagan cuando el sistema pide reducir movimiento. Cuando haya clientes reales que lo autoricen, sumar una sección de testimonios y logos con sus datos verdaderos.
+Secciones (`src/app/(sitio)/sitio/page.tsx`):
+
+1. Portada centrada y **vitrina** del producto en un gran panel de la marca: carrusel con Panel, Facturar y Tiendas online (`Vitrina.tsx`, pantallas en `Maqueta.tsx`).
+2. Banda oscura con cifras **del producto** (no de clientes) y cinta de integraciones.
+3. `01` Lo esencial: mosaico con mini pantallas (`Portada.tsx`).
+4. `02` Acompañamiento: lista numerada y chat de soporte de ejemplo.
+5. `03` En vivo: tablero interactivo Hoy / 7 días / 30 días con datos de ejemplo, rotulados como tales (`Interactivos.tsx`).
+6. `04` Calculadora de horas recuperadas, con los supuestos a la vista.
+7. `05` Rubros, `06` planes con selector mensual/anual (los precios salen de `src/lib/planes.ts`), `07` comparativa con alternativas genéricas (planillas, sistemas sueltos; sin nombrar competidores ni precios ajenos), `08` preguntas.
+8. Cierre en panel de la marca y botón flotante de WhatsApp si está `CONTACTO_WHATSAPP`.
+
+Sin testimonios ni cantidades de clientes hasta tener casos reales autorizados. Las animaciones (carrusel, cinta) se apagan si el sistema pide reducir movimiento.
 
 ## SEO técnico (hecho)
 

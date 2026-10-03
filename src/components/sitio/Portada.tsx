@@ -253,3 +253,53 @@ export function BotonWhatsapp() {
     </a>
   )
 }
+
+/** Conversación de ejemplo con soporte por WhatsApp. */
+export function ChatSoporte() {
+  const mensajes: { de: 'cliente' | 'soporte'; t: string; h: string }[] = [
+    { de: 'cliente', t: 'Hola! Quiero facturar pero me pide el certificado de ARCA 😅', h: '10:02' },
+    {
+      de: 'soporte',
+      t: 'Hola! Te paso el paso a paso: se genera en ARCA con tu clave fiscal y lo subís en Configuración.',
+      h: '10:03',
+    },
+    { de: 'soporte', t: 'Si querés, lo hacemos juntos por videollamada ahora.', h: '10:03' },
+    { de: 'cliente', t: 'Dale, genial 🙌', h: '10:04' },
+    { de: 'cliente', t: 'Listo, ya salió la primera factura con CAE ✅', h: '10:21' },
+    { de: 'soporte', t: '¡Excelente! Cualquier cosa, escribinos por acá.', h: '10:22' },
+  ]
+  return (
+    <div
+      role="img"
+      aria-label="Conversación de ejemplo con el soporte por WhatsApp"
+      className="overflow-hidden rounded-3xl bg-chat-fondo shadow-[0_30px_70px_-25px_rgb(0_0_0/0.6)] ring-1 ring-black/20"
+    >
+      <div className="flex items-center gap-3 bg-chat-barra px-4 py-3">
+        <span className="grid size-9 place-items-center rounded-full bg-acento text-sm font-black text-sobre-acento">V</span>
+        <span>
+          <span className="block text-sm font-semibold text-white">Soporte Vektra</span>
+          <span className="block text-xs text-white/60">en línea</span>
+        </span>
+      </div>
+      <div className="flex flex-col gap-2 p-4">
+        {mensajes.map((m, n) => (
+          <p
+            key={n}
+            className={`max-w-[85%] rounded-xl px-3 py-2 text-sm text-white/90 ${
+              m.de === 'cliente' ? 'self-end rounded-tr-sm bg-chat-propio' : 'self-start rounded-tl-sm bg-chat-barra'
+            }`}
+          >
+            {m.t}
+            <span className="ml-2 align-bottom text-[10px] text-white/50">{m.h}</span>
+          </p>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 bg-chat-barra px-3 py-2.5">
+        <span className="flex-1 rounded-full bg-chat-campo px-4 py-2 text-sm text-white/50">Escribí un mensaje…</span>
+        <span className="grid size-9 place-items-center rounded-full bg-whatsapp text-sobre-whatsapp">
+          <ArrowUpRight className="size-4 rotate-45" />
+        </span>
+      </div>
+    </div>
+  )
+}

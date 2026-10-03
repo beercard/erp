@@ -6,28 +6,15 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { salir } from '@/app/ingresar/acciones'
+import { aplicarTema, type Tema } from '@/lib/tema'
 
 import { useFlotante } from './useFlotante'
-
-type Tema = 'sistema' | 'claro' | 'oscuro'
-const CLAVE_TEMA = 'erp:tema'
 
 const TEMAS: { valor: Tema; texto: string; icono: typeof Sun }[] = [
   { valor: 'sistema', texto: 'Como el equipo', icono: Monitor },
   { valor: 'claro', texto: 'Claro', icono: Sun },
   { valor: 'oscuro', texto: 'Oscuro', icono: Moon },
 ]
-
-function aplicarTema(t: Tema) {
-  if (t === 'sistema') delete document.documentElement.dataset.tema
-  else document.documentElement.dataset.tema = t
-  try {
-    if (t === 'sistema') localStorage.removeItem(CLAVE_TEMA)
-    else localStorage.setItem(CLAVE_TEMA, t)
-  } catch {
-    // Sin almacenamiento: vale para esta pestaña.
-  }
-}
 
 /** Menú de la persona: quién es, en qué empresa está, el tema de colores y la salida. */
 export function MenuUsuario({
