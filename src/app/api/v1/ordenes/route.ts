@@ -9,7 +9,7 @@ import { conApi, cuerpo, ErrorApi, paginado, respuesta, UUID } from '../_lib/api
 
 /** GET /api/v1/ordenes?estado=&cliente=&desde=&hasta=&offset=&limit= (desde/hasta: fecha del pedido) */
 export async function GET(request: Request) {
-  return conApi(request, { funciones: ['contratos'] }, async (tx) => {
+  return conApi(request, { funciones: ['servicio'] }, async (tx) => {
     const p = paginado(request)
     const estado = p.params.get('estado')
     const cliente = p.params.get('cliente')
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
  * telefono?, email?, instrucciones?: { … } }
  */
 export async function POST(request: Request) {
-  return conApi(request, { escribe: true, funciones: ['contratos'] }, async (tx, acceso) => {
+  return conApi(request, { escribe: true, funciones: ['servicio'] }, async (tx, acceso) => {
     const c = await cuerpo(request)
     const cliente = String(c.cliente ?? '').trim()
     const [t] = await tx

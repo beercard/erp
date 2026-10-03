@@ -1,14 +1,15 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
-import { requerirEmpresa } from '@/lib/auth/servidor'
+import { codigoDelPedido, requerirEmpresa } from '@/lib/auth/servidor'
+import { urlDeEmpresa } from '@/lib/subdominio'
 import { tienePermiso } from '@/lib/permisos'
 import { crearDebito, mpConfigurado } from '@/modulos/plataforma/mercadopago'
 import { historial, pedirCambio, suscripcionDe } from '@/modulos/plataforma/suscripciones'
 
-export type EstadoSuscripcion = { error?: string; ok?: string } | undefined
+/** irA: dirección externa a la que va el navegador (Mercado Pago). */
+export type EstadoSuscripcion = { error?: string; ok?: string; irA?: string } | undefined
 
 export async function cambiarSuscripcionAccion(_: EstadoSuscripcion, formData: FormData): Promise<EstadoSuscripcion> {
   const sesion = await requerirEmpresa()
@@ -52,7 +53,11 @@ export async function pagarConMercadoPagoAccion(): Promise<EstadoSuscripcion> {
         usuariosAdicionales: s.usuariosAdicionales,
         precioAcordado: s.precioAcordado,
       }
-  const base = (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/+$/, '')
+  // La vuelta, a la dirección de la empresa (su subdominio, si los hay): ahí está su sesión.
+  const codigo = await codigoDelPedido()
+  const vuelta = codigo
+    ? urlDeEmpresa(codigo, '/configuracion/suscripcion?mp=1')
+    : `${(process.env.APP_URL ?? 'http://localhost:3000').replace(/\/+$/, '')}/configuracion/suscripcion?mp=1`
   let url: string
   try {
     url = (
@@ -60,12 +65,13 @@ export async function pagarConMercadoPagoAccion(): Promise<EstadoSuscripcion> {
         empresaId: sesion.empresa.id,
         email: sesion.usuario.email,
         suscripcion: objetivo,
-        vuelta: `${base}/configuracion/suscripcion?mp=1`,
+        vuelta,
       })
     ).url
   } catch (e) {
     console.error('[mercadopago] crear débito', e instanceof Error ? e.message : e)
     return { error: 'No se pudo iniciar el pago con Mercado Pago. Probá de nuevo en un momento.' }
   }
-  redirect(url)
+  // Va el navegador (otro sitio): una redirección desde la acción no siempre la sigue.
+  return { irA: url }
 }

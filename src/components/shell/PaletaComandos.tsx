@@ -32,7 +32,7 @@ import type { Resultado } from '@/modulos/busqueda'
 
 import { Tecla } from '../ui'
 
-/** Atajos del módulo de contratos (solo si la empresa lo tiene). */
+/** Atajos de Contratos y de Servicio técnico (cada uno, si la empresa tiene esa aplicación). */
 const ACCIONES_CONTRATOS = [
   { id: 'contratos', texto: 'Ir a contratos', href: '/contratos', icono: Printer, claves: 'abono copias fotocopiadora' },
   { id: 'equipos', texto: 'Ir a equipos', href: '/equipos', icono: Printer, claves: 'parque instalado serie maquina' },
@@ -242,7 +242,15 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
   }
 
   const filtro = texto.toLowerCase()
-  const acciones = [...ACCIONES, ...(funciones.includes('contratos') ? ACCIONES_CONTRATOS : [])].filter(
+  const deContratos = ['contratos', 'lecturas', 'facturar-contratos']
+  const aplicaciones = ACCIONES_CONTRATOS.filter((a) =>
+    deContratos.includes(a.id)
+      ? funciones.includes('contratos')
+      : a.id === 'equipos'
+        ? funciones.includes('contratos') || funciones.includes('servicio')
+        : funciones.includes('servicio'),
+  )
+  const acciones = [...ACCIONES, ...aplicaciones].filter(
     (a) => !filtro || `${a.texto} ${a.claves}`.toLowerCase().includes(filtro),
   )
   const mostrarSalir = !filtro || 'cerrar sesion salir'.includes(filtro)

@@ -596,6 +596,13 @@
       "when": 1791059412578,
       "tag": "0084_codigo_empresa",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1791064455651,
+      "tag": "0085_rubro_empresa",
+      "breakpoints": true
     }
   ]
 }

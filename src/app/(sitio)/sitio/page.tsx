@@ -659,7 +659,7 @@ export default function Inicio() {
 
       <Llamado
         titulo="Manejá tu pyme sin que te consuma el día."
-        bajada={`Ordená ventas, stock, cobranzas e impuestos en un solo lugar. ${DIAS_DE_PRUEBA} días gratis con todo el plan Pyme.`}
+        bajada={`Ordená ventas, stock, cobranzas e impuestos en un solo lugar. ${DIAS_DE_PRUEBA} días gratis, con lo que tu rubro necesita.`}
       />
       <BotonWhatsapp />
     </>

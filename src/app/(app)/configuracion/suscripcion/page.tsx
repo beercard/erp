@@ -6,7 +6,7 @@ import { Aviso, Chip, EncabezadoPagina, Panel } from '@/components/ui'
 import { requerirEmpresa } from '@/lib/auth/servidor'
 import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
-import { FUNCIONES, planPorId, planQueIncluye, precioDeLista, situacion, type Funcion } from '@/lib/planes'
+import { APLICACIONES, FUNCIONES, planPorId, planQueIncluye, precioDeLista, situacion, type Funcion } from '@/lib/planes'
 import { ESTADOS_DEBITO, mpConfigurado } from '@/modulos/plataforma/mercadopago'
 import { historial, suscripcionDe, usoDe } from '@/modulos/plataforma/suscripciones'
 
@@ -67,7 +67,7 @@ export default async function Suscripcion({ searchParams }: PageProps<'/configur
         <div className="mb-4">
           <Aviso tono="info">
             {FUNCIONES[falta].nombre} no está incluido en el plan {plan.nombre}.{' '}
-            {['contratos', 'tienda'].includes(falta)
+            {APLICACIONES.some((a) => a.id === falta)
               ? 'Es una aplicación: se suma abajo, en Aplicaciones.'
               : `Está desde el plan ${planQueIncluye(falta)?.nombre}.`}
           </Aviso>

@@ -6,7 +6,7 @@ import { conApi, paginado, respuesta, UUID } from '../_lib/api'
 
 /** GET /api/v1/equipos?cliente=<id>&serie=&estado=instalado|retirado&offset=&limit= */
 export async function GET(request: Request) {
-  return conApi(request, { funciones: ['contratos'] }, async (tx) => {
+  return conApi(request, { unaDe: ['contratos', 'servicio'] }, async (tx) => {
     const p = paginado(request)
     const cliente = p.params.get('cliente')
     const serie = p.params.get('serie')?.trim()

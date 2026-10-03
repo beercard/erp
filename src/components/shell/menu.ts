@@ -269,6 +269,11 @@ const SERVICIO: Seccion = {
 }
 
 /** Lo que se toca de vez en cuando: arranca cerrado. */
+const SERVICIO_CON_EQUIPOS: Seccion = {
+  ...SERVICIO,
+  items: [...SERVICIO.items, { href: '/equipos', permiso: 'contratos.ver', texto: 'Equipos', icono: Printer }],
+}
+
 const SERVICIO_AJUSTES: Seccion = {
   titulo: 'Servicio: ajustes',
   app: 'servicio',
@@ -299,9 +304,14 @@ export const CONFIGURACION: Item = { href: '/configuracion', texto: 'Configuraci
 
 /** Todas las secciones que corresponden a la empresa, en orden. */
 export function seccionesDe(funciones: string[]): Seccion[] {
-  return funciones.includes('contratos')
-    ? [...SECCIONES.slice(0, -1), CONTRATOS, SERVICIO, SERVICIO_AJUSTES, SECCIONES[SECCIONES.length - 1]]
-    : SECCIONES
+  const contratos = funciones.includes('contratos')
+  const servicio = funciones.includes('servicio')
+  const extra = [
+    ...(contratos ? [CONTRATOS] : []),
+    // Sin Contratos, los equipos en clientes van con el servicio técnico.
+    ...(servicio ? [contratos ? SERVICIO : SERVICIO_CON_EQUIPOS, SERVICIO_AJUSTES] : []),
+  ]
+  return extra.length ? [...SECCIONES.slice(0, -1), ...extra, SECCIONES[SECCIONES.length - 1]] : SECCIONES
 }
 
 /**

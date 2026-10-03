@@ -52,11 +52,18 @@ describe('planes', () => {
     expect(permitidoPorPlan(gratis, 'ventas.facturar')).toBe(true)
     expect(permitidoPorPlan(gratis, 'ventas.presupuestos')).toBe(false)
     expect(permitidoPorPlan(gratis, 'maestros.terceros')).toBe(true)
+    // Servicio técnico es su propia aplicación; los equipos van con ella o con Contratos.
+    const servicio = situacion(s({ plan: 'inicial', aplicaciones: ['servicio'] }), '2026-10-02')
+    expect(permitidoPorPlan(servicio, 'servicio.cargar')).toBe(true)
+    expect(permitidoPorPlan(servicio, 'contratos.ver')).toBe(true)
+    expect(permitidoPorPlan(servicio, 'contratos.facturar')).toBe(false)
+    const contratos = situacion(s({ plan: 'pyme', aplicaciones: ['contratos'] }), '2026-10-02')
+    expect(permitidoPorPlan(contratos, 'servicio.ver')).toBe(false)
   })
 
   it('precio de lista con aplicaciones y usuarios adicionales', () => {
-    expect(precioDeLista({ plan: 'pyme', aplicaciones: ['contratos'], usuariosAdicionales: 2 })).toBe(
-      129_900 + 59_900 + 2 * 14_900,
+    expect(precioDeLista({ plan: 'pyme', aplicaciones: ['contratos', 'servicio'], usuariosAdicionales: 2 })).toBe(
+      129_900 + 29_900 + 49_900 + 2 * 14_900,
     )
   })
 })

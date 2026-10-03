@@ -5,6 +5,9 @@ import { useActionState, useEffect } from 'react'
 
 import { Aviso, Boton, Campo, Selector } from '@/components/ui'
 
+import { DIAS_DE_PRUEBA } from '@/lib/planes'
+import { RUBROS } from '@/lib/rubros'
+
 import { crearOtraEmpresa, registrarse } from './acciones'
 
 const CONDICIONES = [
@@ -16,6 +19,18 @@ const CONDICIONES = [
 function DatosEmpresa({ valores }: { valores?: Record<string, string> }) {
   return (
     <>
+      <Selector
+        id="rubro"
+        name="rubro"
+        etiqueta="¿A qué se dedica la empresa?"
+        opciones={RUBROS.map((r) => ({ valor: r.id, texto: r.nombre }))}
+        defaultValue={valores?.rubro ?? ''}
+        vacio="Elegí el rubro"
+        required
+      />
+      <p className="-mt-2 text-xs text-texto-3">
+        Lo dejamos preparado para tu rubro, y si usa servicio técnico, contratos o tienda online, la prueba lo incluye.
+      </p>
       <Campo id="razonSocial" name="razonSocial" etiqueta="Razón social" defaultValue={valores?.razonSocial} required />
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo
@@ -89,7 +104,7 @@ export function FormularioRegistro() {
       <Boton type="submit" variante="primario" disabled={enviando} className="mt-1 h-10">
         {enviando ? 'Creando la cuenta…' : 'Empezar la prueba gratis'}
       </Boton>
-      <p className="text-center text-xs text-texto-3">30 días con todo lo del plan Pyme. Sin tarjeta.</p>
+      <p className="text-center text-xs text-texto-3">{DIAS_DE_PRUEBA} días con el plan Inicial y lo de tu rubro. Sin tarjeta.</p>
     </form>
   )
 }
