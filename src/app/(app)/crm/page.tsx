@@ -7,6 +7,10 @@ import { enLaEmpresa, exigirPermiso } from '@/lib/auth/servidor'
 import { tienePermiso } from '@/lib/permisos'
 import { responsables, tablero } from '@/modulos/crm/crm'
 
+import { cargarFicha } from './[id]/datos'
+import { Ficha } from './[id]/Ficha'
+import { Atajos } from './Atajos'
+import { Cajon } from './Cajon'
 import { pesosServidor } from './formato'
 import { Embudo } from './Embudo'
 
@@ -14,14 +18,20 @@ export const metadata: Metadata = { title: 'Embudo de ventas' }
 
 export default async function PaginaEmbudo({ searchParams }: PageProps<'/crm'>) {
   const sesion = await exigirPermiso('crm.ver')
-  const { q, resp } = await searchParams
+  const { q, resp, o: rapida } = await searchParams
   const texto = typeof q === 'string' ? q : ''
   const quien = typeof resp === 'string' ? resp : ''
   const responsableId = quien === 'mias' ? sesion.usuario.id : quien || null
-  const [columnas, personas] = await enLaEmpresa('crm.ver', async (tx) => [
-    await tablero(tx, { q: texto, responsableId }),
-    await responsables(tx, sesion.empresa.id),
-  ])
+  const abierta = typeof rapida === 'string' && /^[0-9a-f-]{36}$/i.test(rapida) ? rapida : null
+  const [columnas, personas, ficha] = await enLaEmpresa(
+    'crm.ver',
+    async (tx) =>
+      [
+        await tablero(tx, { q: texto, responsableId }),
+        await responsables(tx, sesion.empresa.id),
+        abierta ? await cargarFicha(tx, sesion, abierta) : null,
+      ] as const,
+  )
   const abiertas = columnas.flatMap((c) => c.oportunidades.filter((o) => o.estado === 'abierta'))
   const embudo = abiertas.reduce((s, o) => s + Number(o.ingresoEsperado), 0)
   const ponderado = abiertas.reduce((s, o) => s + (Number(o.ingresoEsperado) * o.probabilidad) / 100, 0)
@@ -107,7 +117,13 @@ export default async function PaginaEmbudo({ searchParams }: PageProps<'/crm'>) 
           )}
         </nav>
       </div>
-      <Embudo columnas={columnas} editar={editar} />
+      <Embudo columnas={columnas} editar={editar} abierta={ficha ? abierta : null} />
+      <Atajos nueva={editar ? '/crm/nueva' : undefined} />
+      {ficha && (
+        <Cajon cerrar={enlace(quien)} expandir={`/crm/${ficha.o.id}`} titulo={ficha.o.titulo}>
+          <Ficha datos={ficha} sesion={sesion} compacta />
+        </Cajon>
+      )}
     </>
   )
 }

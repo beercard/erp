@@ -4,6 +4,7 @@ import { boolean, check, date, foreignKey, index, integer, pgTable, text, timest
 import { presupuestos } from './comercial'
 import { empresaId, id, importe, marcasDeTiempo } from './comunes'
 import { terceros } from './maestros'
+import { empresas } from './plataforma'
 
 /**
  * CRM: el embudo de ventas antes de la venta. Cada oportunidad avanza por
@@ -153,7 +154,62 @@ export const crmHistorial = pgTable(
   },
   (t) => [
     index().on(t.empresaId, t.oportunidadId, t.creado),
-    check('crm_historial_tipo', sql`${t.tipo} in ('nota','cambio')`),
+    check('crm_historial_tipo', sql`${t.tipo} in ('nota','cambio','llamada','whatsapp','email')`),
     deLaEmpresa('crm_historial_oportunidad_fk', t.empresaId, t.oportunidadId, crmOportunidades).onDelete('cascade'),
   ],
 )
+
+/** Plantillas de mensajes para WhatsApp y email, con variables como {cliente} o {oportunidad}. */
+export const crmPlantillas = pgTable(
+  'crm_plantillas',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    nombre: text('nombre').notNull(),
+    /** whatsapp | email */
+    canal: text('canal').notNull(),
+    asunto: text('asunto'),
+    texto: text('texto').notNull(),
+    activa: boolean('activa').notNull().default(true),
+    ...marcasDeTiempo(),
+  },
+  (t) => [index().on(t.empresaId, t.canal), check('crm_plantillas_canal', sql`${t.canal} in ('whatsapp','email')`)],
+)
+
+/** Ajustes del CRM de cada empresa (una fila por empresa). */
+export const crmAjustes = pgTable(
+  'crm_ajustes',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    /** ninguna | rotativa: cómo se asignan las oportunidades que entran solas (formulario web). */
+    asignacion: text('asignacion').notNull().default('ninguna'),
+    /** Vendedores entre los que se reparte, en orden. */
+    vendedores: uuid('vendedores').array().notNull().default(sql`'{}'::uuid[]`),
+    ultimoAsignado: integer('ultimo_asignado').notNull().default(-1),
+    /** Resumen diario por email con las actividades vencidas y de hoy. */
+    resumenDiario: boolean('resumen_diario').notNull().default(true),
+    ultimoResumen: date('ultimo_resumen'),
+    ...marcasDeTiempo(),
+  },
+  (t) => [
+    unique('crm_ajustes_empresa').on(t.empresaId),
+    check('crm_ajustes_asignacion', sql`${t.asignacion} in ('ninguna','rotativa')`),
+  ],
+)
+
+/**
+ * Formulario web de la empresa (captura de oportunidades desde su sitio).
+ * Es de plataforma: el pedido llega sin sesión y por el token se sabe de qué
+ * empresa es. Solo guarda ese vínculo.
+ */
+export const crmFormularios = pgTable('crm_formularios', {
+  token: text('token').primaryKey(),
+  empresaId: uuid('empresa_id')
+    .notNull()
+    .unique()
+    .references(() => empresas.id, { onDelete: 'cascade' }),
+  activo: boolean('activo').notNull().default(true),
+  origen: text('origen').notNull().default('Formulario web'),
+  creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+})

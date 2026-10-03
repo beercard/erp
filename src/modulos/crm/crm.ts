@@ -518,6 +518,27 @@ async function proximasActividades(tx: Transaccion, ids: string[]) {
   return new Map(filas.map((f) => [f.oportunidadId, f]))
 }
 
+/** Cuántas notas y actividades pendientes tiene cada oportunidad (para el pie de las tarjetas). */
+async function conteos(tx: Transaccion, ids: string[]) {
+  if (!ids.length) return new Map<string, { notas: number; pendientes: number }>()
+  const [notas, pendientes] = await Promise.all([
+    tx
+      .select({ id: crmHistorial.oportunidadId, n: sql<number>`count(*)::int` })
+      .from(crmHistorial)
+      .where(and(inArray(crmHistorial.oportunidadId, ids), sql`${crmHistorial.tipo} <> 'cambio'`))
+      .groupBy(crmHistorial.oportunidadId),
+    tx
+      .select({ id: crmActividades.oportunidadId, n: sql<number>`count(*)::int` })
+      .from(crmActividades)
+      .where(and(inArray(crmActividades.oportunidadId, ids), eq(crmActividades.hecha, false)))
+      .groupBy(crmActividades.oportunidadId),
+  ])
+  const m = new Map(ids.map((id) => [id, { notas: 0, pendientes: 0 }]))
+  for (const f of notas) m.get(f.id)!.notas = Number(f.n)
+  for (const f of pendientes) m.get(f.id)!.pendientes = Number(f.n)
+  return m
+}
+
 const DIA = 86_400_000
 
 /** Días en la etapa actual, si está estancada (pasó los días de alerta de la etapa) y si no tiene nada agendado. */
@@ -551,17 +572,20 @@ export async function tablero(tx: Transaccion, f: FiltroOportunidades = {}) {
     .where(and(condiciones({ ...f, estado: undefined }), sql`${crmOportunidades.estado} <> 'perdida'`))
     .orderBy(asc(crmOportunidades.orden), desc(crmOportunidades.creado))
     .limit(1000)
-  const proximas = await proximasActividades(
-    tx,
-    filas.map((o) => o.id),
-  )
+  const ids = filas.map((o) => o.id)
+  const [proximas, cuentas] = await Promise.all([proximasActividades(tx, ids), conteos(tx, ids)])
   const hoy = hoyArgentina()
   return etapas.map((e) => {
     const ops = filas
       .filter((o) => o.etapaId === e.id)
       .map((o) => {
         const a = proximas.get(o.id)
-        return { ...o, ...conAlertas(o, a), proxima: a ? { ...a, estado: estadoDeVencimiento(a.vence, hoy) } : null }
+        return {
+          ...o,
+          ...conAlertas(o, a),
+          ...cuentas.get(o.id)!,
+          proxima: a ? { ...a, estado: estadoDeVencimiento(a.vence, hoy) } : null,
+        }
       })
     return {
       ...e,

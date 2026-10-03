@@ -421,6 +421,20 @@
       "when": 1790999444297,
       "tag": "0059_crm_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1791001380919,
+      "tag": "0060_crm_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1791001383531,
+      "tag": "0061_crm_v2_seguridad",
+      "breakpoints": true
     }
   ]
 }

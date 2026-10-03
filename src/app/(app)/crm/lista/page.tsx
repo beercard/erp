@@ -2,13 +2,14 @@ import { Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
-import { BotonEnlace, Chip, EncabezadoPagina, Panel } from '@/components/ui'
+import { BotonEnlace, EncabezadoPagina } from '@/components/ui'
 import { enLaEmpresa, exigirPermiso } from '@/lib/auth/servidor'
 import { tienePermiso } from '@/lib/permisos'
-import { listarOportunidades } from '@/modulos/crm/crm'
+import { asegurarEtapas, listarOportunidades, responsables } from '@/modulos/crm/crm'
 
-import { Estrellas, Iniciales, ProximaActividad } from '../componentes'
+import { Atajos } from '../Atajos'
 import { pesosServidor } from '../formato'
+import { TablaOportunidades } from './TablaOportunidades'
 
 export const metadata: Metadata = { title: 'Oportunidades' }
 
@@ -19,8 +20,6 @@ const FILTROS = [
   { valor: 'todas', texto: 'Todas' },
 ] as const
 
-const TONO = { abierta: 'info', ganada: 'ok', perdida: 'error' } as const
-
 export default async function ListaOportunidades({ searchParams }: PageProps<'/crm/lista'>) {
   const sesion = await exigirPermiso('crm.ver')
   const { q, estado, mias, etiqueta } = await searchParams
@@ -28,9 +27,21 @@ export default async function ListaOportunidades({ searchParams }: PageProps<'/c
   const filtro = (FILTROS.find((f) => f.valor === estado)?.valor ?? 'abierta') as (typeof FILTROS)[number]['valor']
   const soloMias = mias === '1'
   const tag = typeof etiqueta === 'string' ? etiqueta : undefined
-  const filas = await enLaEmpresa('crm.ver', (tx) =>
-    listarOportunidades(tx, { q: texto, estado: filtro, responsableId: soloMias ? sesion.usuario.id : null, etiqueta: tag }),
+  const [filas, etapas, personas] = await enLaEmpresa(
+    'crm.ver',
+    async (tx) =>
+      [
+        await listarOportunidades(tx, {
+          q: texto,
+          estado: filtro,
+          responsableId: soloMias ? sesion.usuario.id : null,
+          etiqueta: tag,
+        }),
+        await asegurarEtapas(tx),
+        await responsables(tx, sesion.empresa.id),
+      ] as const,
   )
+  const editar = tienePermiso(sesion.permisos, 'crm.oportunidades')
   const total = filas.reduce((s, o) => s + Number(o.ingresoEsperado), 0)
   const enlace = (cambios: Record<string, string | null>) => {
     const p = new URLSearchParams({
@@ -66,7 +77,7 @@ export default async function ListaOportunidades({ searchParams }: PageProps<'/c
           </>
         }
         acciones={
-          tienePermiso(sesion.permisos, 'crm.oportunidades') && (
+          editar && (
             <BotonEnlace href="/crm/nueva" variante="primario">
               <Plus aria-hidden /> Nueva oportunidad
             </BotonEnlace>
@@ -114,76 +125,29 @@ export default async function ListaOportunidades({ searchParams }: PageProps<'/c
           </Link>
         </nav>
       </div>
-      <Panel className="overflow-x-auto">
-        <table className="w-full min-w-[860px] text-sm">
-          <thead>
-            <tr className="border-b border-borde text-left text-xs text-texto-2">
-              <th className="px-4 py-2.5 font-medium">Oportunidad</th>
-              <th className="px-4 py-2.5 font-medium">Cliente</th>
-              <th className="px-4 py-2.5 font-medium">Etapa</th>
-              <th className="px-4 py-2.5 text-right font-medium">Ingreso</th>
-              <th className="px-4 py-2.5 text-right font-medium">Prob.</th>
-              <th className="px-4 py-2.5 font-medium">Cierre</th>
-              <th className="px-4 py-2.5 font-medium">Próxima actividad</th>
-              <th className="px-4 py-2.5 font-medium">Resp.</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-borde">
-            {!filas.length && (
-              <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-texto-2">
-                  No hay oportunidades {texto || soloMias || tag ? 'con este filtro' : 'todavía'}.
-                </td>
-              </tr>
-            )}
-            {filas.map((o) => (
-              <tr key={o.id} className="group">
-                <td className="px-4 py-2.5">
-                  <Link href={`/crm/${o.id}`} className="font-medium group-hover:text-acento">
-                    {o.titulo}
-                  </Link>
-                  <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                    <Estrellas valor={o.prioridad} tamano="size-3" />
-                    {o.etiquetas.slice(0, 3).map((e) => (
-                      <Link
-                        key={e}
-                        href={enlace({ etiqueta: e })}
-                        className="rounded-md bg-superficie-2 px-1.5 text-[11px] text-texto-2 hover:text-acento"
-                      >
-                        {e}
-                      </Link>
-                    ))}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-texto-2">
-                  {o.cliente}
-                  {o.esProspecto && <span className="text-texto-3"> · prospecto</span>}
-                </td>
-                <td className="px-4 py-2.5">
-                  {o.estado === 'abierta' ? (
-                    o.etapa
-                  ) : (
-                    <Chip tono={TONO[o.estado as keyof typeof TONO]}>
-                      {o.estado === 'ganada' ? 'Ganada' : `Perdida en ${o.etapa}`}
-                    </Chip>
-                  )}
-                </td>
-                <td className="cifras px-4 py-2.5 text-right whitespace-nowrap">{pesosServidor(o.ingresoEsperado)}</td>
-                <td className="cifras px-4 py-2.5 text-right text-texto-2">{o.probabilidad} %</td>
-                <td className="px-4 py-2.5 whitespace-nowrap text-texto-2">
-                  {o.cierreEstimado ? o.cierreEstimado.split('-').reverse().join('/') : '—'}
-                </td>
-                <td className="px-4 py-2.5">
-                  {o.estado === 'abierta' ? <ProximaActividad proxima={o.proxima} /> : <span className="text-texto-3">—</span>}
-                </td>
-                <td className="px-4 py-2.5">
-                  <Iniciales nombre={o.responsable} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
+      <TablaOportunidades
+        filas={filas.map((o) => ({
+          id: o.id,
+          titulo: o.titulo,
+          cliente: o.cliente,
+          esProspecto: o.esProspecto,
+          etapa: o.etapa,
+          estado: o.estado,
+          ingresoEsperado: o.ingresoEsperado,
+          probabilidad: o.probabilidad,
+          cierreEstimado: o.cierreEstimado,
+          prioridad: o.prioridad,
+          responsable: o.responsable,
+          etiquetas: o.etiquetas,
+          proxima: o.proxima,
+        }))}
+        etapas={etapas.map((e) => ({ id: e.id, nombre: e.nombre }))}
+        personas={personas}
+        editar={editar}
+        parametros={{ ...(texto ? { q: texto } : {}), estado: filtro, ...(soloMias ? { mias: '1' } : {}) }}
+        vacio={`No hay oportunidades ${texto || soloMias || tag ? 'con este filtro' : 'todavía'}.`}
+      />
+      <Atajos nueva={editar ? '/crm/nueva' : undefined} />
     </>
   )
 }

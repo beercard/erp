@@ -1,7 +1,8 @@
 'use client'
 
-import { Clock, Hourglass, MoreHorizontal, Plus, Trophy, X } from 'lucide-react'
+import { CalendarClock, Clock, Hourglass, MoreHorizontal, Plus, StickyNote, Trophy, X } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useActionState, useEffect, useOptimistic, useRef, useState, useTransition } from 'react'
 
 import { altaRapidaAccion, moverAccion, prioridadAccion } from './acciones'
@@ -22,6 +23,8 @@ export type Tarjeta = {
   estancada: boolean
   sinActividad: boolean
   proximoPaso: string | null
+  notas: number
+  pendientes: number
   proxima: { tipo: string; resumen: string; vence: string; estado: 'vencida' | 'hoy' | 'futura' } | null
 }
 
@@ -61,8 +64,17 @@ const total = (ops: Tarjeta[]) => ops.reduce((s, o) => s + Number(o.ingresoEsper
  * El embudo: una columna por etapa con sus oportunidades. Se arrastra con el
  * mouse; en el celular o con teclado, cada tarjeta tiene "Mover a…".
  */
-export function Embudo({ columnas, editar }: { columnas: Columna[]; editar: boolean }) {
+export function Embudo({ columnas, editar, abierta }: { columnas: Columna[]; editar: boolean; abierta: string | null }) {
   const [vista, aplicar] = useOptimistic(columnas, mover)
+  const [altaEn, setAltaEn] = useState<string | null>(null)
+  const router = useRouter()
+  const parametros = useSearchParams()
+  /** Un clic abre la vista rápida; con Ctrl, Cmd o la rueda, la ficha en otra pestaña. */
+  const ver = (id: string) => {
+    const p = new URLSearchParams(parametros)
+    p.set('o', id)
+    router.push(`/crm?${p}`, { scroll: false })
+  }
   const [, iniciar] = useTransition()
   const [arrastrada, setArrastrada] = useState<string | null>(null)
   const [sobre, setSobre] = useState<{ etapa: string; antesDe: string | null } | null>(null)
@@ -109,7 +121,7 @@ export function Embudo({ columnas, editar }: { columnas: Columna[]; editar: bool
                 e.preventDefault()
                 if (arrastrada) soltar({ id: arrastrada, etapaId: c.id, antesDe: sobre?.etapa === c.id ? sobre.antesDe : null })
               }}
-              className={`flex w-[17.5rem] shrink-0 snap-start flex-col rounded-2xl p-2 transition-colors ${
+              className={`group/col flex w-[17.5rem] shrink-0 snap-start flex-col rounded-2xl p-2 transition-colors ${
                 destino ? 'bg-acento-suave ring-2 ring-acento/40' : 'bg-texto/[0.035]'
               }`}
             >
@@ -122,7 +134,18 @@ export function Embudo({ columnas, editar }: { columnas: Columna[]; editar: bool
                       {c.oportunidades.length}
                     </span>
                   </h2>
-                  {editar && <AltaRapida etapaId={c.id} etapa={c.nombre} />}
+                  {editar && (
+                    <button
+                      type="button"
+                      onClick={() => setAltaEn(altaEn === c.id ? null : c.id)}
+                      aria-expanded={altaEn === c.id}
+                      aria-label={`Nueva oportunidad en ${c.nombre}`}
+                      title="Nueva oportunidad"
+                      className="grid size-7 place-items-center rounded-lg text-texto-2 transition-opacity group-hover/col:opacity-100 hover:bg-superficie hover:text-texto focus-visible:opacity-100 aria-expanded:opacity-100 [@media(hover:hover)]:opacity-0"
+                    >
+                      <Plus aria-hidden className="size-4" />
+                    </button>
+                  )}
                 </div>
                 <p className="mt-1 flex items-baseline justify-between text-xs text-texto-2">
                   <span className="cifras font-semibold text-texto">{pesos(suma)}</span>
@@ -165,16 +188,30 @@ export function Embudo({ columnas, editar }: { columnas: Columna[]; editar: bool
                       o={o}
                       columnas={vista}
                       editar={editar}
+                      elegida={abierta === o.id}
+                      alVer={() => ver(o.id)}
                       alMover={(etapaId) => soltar({ id: o.id, etapaId, antesDe: null })}
                     />
                   </li>
                 ))}
-                {!c.oportunidades.length && (
+                {!c.oportunidades.length && altaEn !== c.id && (
                   <li className="grid flex-1 place-items-center rounded-xl border border-dashed border-borde-fuerte/60 px-3 py-6 text-center text-xs text-texto-3">
-                    {editar ? 'Arrastrá una oportunidad o tocá +' : 'Sin oportunidades'}
+                    {editar ? 'Arrastrá una oportunidad acá' : 'Sin oportunidades'}
                   </li>
                 )}
               </ol>
+              {editar &&
+                (altaEn === c.id ? (
+                  <AltaRapida etapaId={c.id} alCerrar={() => setAltaEn(null)} />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAltaEn(c.id)}
+                    className="mt-2 flex h-8 items-center gap-1.5 rounded-lg px-2 text-[13px] text-texto-3 hover:bg-superficie hover:text-texto"
+                  >
+                    <Plus aria-hidden className="size-4" /> Nueva
+                  </button>
+                ))}
             </section>
           )
         })}
@@ -206,11 +243,15 @@ function TarjetaOportunidad({
   o,
   columnas,
   editar,
+  elegida,
+  alVer,
   alMover,
 }: {
   o: Tarjeta
   columnas: Columna[]
   editar: boolean
+  elegida: boolean
+  alVer: () => void
   alMover: (etapaId: string) => void
 }) {
   const [, iniciar] = useTransition()
@@ -218,12 +259,17 @@ function TarjetaOportunidad({
   return (
     <article
       className={`group tarjeta relative flex flex-col gap-2 p-3 transition hover:shadow-panel ${editar ? 'cursor-grab active:cursor-grabbing' : ''} ${
-        o.estado === 'ganada' ? 'border-l-4 border-l-ok' : o.estancada ? 'border-l-4 border-l-aviso' : ''
-      }`}
+        elegida ? 'ring-2 ring-acento' : ''
+      } ${o.estado === 'ganada' ? 'border-l-4 border-l-ok' : o.estancada ? 'border-l-4 border-l-aviso' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <Link
           href={`/crm/${o.id}`}
+          onClick={(e) => {
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return
+            e.preventDefault()
+            alVer()
+          }}
           className="min-w-0 text-sm leading-snug font-semibold after:absolute after:inset-0 hover:text-acento"
         >
           {o.titulo}
@@ -303,75 +349,79 @@ function TarjetaOportunidad({
             </span>
           )}
         </span>
-        <Iniciales nombre={o.responsable} />
+        <span className="flex items-center gap-2">
+          {o.notas > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[11px] text-texto-3" title={`${o.notas} notas y mensajes`}>
+              <StickyNote aria-hidden className="size-3" /> {o.notas}
+            </span>
+          )}
+          {o.pendientes > 1 && (
+            <span
+              className="inline-flex items-center gap-0.5 text-[11px] text-texto-3"
+              title={`${o.pendientes} actividades pendientes`}
+            >
+              <CalendarClock aria-hidden className="size-3" /> {o.pendientes}
+            </span>
+          )}
+          <Iniciales nombre={o.responsable} />
+        </span>
       </div>
     </article>
   )
 }
 
-/** "+" de la columna: título, cliente o prospecto e ingreso, sin salir del embudo. */
-function AltaRapida({ etapaId, etapa }: { etapaId: string; etapa: string }) {
-  const [abierta, setAbierta] = useState(false)
+/** Alta en la columna, sin salir del embudo: título, cliente o prospecto e ingreso. */
+function AltaRapida({ etapaId, alCerrar }: { etapaId: string; alCerrar: () => void }) {
   const [estado, accion, enviando] = useActionState(altaRapidaAccion.bind(null, etapaId), undefined)
   const form = useRef<HTMLFormElement>(null)
   useEffect(() => {
-    if (estado?.ok) form.current?.reset()
+    if (estado?.ok) {
+      form.current?.reset()
+      form.current?.querySelector<HTMLInputElement>('input')?.focus()
+    }
   }, [estado])
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setAbierta((a) => !a)}
-        aria-expanded={abierta}
-        aria-label={`Nueva oportunidad en ${etapa}`}
-        className="grid size-7 place-items-center rounded-lg text-texto-2 hover:bg-superficie hover:text-texto"
-      >
-        <Plus aria-hidden className="size-4" />
-      </button>
-      {abierta && (
-        <form
-          ref={form}
-          action={accion}
-          className="aparecer absolute z-20 mt-9 flex w-[16.5rem] flex-col gap-2 rounded-xl border border-borde bg-superficie p-3 shadow-flotante"
+    <form
+      ref={form}
+      action={accion}
+      onKeyDown={(e) => e.key === 'Escape' && alCerrar()}
+      className="aparecer tarjeta mt-2 flex flex-col gap-2 p-2.5"
+    >
+      <input
+        name="titulo"
+        required
+        autoFocus
+        aria-label="Título"
+        placeholder="¿Qué se vende? Ej.: 3 fotocopiadoras"
+        className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie px-2.5 text-sm"
+      />
+      <input
+        name="empresaProspecto"
+        aria-label="Empresa o contacto"
+        placeholder="Empresa o contacto"
+        className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie px-2.5 text-sm"
+      />
+      <input
+        name="ingresoEsperado"
+        inputMode="decimal"
+        aria-label="Ingreso esperado"
+        placeholder="Ingreso esperado sin IVA ($)"
+        className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie px-2.5 text-sm"
+      />
+      {estado?.error && <p className="text-xs text-error">{estado.error}</p>}
+      {estado?.ok && <p className="text-xs text-ok">Agregada. Podés cargar otra.</p>}
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={alCerrar} className="h-8 rounded-lg px-3 text-sm text-texto-2 hover:bg-superficie-2">
+          Cerrar
+        </button>
+        <button
+          type="submit"
+          disabled={enviando}
+          className="boton-lleno h-8 rounded-lg bg-acento px-3 text-sm font-semibold text-sobre-acento disabled:opacity-50"
         >
-          <input
-            name="titulo"
-            required
-            autoFocus
-            placeholder="¿Qué se vende? Ej.: 3 fotocopiadoras"
-            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie px-2.5 text-sm"
-          />
-          <input
-            name="empresaProspecto"
-            placeholder="Empresa o contacto"
-            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie px-2.5 text-sm"
-          />
-          <input
-            name="ingresoEsperado"
-            inputMode="decimal"
-            placeholder="Ingreso esperado sin IVA ($)"
-            className="h-9 rounded-lg border border-borde-fuerte/80 bg-superficie px-2.5 text-sm"
-          />
-          {estado?.error && <p className="text-xs text-error">{estado.error}</p>}
-          {estado?.ok && <p className="text-xs text-ok">Agregada. Podés cargar otra.</p>}
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setAbierta(false)}
-              className="h-8 rounded-lg px-3 text-sm text-texto-2 hover:bg-superficie-2"
-            >
-              Cerrar
-            </button>
-            <button
-              type="submit"
-              disabled={enviando}
-              className="boton-lleno h-8 rounded-lg bg-acento px-3 text-sm font-semibold text-sobre-acento disabled:opacity-50"
-            >
-              Agregar
-            </button>
-          </div>
-        </form>
-      )}
-    </>
+          Agregar
+        </button>
+      </div>
+    </form>
   )
 }

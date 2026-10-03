@@ -11,6 +11,7 @@ import { liquidarPendientes } from '@/modulos/contabilidad/cierre'
 import { avisarVencimientos } from '@/modulos/impuestos/vencimientos'
 import { ponerAlDia } from '@/modulos/servicio/avisos'
 import { limpiarFrenos } from '@/lib/frenos'
+import { resumenDiario } from '@/modulos/crm/extras'
 import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
 
 /**
@@ -19,8 +20,16 @@ import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
  * día vencimientos, preventivos, avisos, alertas de SLA y recordatorios de
  * todas las empresas, avisa los vencimientos impositivos que se acercan o
  * se pasaron, asienta las operaciones nuevas (si la contabilidad está en
- * marcha), manda los correos y los webhooks, y sincroniza las tiendas online. Sin CRON_SECRET no hace nada.
+ * marcha), arma el resumen diario del CRM, manda los correos y los webhooks, y sincroniza las tiendas online.
+ * Sin CRON_SECRET no hace nada.
  */
+const horaArgentina = () =>
+  Number(
+    new Intl.DateTimeFormat('es-AR', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Argentina/Buenos_Aires' }).format(
+      new Date(),
+    ),
+  )
+
 export async function POST(request: Request) {
   const secreto = process.env.CRON_SECRET
   const recibido = request.headers.get('authorization')?.replace(/^Bearer /, '') ?? ''
@@ -40,6 +49,7 @@ export async function POST(request: Request) {
     enviados: 0,
     webhooks: 0,
     pedidosTiendas: 0,
+    resumenesCrm: 0,
     errores: 0,
   }
   await limpiarFrenos().catch(() => undefined)
@@ -54,6 +64,8 @@ export async function POST(request: Request) {
         const c = await contabilizar(tx, null)
         return c.generados + (await liquidarPendientes(tx, null)).liquidados
       })
+      // CRM: resumen diario de actividades, desde las 8 de la mañana (hora argentina).
+      if (horaArgentina() >= 8) resultado.resumenesCrm += (await conEmpresa(e.id, (tx) => resumenDiario(tx, e.id))).enviados
       resultado.enviados += (await enviarPendientes(e.id, 100)).enviados
       resultado.webhooks += (await entregarPendientes(e.id, 200)).entregados
       // Tiendas online: pedidos que no avisaron y stock y precios que cambiaron.

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { terceros } from '@/db/schema'
+import type { Transaccion } from '@/db/conexion'
 import { enLaEmpresa, SinPermiso } from '@/lib/auth/servidor'
 import {
   activarMotivo,
@@ -25,8 +26,22 @@ import {
   moverOportunidad,
   perderOportunidad,
   reabrirOportunidad,
+  responsables,
   vincularCliente,
 } from '@/modulos/crm/crm'
+import {
+  activarFormulario,
+  actualizarCampo,
+  asignarVarias,
+  borrarPlantilla,
+  desactivarFormulario,
+  enviarEmail,
+  guardarAjustes,
+  guardarPlantilla,
+  moverVarias,
+  registrarLlamada,
+  registrarWhatsapp,
+} from '@/modulos/crm/extras'
 
 export type EstadoCrm = { error?: string; ok?: boolean; valores?: Record<string, string> } | undefined
 
@@ -56,6 +71,14 @@ function seguir(id: string, r: { ok: boolean; error?: string }) {
   if (!r.ok) redirect(`${ficha(id)}?error=${encodeURIComponent(r.error ?? 'No se pudo hacer.')}`)
 }
 
+/** El responsable tiene que ser alguien de la empresa. */
+async function esDeLaEmpresa(tx: Transaccion, empresaId: string, usuarioId: unknown) {
+  if (!usuarioId) return true
+  return (await responsables(tx, empresaId)).some((p) => p.id === usuarioId)
+}
+
+const NO_ES_DEL_EQUIPO = { ok: false as const, error: 'Esa persona no es de la empresa.' }
+
 // ----------------------------------------------------------- Clientes
 
 export async function buscarClientesCrm(texto: string) {
@@ -79,9 +102,13 @@ export async function buscarClientesCrm(texto: string) {
 // ----------------------------------------------------------- Oportunidades
 
 export async function guardarOportunidadAccion(id: string | null, _: EstadoCrm, fd: FormData): Promise<EstadoCrm> {
-  const entrada = { ...valores(fd), etiquetas: String(fd.get('etiquetas') ?? '') }
+  const entrada: Record<string, string> = { ...valores(fd), etiquetas: String(fd.get('etiquetas') ?? '') }
   const r = await intentar(() =>
-    enLaEmpresa('crm.oportunidades', (tx, s) => guardarOportunidad(tx, s.usuario.id, entrada, id ?? undefined)),
+    enLaEmpresa('crm.oportunidades', async (tx, s) =>
+      (await esDeLaEmpresa(tx, s.empresa.id, entrada.responsableId))
+        ? guardarOportunidad(tx, s.usuario.id, entrada, id ?? undefined)
+        : NO_ES_DEL_EQUIPO,
+    ),
   )
   if (!r.ok) return { error: r.error, valores: valores(fd) }
   refrescar(r.id)
@@ -157,7 +184,68 @@ export async function vincularAccion(id: string, terceroId: string) {
   seguir(id, await intentar(() => enLaEmpresa('crm.oportunidades', (tx, s) => vincularCliente(tx, s.usuario.id, id, terceroId))))
 }
 
+/** Edición en línea de un dato (ficha y vista rápida). */
+export async function campoAccion(id: string, campo: string, valor: string) {
+  const r = await intentar(() =>
+    enLaEmpresa('crm.oportunidades', async (tx, s) =>
+      campo === 'responsableId' && !(await esDeLaEmpresa(tx, s.empresa.id, valor))
+        ? NO_ES_DEL_EQUIPO
+        : actualizarCampo(tx, s.usuario.id, id, campo, campo === 'responsableId' ? valor || null : valor),
+    ),
+  )
+  refrescar(id)
+  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error }
+}
+
+/** Acciones sobre varias oportunidades de la lista. */
+export async function moverVariasAccion(ids: string[], etapaId: string) {
+  const r = await intentar(() => enLaEmpresa('crm.oportunidades', (tx, s) => moverVarias(tx, s.usuario.id, ids, etapaId)))
+  refrescar()
+  return r.ok ? { ok: true as const, cantidad: r.movidas } : { ok: false as const, error: r.error }
+}
+
+export async function asignarVariasAccion(ids: string[], responsableId: string) {
+  const r = await intentar(() =>
+    enLaEmpresa('crm.oportunidades', async (tx, s) =>
+      (await esDeLaEmpresa(tx, s.empresa.id, responsableId))
+        ? asignarVarias(tx, s.usuario.id, ids, responsableId || null)
+        : NO_ES_DEL_EQUIPO,
+    ),
+  )
+  refrescar()
+  return r.ok ? { ok: true as const, cantidad: r.asignadas } : { ok: false as const, error: r.error }
+}
+
 // ----------------------------------------------------------- Actividades y notas
+
+export async function llamadaAccion(oportunidadId: string, _: EstadoCrm, fd: FormData): Promise<EstadoCrm> {
+  const r = await intentar(() =>
+    enLaEmpresa('crm.oportunidades', (tx, s) =>
+      registrarLlamada(tx, s.usuario.id, oportunidadId, { desenlace: fd.get('desenlace'), nota: fd.get('nota') }),
+    ),
+  )
+  if (!r.ok) return { error: r.error, valores: valores(fd) }
+  refrescar(oportunidadId)
+  return { ok: true }
+}
+
+export async function whatsappAccion(oportunidadId: string, texto: string) {
+  const t = String(texto ?? '').trim()
+  if (!t) return
+  await intentar(() => enLaEmpresa('crm.oportunidades', (tx, s) => registrarWhatsapp(tx, s.usuario.id, oportunidadId, t)))
+  refrescar(oportunidadId)
+}
+
+export async function emailAccion(oportunidadId: string, _: EstadoCrm, fd: FormData): Promise<EstadoCrm> {
+  const r = await intentar(() =>
+    enLaEmpresa('crm.oportunidades', (tx, s) =>
+      enviarEmail(tx, s.usuario.id, oportunidadId, { para: fd.get('para'), asunto: fd.get('asunto'), texto: fd.get('texto') }),
+    ),
+  )
+  if (!r.ok) return { error: r.error, valores: valores(fd) }
+  refrescar(oportunidadId)
+  return { ok: true }
+}
 
 export async function agendarAccion(oportunidadId: string, _: EstadoCrm, fd: FormData): Promise<EstadoCrm> {
   const r = await intentar(() =>
@@ -232,4 +320,43 @@ export async function guardarMotivoAccion(_: EstadoCrm, fd: FormData): Promise<E
 export async function activarMotivoAccion(id: string, activo: boolean) {
   await intentar(() => enLaEmpresa('crm.configurar', (tx) => activarMotivo(tx, id, activo)))
   refrescar()
+}
+
+export async function guardarPlantillaAccion(id: string | null, _: EstadoCrm, fd: FormData): Promise<EstadoCrm> {
+  const r = await intentar(() => enLaEmpresa('crm.configurar', (tx) => guardarPlantilla(tx, valores(fd), id ?? undefined)))
+  if (!r.ok) return { error: r.error, valores: valores(fd) }
+  refrescar()
+  return { ok: true }
+}
+
+export async function borrarPlantillaAccion(id: string) {
+  await intentar(() => enLaEmpresa('crm.configurar', (tx) => borrarPlantilla(tx, id)))
+  refrescar()
+}
+
+export async function ajustesAccion(_: EstadoCrm, fd: FormData): Promise<EstadoCrm> {
+  const r = await intentar(() =>
+    enLaEmpresa('crm.configurar', async (tx, s) => {
+      const vendedores = fd.getAll('vendedores').map(String)
+      const equipo = new Set((await responsables(tx, s.empresa.id)).map((p) => p.id))
+      return guardarAjustes(tx, {
+        asignacion: fd.get('asignacion'),
+        vendedores: vendedores.filter((v) => equipo.has(v)),
+        resumenDiario: fd.get('resumenDiario') === 'on',
+      })
+    }),
+  )
+  if (!r.ok) return { error: r.error }
+  refrescar()
+  return { ok: true }
+}
+
+/** Formulario web: activar, cambiar la dirección (la anterior deja de andar) o apagar. */
+export async function formularioAccion(que: 'activar' | 'regenerar' | 'desactivar') {
+  // El permiso se revisa en la empresa; el token vive en una tabla de la plataforma (fuera de esa transacción).
+  const empresaId = await intentar(() => enLaEmpresa('crm.configurar', async (_tx, s) => s.empresa.id))
+  if (typeof empresaId !== 'string') return
+  if (que === 'desactivar') await desactivarFormulario(empresaId)
+  else await activarFormulario(empresaId, que === 'regenerar')
+  revalidatePath('/crm/configuracion')
 }

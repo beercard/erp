@@ -1,11 +1,11 @@
 'use client'
 
-import { CalendarPlus, Check, Send, ThumbsDown, Trash2 } from 'lucide-react'
+import { CalendarPlus, Check, ThumbsDown, Trash2 } from 'lucide-react'
 import { useActionState, useEffect, useRef, useState } from 'react'
 
 import { Aviso, Boton } from '@/components/ui'
 
-import { agendarAccion, borrarActividadAccion, completarAccion, notaAccion, perderAccion } from '../acciones'
+import { agendarAccion, borrarActividadAccion, completarAccion, perderAccion } from '../acciones'
 import { ICONO_ACTIVIDAD, TONO_VENCIMIENTO } from '../componentes'
 
 const TIPOS = [
@@ -231,31 +231,5 @@ export function ActividadPendiente({
         </form>
       )}
     </li>
-  )
-}
-
-/** Nota para el historial. */
-export function Nota({ oportunidadId }: { oportunidadId: string }) {
-  const [estado, accion, enviando] = useActionState(notaAccion.bind(null, oportunidadId), undefined)
-  const form = useRef<HTMLFormElement>(null)
-  useEffect(() => {
-    if (estado?.ok) form.current?.reset()
-  }, [estado])
-  return (
-    <form ref={form} action={accion} className="flex flex-col gap-2">
-      <textarea
-        name="nota"
-        rows={2}
-        required
-        placeholder="Escribí una nota: qué hablaron, qué necesita…"
-        className="rounded-lg border border-borde-fuerte/80 bg-superficie px-3 py-2 text-sm shadow-suave"
-      />
-      <div className="flex items-center justify-between">
-        {estado?.error ? <p className="text-sm text-error">{estado.error}</p> : <span />}
-        <Boton type="submit" disabled={enviando}>
-          <Send aria-hidden /> Guardar nota
-        </Boton>
-      </div>
-    </form>
   )
 }
