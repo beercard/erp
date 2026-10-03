@@ -1,7 +1,7 @@
 'use client'
 
 import Script from 'next/script'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { CAMPO_TIEMPO, CAMPO_TRAMPA } from '@/lib/antibots'
 
@@ -12,10 +12,11 @@ import { CAMPO_TIEMPO, CAMPO_TRAMPA } from '@/lib/antibots'
  * controlarEnvio (src/lib/antibots.ts).
  */
 export function Antibots() {
-  const [abierto, setAbierto] = useState('')
+  const abierto = useRef<HTMLInputElement>(null)
   const [siteKey, setSiteKey] = useState<string | null>(null)
   useEffect(() => {
-    setAbierto(String(Date.now()))
+    // La hora se pone en el navegador (no en el servidor): es cuando la persona vio el formulario.
+    if (abierto.current) abierto.current.value = String(Date.now())
     fetch('/api/antibots')
       .then((r) => r.json())
       .then((d: { siteKey: string | null }) => setSiteKey(d.siteKey))
@@ -23,7 +24,7 @@ export function Antibots() {
   }, [])
   return (
     <>
-      <input type="hidden" name={CAMPO_TIEMPO} value={abierto} />
+      <input ref={abierto} type="hidden" name={CAMPO_TIEMPO} defaultValue="" />
       {/* Trampa: fuera de la pantalla y del orden de tabulación; los lectores de pantalla la saltean. */}
       <div aria-hidden className="absolute -left-[10000px] h-px w-px overflow-hidden">
         <label>
