@@ -235,6 +235,109 @@ export const SOLUCIONES: Solucion[] = [
       },
     ],
   },
+  {
+    slug: 'mayoristas-y-distribucion',
+    menu: 'Mayoristas y distribución',
+    titulo: 'Sistema de gestión para mayoristas: percepciones, retenciones y COT',
+    descripcion:
+      'Padrones de Ingresos Brutos por CUIT, percepciones y retenciones automáticas, COT de ARBA desde el remito, cheques y cobranza. ERP en la nube para mayoristas argentinos.',
+    h1: 'Vendé por mayor sin pelearte con los padrones',
+    bajada:
+      'Las alícuotas de cada cliente y proveedor salen del padrón de su provincia, el COT se pide desde el remito y la cobranza avisa sola a los que se atrasan.',
+    dolores: [
+      'Bajar el padrón de ARBA todos los meses y cruzarlo a mano',
+      'Percepciones mal calculadas que después reclama el cliente',
+      'Pedir el COT en la web de ARBA remito por remito',
+      'Cheques en cartera que nadie sabe cuándo vencen',
+    ],
+    funciones: [
+      {
+        titulo: 'Padrones de IIBB',
+        texto:
+          'ARBA, AGIP y otras provincias: se importa el archivo del mes o se consulta a ARBA, y quedan solo tus clientes y proveedores.',
+      },
+      {
+        titulo: 'Percepciones y retenciones solas',
+        texto:
+          'La factura toma la alícuota de percepción del padrón y la orden de pago retiene Ganancias e Ingresos Brutos con su certificado.',
+      },
+      {
+        titulo: 'COT desde el remito',
+        texto: 'Con la patente y la hora de salida, el sistema presenta el remito en ARBA y el código sale impreso.',
+      },
+      {
+        titulo: 'Cheques y ECHEQ',
+        texto: 'Cartera, depósitos, canje y entrega a proveedores, con los que vencen en la semana a la vista.',
+      },
+      {
+        titulo: 'Cobranza automática',
+        texto:
+          'Recordatorios antes y después del vencimiento con el estado de deuda adjunto, e intereses por mora en notas de débito.',
+      },
+      {
+        titulo: 'Reposición de stock',
+        texto: 'Lo que quedó bajo el mínimo, contando lo ya pedido, en órdenes de compra agrupadas por proveedor.',
+      },
+    ],
+    preguntas: [
+      {
+        p: '¿Tengo que subir el padrón entero de ARBA?',
+        r: 'Se sube el archivo del mes tal como lo da ARBA (descomprimido); el sistema lo lee entero y guarda solo los CUIT de tus clientes y proveedores. También se puede consultar a ARBA por CUIT con tu CIT.',
+      },
+      {
+        p: '¿Qué pasa con un cliente que no está en el padrón?',
+        r: 'Se usa la alícuota general de la percepción para los clientes de esa provincia, o la que tenga cargada su ficha, que siempre manda.',
+      },
+      {
+        p: '¿El COT se puede pedir sin conexión con ARBA?',
+        r: 'Sí: desde el remito se descarga el archivo para subirlo a mano en la web de ARBA.',
+      },
+    ],
+  },
+  {
+    slug: 'profesionales-y-servicios',
+    menu: 'Profesionales y servicios',
+    titulo: 'Facturación y cobranza para profesionales y empresas de servicios',
+    descripcion:
+      'Factura electrónica ARCA, links de pago, recordatorios de deuda por correo y WhatsApp, y un resumen diario del negocio. Empezás gratis.',
+    h1: 'Facturá, cobrá y sabé cómo viene el mes',
+    bajada:
+      'Facturás en un minuto, mandás el link de pago con la factura y el sistema le recuerda al cliente cuando se vence. Vos recibís un resumen con lo que entró y lo que falta.',
+    dolores: [
+      'Perseguir clientes por WhatsApp para que paguen',
+      'No saber cuánto te deben hasta fin de mes',
+      'Facturar en la web de ARCA comprobante por comprobante',
+      'Responder siempre las mismas consultas de saldo',
+    ],
+    funciones: [
+      { titulo: 'Factura electrónica', texto: 'Facturas A, B y C con CAE de ARCA, en PDF y con su enlace para mandar.' },
+      { titulo: 'Links de pago', texto: 'Mercado Pago y otras pasarelas: el cobro se imputa solo a la factura.' },
+      {
+        titulo: 'Recordatorios de deuda',
+        texto: 'Por correo y WhatsApp antes y después del vencimiento, con el estado de deuda en PDF.',
+      },
+      {
+        titulo: 'Atención por WhatsApp',
+        texto: 'Un asistente responde saldos, manda facturas y links de pago, y pasa a una persona lo que no puede resolver.',
+      },
+      { titulo: 'Resumen para el dueño', texto: 'Ventas, cobranzas, deuda vencida y saldos, cada mañana o cada semana.' },
+      { titulo: 'Para tu contador', texto: 'Libro IVA Digital, vencimientos y el paquete del mes listo para mandar.' },
+    ],
+    preguntas: [
+      {
+        p: '¿Puedo empezar sin pagar?',
+        r: 'Sí. El plan Gratis factura con ARCA sin vencimiento; cuando necesites cobranza y más usuarios, pasás a un plan pago.',
+      },
+      {
+        p: '¿Los recordatorios salen solos?',
+        r: 'Sí, una vez por día y solo a quien corresponde; elegís cuántos días antes y después del vencimiento, y si van por correo, por WhatsApp o por los dos.',
+      },
+      {
+        p: '¿Sirve si soy monotributista?',
+        r: 'Sí: emitís facturas C con CAE y llevás la cuenta de cada cliente igual que una empresa.',
+      },
+    ],
+  },
 ]
 
 export const solucionPorSlug = (slug: string) => SOLUCIONES.find((s) => s.slug === slug) ?? null

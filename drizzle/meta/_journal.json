@@ -582,6 +582,13 @@
       "when": 1791051477473,
       "tag": "0082_iibb_padrones_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1791052520151,
+      "tag": "0083_contador_cierra_periodos",
+      "breakpoints": true
     }
   ]
 }

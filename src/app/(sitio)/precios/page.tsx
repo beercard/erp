@@ -8,6 +8,7 @@ import {
   DIAS_DE_PRUEBA,
   FUNCIONES,
   MESES_COBRADOS_EN_ANUAL,
+  PLANES,
   PRECIO_USUARIO_ADICIONAL,
   planPorId,
 } from '@/lib/planes'
@@ -49,6 +50,7 @@ const PREGUNTAS = [
 export default async function Precios({ searchParams }: PageProps<'/precios'>) {
   const { ciclo: c } = (await searchParams) as { ciclo?: string }
   const ciclo = c === 'anual' ? 'anual' : 'mensual'
+  const gratis = PLANES.find((p) => p.precioMensual === 0)
   const ahorro = Math.round((1 - MESES_COBRADOS_EN_ANUAL / 12) * 100)
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 py-12 sm:px-6 sm:py-16">
@@ -90,8 +92,10 @@ export default async function Precios({ searchParams }: PageProps<'/precios'>) {
         </div>
       </section>
 
+      {/* Tres niveles pagos, con el del medio destacado; el gratis, aparte. */}
       <TarjetasPlanes
         ciclo={ciclo}
+        planes={PLANES.filter((p) => p.precioMensual > 0)}
         pie={(p) => (
           <Link
             href="/registro"
@@ -103,6 +107,23 @@ export default async function Precios({ searchParams }: PageProps<'/precios'>) {
           </Link>
         )}
       />
+      {gratis && (
+        <section className="flex flex-col items-start justify-between gap-3 tarjeta p-5 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="font-semibold">¿Solo necesitás facturar? Plan {gratis.nombre}</h2>
+            <p className="text-sm text-texto-2">
+              {gratis.lema} {gratis.limites.comprobantesMes} comprobantes con CAE por mes, {gratis.limites.usuarios} usuario, sin
+              vencimiento.
+            </p>
+          </div>
+          <Link
+            href="/registro"
+            className="shrink-0 rounded-md border border-borde px-4 py-2 text-sm font-medium hover:bg-superficie-2"
+          >
+            Empezar gratis
+          </Link>
+        </section>
+      )}
 
       <section className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold">Aplicaciones</h2>

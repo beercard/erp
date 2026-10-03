@@ -110,3 +110,7 @@ La IA, además de leer, dice qué tan segura está de la lectura. Si la confianz
 - **Servicio web de ARBA** (consulta de alícuotas): con el CUIT y la CIT (cifrada con la clave maestra), consulta el mes de todos los CUIT propios de a 50 y lo guarda en el padrón. Ambiente de prueba o producción.
 - **COT**: desde el remito, con patente, día y hora de salida, arma el archivo de ARBA (registros 01 cabecera, 02 remito con origen, destino y transporte, 03 un renglón por producto con el código del nomenclador y la unidad de la tabla de ARBA cargados en el artículo, 04 cierre), lo presenta y guarda el código, que sale impreso en el remito. También se puede descargar el archivo para subirlo a mano. El importe declarado es la mercadería a costo.
 - **Antes de usarlos en producción**: los diseños de registro de ARBA y AGIP cambian con el tiempo. Probar primero con el ambiente de prueba de ARBA y un archivo real de cada padrón, y ajustar `leerRenglon` (`src/modulos/impuestos/padronesIibb.ts`) y `archivoCot` (`src/modulos/comercial/cot.ts`) si algún campo cambió.
+
+## Quién cierra períodos
+
+El cierre de períodos por módulo (Configuración → Cierre de períodos, permiso `empresa.bloqueos`) lo tienen el rol Contador y quien tenga todos los permisos. El rol Administración no: carga y corrige operaciones, y si pudiera reabrir un período podría tocar lo que el contador ya cerró. Una empresa que quiera dárselo lo hace con un rol propio.

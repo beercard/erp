@@ -3,7 +3,7 @@
 El sitio comercial de Vektra ERP vive en la misma aplicación que el sistema:
 
 - Sin sesión, `/` muestra la portada comercial (`src/app/(sitio)/sitio`); con sesión, el inicio del sistema.
-- Páginas: `/funciones`, `/integraciones`, `/precios`, `/soluciones/[rubro]` (cinco rubros), `/contacto`, `/legal/terminos`, `/legal/privacidad`, `/legal/arrepentimiento`, más `/registro` e `/ingresar`.
+- Páginas: `/funciones`, `/integraciones`, `/precios`, `/soluciones/[rubro]` (siete rubros, entre ellos mayoristas y distribución, y profesionales y servicios), `/contacto`, `/legal/terminos`, `/legal/privacidad`, `/legal/arrepentimiento`, más `/registro` e `/ingresar`.
 - La marca (nombre del producto, razón social, CUIT) está en un solo archivo: `src/lib/marca.ts`.
 - Las consultas del formulario quedan en el panel de la plataforma (`/plataforma`, "Consultas del sitio") y, con `CONTACTO_EMAIL` y SMTP configurados, llegan por email. Tienen una trampa para robots y un tope de 5 por hora por conexión.
 
@@ -96,3 +96,7 @@ Ordenado por impacto y esfuerzo.
 - El panel de la plataforma sigue permitiendo registrar pagos a mano (transferencias).
 
 Pendiente de revisión legal antes de publicar: los términos y condiciones y la política de privacidad son una base redactada sobre la Ley 25.326, la Ley 24.240 y la Resolución 424/2020; conviene que los revise un abogado.
+
+## Precios en tres niveles
+
+`/precios` muestra los tres planes pagos (Inicial, Pyme destacado, Empresa) en columnas y el plan Gratis aparte, debajo, igual que la portada. La pantalla de suscripción dentro del sistema sigue mostrando los cuatro.
