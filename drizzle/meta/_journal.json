@@ -603,6 +603,13 @@
       "when": 1791062143668,
       "tag": "0085_consola_plataforma",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1791065250551,
+      "tag": "0086_rubro_empresa",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 
 import { Aviso, Boton } from '@/components/ui'
 import {
@@ -160,10 +160,13 @@ function Resultado({ estado }: { estado: { error?: string; ok?: string } | undef
 /** Lleva a Mercado Pago a autorizar el débito automático. */
 export function PagarConMercadoPago() {
   const [estado, accion, enviando] = useActionState(pagarConMercadoPagoAccion, undefined)
+  useEffect(() => {
+    if (estado?.irA) window.location.assign(estado.irA)
+  }, [estado?.irA])
   return (
     <form action={accion} className="flex flex-col gap-2">
       <Boton type="submit" variante="primario" disabled={enviando}>
-        {enviando ? 'Abriendo Mercado Pago…' : 'Pagar con Mercado Pago'}
+        {enviando || estado?.irA ? 'Abriendo Mercado Pago…' : 'Pagar con Mercado Pago'}
       </Boton>
       {estado?.error && <Aviso>{estado.error}</Aviso>}
     </form>

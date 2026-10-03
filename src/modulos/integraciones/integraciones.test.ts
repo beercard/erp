@@ -53,7 +53,9 @@ describe('API y webhooks', () => {
       .values({ razonSocial: 'Copiadora S.A.', cuit: '30715974823', condicionIva: 1 })
       .returning()
     empresa = e.id
-    await db.insert(suscripciones).values({ empresaId: empresa, plan: 'empresa', estado: 'activa', aplicaciones: ['contratos'] })
+    await db
+      .insert(suscripciones)
+      .values({ empresaId: empresa, plan: 'empresa', estado: 'activa', aplicaciones: ['contratos', 'servicio'] })
     // Las claves sirven mientras quien las creó tenga acceso a la empresa.
     await db.insert(usuarios).values({ id: U, email: 'integra@copiadora.com', nombre: 'Integra', hashClave: 'x' })
     const [dueno] = await db.select().from(roles).where(eq(roles.nombre, 'Dueño'))

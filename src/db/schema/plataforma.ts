@@ -30,6 +30,8 @@ export const empresas = pgTable('empresas', {
   /** Código de ingreso: la empresa trabaja en <codigo>.<DOMINIO_EMPRESAS>. */
   codigo: text('codigo').unique(),
   razonSocial: text('razon_social').notNull(),
+  /** Rubro elegido al registrarse (src/modulos/plataforma/rubros.ts): define la prueba y lo precargado. */
+  rubro: text('rubro'),
   nombreFantasia: text('nombre_fantasia'),
   cuit: text('cuit').notNull().unique(),
   condicionIva: smallint('condicion_iva')

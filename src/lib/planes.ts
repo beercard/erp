@@ -15,7 +15,17 @@
  */
 
 export type Funcion =
-  'facturacion' | 'comercial' | 'stock' | 'compras' | 'tesoreria' | 'informes' | 'roles' | 'api' | 'contratos' | 'tienda'
+  | 'facturacion'
+  | 'comercial'
+  | 'stock'
+  | 'compras'
+  | 'tesoreria'
+  | 'informes'
+  | 'roles'
+  | 'api'
+  | 'contratos'
+  | 'servicio'
+  | 'tienda'
 
 export const FUNCIONES: Record<Funcion, { nombre: string; detalle: string }> = {
   facturacion: {
@@ -40,7 +50,12 @@ export const FUNCIONES: Record<Funcion, { nombre: string; detalle: string }> = {
   api: { nombre: 'API e integraciones', detalle: 'Acceso por API para conectar una tienda u otros sistemas.' },
   contratos: {
     nombre: 'Contratos y parque instalado',
-    detalle: 'Equipos en clientes, lecturas de contadores, facturación mensual por copias o abonos y servicio técnico.',
+    detalle: 'Contratos de alquiler o abono por equipo, lecturas de contadores y facturación mensual por copias o abonos.',
+  },
+  servicio: {
+    nombre: 'Servicio técnico',
+    detalle:
+      'Órdenes de servicio, agenda y calendario de técnicos, app del técnico (también sin señal), preventivos, portal de clientes y equipos en clientes.',
   },
   tienda: {
     nombre: 'Tiendas online y Mercado Libre',
@@ -126,7 +141,7 @@ export const PLANES: Plan[] = [
 ]
 
 export type Aplicacion = {
-  id: Extract<Funcion, 'contratos' | 'tienda'>
+  id: Extract<Funcion, 'contratos' | 'servicio' | 'tienda'>
   precioMensual: number
   /** Plan mínimo sobre el que se puede contratar. */
   desde: PlanId
@@ -134,7 +149,8 @@ export type Aplicacion = {
 }
 
 export const APLICACIONES: Aplicacion[] = [
-  { id: 'contratos', precioMensual: 59_900, desde: 'pyme', disponible: true },
+  { id: 'servicio', precioMensual: 49_900, desde: 'inicial', disponible: true },
+  { id: 'contratos', precioMensual: 29_900, desde: 'pyme', disponible: true },
   { id: 'tienda', precioMensual: 39_900, desde: 'inicial', disponible: true },
 ]
 
@@ -142,11 +158,11 @@ export const APLICACIONES: Aplicacion[] = [
 export const PRECIO_USUARIO_ADICIONAL = 14_900
 /** En el pago anual se cobran 10 meses. */
 export const MESES_COBRADOS_EN_ANUAL = 10
-export const DIAS_DE_PRUEBA = 30
+export const DIAS_DE_PRUEBA = 15
 /** Días después del vencimiento en que se puede seguir trabajando. */
 export const DIAS_DE_GRACIA = 10
-/** El plan de la prueba gratis: se prueba todo lo de una pyme. */
-export const PLAN_DE_PRUEBA: PlanId = 'pyme'
+/** El plan de la prueba gratis: el Inicial, más la aplicación del rubro que eligió al registrarse. */
+export const PLAN_DE_PRUEBA: PlanId = 'inicial'
 
 export const planPorId = (id: string) => PLANES.find((p) => p.id === id) ?? PLANES[0]
 export const ORDEN_PLANES: PlanId[] = PLANES.map((p) => p.id)
@@ -180,7 +196,7 @@ const FUNCION_DE_MODULO: Record<string, Funcion> = {
   impuestos: 'informes',
   contabilidad: 'informes',
   contratos: 'contratos',
-  servicio: 'contratos',
+  servicio: 'servicio',
   tienda: 'tienda',
   crm: 'comercial',
   whatsapp: 'comercial',
@@ -280,9 +296,13 @@ export function situacion(s: DatosSuscripcion, hoy: string): Situacion {
 }
 
 /** ¿Habilita la suscripción este permiso? (el rol se controla aparte) */
+/** Los equipos en clientes se usan tanto con Contratos como con Servicio técnico. */
+const PERMISOS_DE_EQUIPOS = ['contratos.ver', 'contratos.editar']
+
 export function permitidoPorPlan(sit: Pick<Situacion, 'funciones' | 'soloLectura'>, permiso: string) {
   const funcion = funcionDePermiso(permiso)
-  if (funcion && !sit.funciones.includes(funcion)) return false
+  const porEquipos = PERMISOS_DE_EQUIPOS.includes(permiso) && sit.funciones.includes('servicio')
+  if (funcion && !sit.funciones.includes(funcion) && !porEquipos) return false
   return !sit.soloLectura || permisoDeLectura(permiso)
 }
 

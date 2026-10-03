@@ -17,6 +17,8 @@ import {
   usuarios,
 } from '../../db/schema'
 import { codigoLibre } from './codigos'
+import { PREPARAR_RUBRO } from './rubros'
+import { rubroPorId } from '../../lib/rubros'
 import { mensajeDeBase } from '../../lib/errores'
 import { auditar } from '../../lib/auditoria'
 import { validarCuit } from '../../lib/cuit'
@@ -29,6 +31,7 @@ import {
   planPorId,
   situacion,
   type DatosSuscripcion,
+  type Aplicacion,
   type PlanId,
 } from '../../lib/planes'
 
@@ -137,6 +140,10 @@ export async function controlarLimite(
 // ------------------------------------------------------- Alta de empresas
 
 const EsquemaAlta = z.object({
+  rubro: z
+    .string()
+    .optional()
+    .transform((v) => rubroPorId(v)?.id ?? null),
   razonSocial: z.string().trim().min(3, { error: 'Escribí la razón social.' }),
   cuit: z.string(),
   condicionIva: z.coerce
@@ -168,6 +175,7 @@ export async function crearEmpresa(
         razonSocial: p.data.razonSocial,
         cuit: cuit.cuit,
         condicionIva: p.data.condicionIva,
+        rubro: p.data.rubro,
         codigo: await codigoLibre(tx, p.data.razonSocial),
       })
       .returning()
@@ -177,10 +185,17 @@ export async function crearEmpresa(
       .where(and(eq(roles.nombre, 'Dueño'), isNull(roles.empresaId)))
     await tx.insert(membresias).values({ usuarioId, empresaId: empresa.id, rolId: dueno.id })
     const pruebaHasta = sumarDias(hoy, DIAS_DE_PRUEBA)
-    await tx.insert(suscripciones).values({ empresaId: empresa.id, plan: PLAN_DE_PRUEBA, estado: 'prueba', pruebaHasta })
+    // La prueba: el plan Inicial más la aplicación del rubro (lo que viene a buscar).
+    const aplicaciones = rubroPorId(p.data.rubro)?.aplicaciones ?? []
     await tx
-      .insert(eventosSuscripcion)
-      .values({ empresaId: empresa.id, tipo: 'alta', detalle: { plan: PLAN_DE_PRUEBA, pruebaHasta }, usuarioId })
+      .insert(suscripciones)
+      .values({ empresaId: empresa.id, plan: PLAN_DE_PRUEBA, estado: 'prueba', pruebaHasta, aplicaciones })
+    await tx.insert(eventosSuscripcion).values({
+      empresaId: empresa.id,
+      tipo: 'alta',
+      detalle: { plan: PLAN_DE_PRUEBA, pruebaHasta, rubro: p.data.rubro, aplicaciones },
+      usuarioId,
+    })
     return { empresaId: empresa.id, codigo: empresa.codigo! }
   })
   if ('error' in r) return { ok: false, error: r.error! }
@@ -191,6 +206,8 @@ export async function crearEmpresa(
       { nombre: 'Contado', dias: 0 },
       { nombre: 'Cuenta corriente 30 días', dias: 30 },
     ])
+    // Lo típico del rubro elegido.
+    if (p.data.rubro) await PREPARAR_RUBRO[p.data.rubro]?.(tx)
     await auditar(tx, { usuarioId, accion: 'alta', entidad: 'empresa', entidadId: r.empresaId, despues: p.data })
   })
   return { ok: true, empresaId: r.empresaId, codigo: r.codigo }
@@ -201,7 +218,7 @@ export async function crearEmpresa(
 const EsquemaCambio = z.object({
   plan: z.enum(ORDEN_PLANES as [PlanId, ...PlanId[]]),
   ciclo: z.enum(['mensual', 'anual']).default('mensual'),
-  aplicaciones: z.array(z.enum(APLICACIONES.map((a) => a.id) as ['contratos', 'tienda'])).default([]),
+  aplicaciones: z.array(z.enum(APLICACIONES.map((a) => a.id) as [Aplicacion['id'], ...Aplicacion['id'][]])).default([]),
   usuariosAdicionales: z.coerce.number().int().min(0).max(200).default(0),
 })
 

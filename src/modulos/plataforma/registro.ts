@@ -21,6 +21,7 @@ const EsquemaRegistro = z.object({
   razonSocial: z.string(),
   cuit: z.string(),
   condicionIva: z.string(),
+  rubro: z.string().optional(),
   acepta: z.literal('on', { error: 'Para seguir tenés que aceptar los términos del servicio.' }),
 })
 
@@ -49,7 +50,12 @@ export async function registrarCuenta(
       .values({ email: d.email, nombre: d.nombre, hashClave: await hashearClave(d.clave) })
       .returning(),
   )
-  const empresa = await crearEmpresa(usuario.id, { razonSocial: d.razonSocial, cuit: d.cuit, condicionIva: d.condicionIva })
+  const empresa = await crearEmpresa(usuario.id, {
+    razonSocial: d.razonSocial,
+    cuit: d.cuit,
+    condicionIva: d.condicionIva,
+    rubro: d.rubro,
+  })
   if (!empresa.ok) {
     // Sin empresa la cuenta no sirve: se borra para que pueda volver a intentar con el mismo email.
     await comoPlataforma((tx) => tx.delete(usuarios).where(sql`${usuarios.id} = ${usuario.id}`))

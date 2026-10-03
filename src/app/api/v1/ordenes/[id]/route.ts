@@ -9,7 +9,7 @@ import { conApi, error, UUID } from '../../_lib/api'
 export async function GET(request: Request, { params }: RouteContext<'/api/v1/ordenes/[id]'>) {
   const { id } = await params
   if (!UUID.test(id)) return error(404, 'No existe esa orden.')
-  return conApi(request, { funciones: ['contratos'] }, async (tx) => {
+  return conApi(request, { funciones: ['servicio'] }, async (tx) => {
     const o = await datosEvento(tx, id)
     if (!('numero' in o)) return error(404, 'No existe esa orden.')
     const [visitas, items] = await Promise.all([

@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
-import { depositos, empresas, eventosSuscripcion, suscripciones, usuarios } from '../../db/schema'
+import { articulos, depositos, empresas, eventosSuscripcion, suscripciones, tiposOrden, usuarios } from '../../db/schema'
 import { hashearClave } from '../../lib/auth/clave'
 import {
   controlarLimite,
@@ -44,8 +44,31 @@ describe('alta de una empresa', () => {
     if (!r.ok) throw new Error(r.error)
     empresa = r.empresaId
     const s = await suscripcionDe(empresa)
-    expect([s.plan, s.estado, s.pruebaHasta]).toEqual(['pyme', 'prueba', '2026-11-01'])
+    // 15 días con el plan Inicial (sin rubro, sin aplicaciones).
+    expect([s.plan, s.estado, s.pruebaHasta, s.aplicaciones]).toEqual(['inicial', 'prueba', '2026-10-17', []])
     expect(await conEmpresa(empresa, (tx) => tx.select().from(depositos))).toHaveLength(1)
+  })
+
+  it('con el rubro, la prueba suma su aplicación y queda precargado lo del rubro', async () => {
+    const r = await crearEmpresa(
+      usuario,
+      { razonSocial: 'Service Frío S.A.', cuit: '30-70308853-4', condicionIva: 1, rubro: 'servicio-tecnico' },
+      '2026-10-02',
+    )
+    if (!r.ok) throw new Error(r.error)
+    const s = await suscripcionDe(r.empresaId)
+    expect([s.plan, s.aplicaciones]).toEqual(['inicial', ['servicio']])
+    const tipos = await conEmpresa(r.empresaId, (tx) => tx.select({ nombre: tiposOrden.nombre }).from(tiposOrden))
+    expect(tipos.map((t) => t.nombre)).toContain('Mantenimiento preventivo')
+    const servicios = await conEmpresa(r.empresaId, (tx) => tx.select({ nombre: articulos.nombre }).from(articulos))
+    expect(servicios.map((a) => a.nombre).sort()).toEqual(['Hora de mano de obra', 'Visita técnica'])
+    // Un rubro que no existe no rompe el alta: queda sin rubro.
+    const otro = await crearEmpresa(
+      usuario,
+      { razonSocial: 'Sin Rubro S.A.', cuit: '30-71234567-1', condicionIva: 1, rubro: 'inventado' },
+      '2026-10-02',
+    )
+    expect(otro).toMatchObject({ ok: true })
   })
 
   it('no repite un CUIT ni acepta uno inválido', async () => {
@@ -102,6 +125,6 @@ describe('cambios de plan', () => {
     const eventos = await base.select().from(eventosSuscripcion).where(eq(eventosSuscripcion.empresaId, empresa))
     expect(eventos.map((e) => e.tipo).sort()).toEqual(['alta', 'cambio', 'cambio', 'cambio', 'pago', 'pedido'])
     expect((await base.select().from(empresas).where(eq(empresas.id, empresa)))[0].razonSocial).toBe('Nueva Pyme S.R.L.')
-    expect(await base.select().from(suscripciones)).toHaveLength(1)
+    expect(await base.select().from(suscripciones).where(eq(suscripciones.empresaId, empresa))).toHaveLength(1)
   })
 })

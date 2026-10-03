@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 const PREGUNTAS = [
   {
     p: '¿Necesito tarjeta para la prueba?',
-    r: `No. Tenés ${DIAS_DE_PRUEBA} días con todo lo del plan Pyme. Al terminar elegís un plan; si no elegís ninguno, los datos quedan para consultar y no se pierde nada.`,
+    r: `No. Tenés ${DIAS_DE_PRUEBA} días con el plan Inicial y, según tu rubro, la aplicación que necesitás (servicio técnico, contratos o tiendas online). Al terminar elegís un plan; si no elegís ninguno, los datos quedan para consultar y no se pierde nada.`,
   },
   {
     p: '¿Puedo cambiar de plan cuando quiera?',

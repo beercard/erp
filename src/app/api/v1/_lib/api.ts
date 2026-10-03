@@ -27,7 +27,8 @@ export const error = (estado: number, mensaje: string) => Response.json({ error:
 
 export async function conApi(
   request: Request,
-  opciones: { escribe?: boolean; funciones?: Funcion[] },
+  /** funciones: hacen falta todas; unaDe: alcanza con cualquiera. */
+  opciones: { escribe?: boolean; funciones?: Funcion[]; unaDe?: Funcion[] },
   trabajo: (tx: Transaccion, acceso: Acceso) => Promise<Response>,
 ): Promise<Response> {
   const clave = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
@@ -37,6 +38,9 @@ export async function conApi(
   const sit = situacion(await suscripcionDe(acceso.empresaId), hoyArgentina())
   for (const f of ['api', ...(opciones.funciones ?? [])] as Funcion[]) {
     if (!sit.funciones.includes(f)) return error(403, `El plan de la empresa no incluye ${f === 'api' ? 'la API' : f}.`)
+  }
+  if (opciones.unaDe && !opciones.unaDe.some((f) => sit.funciones.includes(f))) {
+    return error(403, `El plan de la empresa no incluye ${opciones.unaDe.join(' ni ')}.`)
   }
   if (opciones.escribe && sit.soloLectura) return error(403, 'La suscripción no está al día: la API es de solo lectura.')
   try {
