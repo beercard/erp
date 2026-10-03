@@ -380,11 +380,7 @@ export const pagosValores = pgTable(
     check('pagos_valores_positivo', sql`${t.importe} > 0`),
     check('pagos_valores_cheque_tercero', sql`(${t.medio} = 'cheque_tercero') = (${t.reciboValorId} is not null)`),
     deLaEmpresa('pagos_valores_pago_fk', t.empresaId, t.pagoId, pagos).onDelete('cascade'),
-    foreignKey({
-      name: 'pagos_valores_recibo_valor_fk',
-      columns: [t.reciboValorId],
-      foreignColumns: [recibosValores.id],
-    }),
+    deLaEmpresa('pagos_valores_recibo_valor_fk', t.empresaId, t.reciboValorId, recibosValores),
   ],
 )
 

@@ -1,6 +1,6 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
-import { isIP } from 'node:net'
+import { BlockList, isIP } from 'node:net'
 
 import { and, asc, desc, eq, lte, sql } from 'drizzle-orm'
 import * as z from 'zod'
@@ -42,8 +42,44 @@ export async function emitir(tx: Transaccion, evento: Evento, datos: Record<stri
 // --------------------------------------------------------- Configuración
 
 /** No se aceptan direcciones internas (la red del servidor): solo con WEBHOOKS_PERMITIR_LOCAL, para desarrollo. */
-const PRIVADA =
-  /^(10\.|127\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|0\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|::1$|f[cd]|fe80:)/i
+// Dos listas: BlockList también compara IPv4 contra reglas IPv6 (::ffff:0:0/96 las tapaba todas).
+const RESERVADAS = new BlockList()
+const RESERVADAS6 = new BlockList()
+for (const [red, prefijo] of [
+  ['0.0.0.0', 8],
+  ['10.0.0.0', 8],
+  ['100.64.0.0', 10],
+  ['127.0.0.0', 8],
+  ['169.254.0.0', 16],
+  ['172.16.0.0', 12],
+  ['192.0.0.0', 24],
+  ['192.168.0.0', 16],
+  ['198.18.0.0', 15],
+  ['224.0.0.0', 3],
+] as const)
+  RESERVADAS.addSubnet(red, prefijo, 'ipv4')
+for (const [red, prefijo] of [
+  ['::', 96], // sin especificar, ::1 y las IPv4 "compatibles"
+  ['::ffff:0:0', 96], // IPv4 mapeadas: se revisan como IPv4 abajo
+  ['64:ff9b::', 96],
+  ['100::', 64],
+  ['2001:db8::', 32],
+  ['fc00::', 7],
+  ['fe80::', 10],
+  ['fec0::', 10],
+  ['ff00::', 8],
+] as const)
+  RESERVADAS6.addSubnet(red, prefijo, 'ipv6')
+
+/** IP privada, local o reservada (también las IPv4 escritas como IPv6). */
+export function ipReservada(ip: string): boolean {
+  const limpia = ip.replace(/^\[|\]$/g, '').toLowerCase()
+  const mapeada = limpia.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1]
+  if (mapeada) return RESERVADAS.check(mapeada, 'ipv4')
+  const familia = isIP(limpia)
+  if (!familia) return true
+  return familia === 6 ? RESERVADAS6.check(limpia, 'ipv6') : RESERVADAS.check(limpia, 'ipv4')
+}
 export async function direccionPermitida(url: string): Promise<string | null> {
   let u: URL
   try {
@@ -59,7 +95,7 @@ export async function direccionPermitida(url: string): Promise<string | null> {
     return 'No se puede apuntar a la red interna.'
   try {
     const ips = isIP(host) ? [host] : (await lookup(host, { all: true })).map((a) => a.address)
-    if (ips.some((ip) => PRIVADA.test(ip))) return 'No se puede apuntar a la red interna.'
+    if (!ips.length || ips.some(ipReservada)) return 'No se puede apuntar a la red interna.'
   } catch {
     return 'No se encuentra esa dirección.'
   }

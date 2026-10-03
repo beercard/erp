@@ -10,6 +10,7 @@ import { contabilizar } from '@/modulos/contabilidad/automaticos'
 import { liquidarPendientes } from '@/modulos/contabilidad/cierre'
 import { avisarVencimientos } from '@/modulos/impuestos/vencimientos'
 import { ponerAlDia } from '@/modulos/servicio/avisos'
+import { limpiarFrenos } from '@/lib/frenos'
 import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
 
 /**
@@ -23,7 +24,9 @@ import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
 export async function POST(request: Request) {
   const secreto = process.env.CRON_SECRET
   const recibido = request.headers.get('authorization')?.replace(/^Bearer /, '') ?? ''
-  if (!secreto || recibido.length !== secreto.length || !timingSafeEqual(Buffer.from(recibido), Buffer.from(secreto))) {
+  const a = Buffer.from(recibido)
+  const b = Buffer.from(secreto ?? '')
+  if (!secreto || a.length !== b.length || !timingSafeEqual(a, b)) {
     return new Response('No autorizado.', { status: 401 })
   }
   const activas = await comoPlataforma((tx) => tx.select({ id: empresas.id }).from(empresas).where(eq(empresas.activa, true)))
@@ -39,6 +42,7 @@ export async function POST(request: Request) {
     pedidosTiendas: 0,
     errores: 0,
   }
+  await limpiarFrenos().catch(() => undefined)
   for (const e of activas) {
     try {
       const r = await conEmpresa(e.id, (tx) => ponerAlDia(tx))
@@ -53,7 +57,11 @@ export async function POST(request: Request) {
       resultado.enviados += (await enviarPendientes(e.id, 100)).enviados
       resultado.webhooks += (await entregarPendientes(e.id, 200)).entregados
       // Tiendas online: pedidos que no avisaron y stock y precios que cambiaron.
-      const tiendas = await sincronizarEmpresa(e.id)
+      // Con tope de tiempo: una tienda lenta no puede demorar al resto de las empresas.
+      const tiendas = await Promise.race([
+        sincronizarEmpresa(e.id),
+        new Promise<{ importados: number; errores: number }>((ok) => setTimeout(() => ok({ importados: 0, errores: 1 }), 90_000)),
+      ])
       resultado.pedidosTiendas += tiendas.importados
       resultado.errores += tiendas.errores
     } catch {

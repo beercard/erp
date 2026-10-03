@@ -10,6 +10,9 @@ export async function GET(request: Request) {
   const desde = q.get('desde') ?? ''
   const hasta = q.get('hasta') ?? ''
   if (!FECHA.test(desde) || !FECHA.test(hasta) || desde > hasta) return new Response('Fechas inválidas.', { status: 400 })
+  // Como mucho dos años por descarga: un rango enorme solo sirve para trabar el servidor.
+  if (Date.parse(hasta) - Date.parse(desde) > 731 * 86_400_000)
+    return new Response('Elegí un período de hasta dos años.', { status: 400 })
   try {
     const xlsx = escribirXlsx(await enLaEmpresa('contabilidad.ver', (tx) => hojasLibros(tx, desde, hasta)))
     return new Response(new Uint8Array(xlsx), {

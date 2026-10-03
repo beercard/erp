@@ -61,7 +61,7 @@ export async function correosDe(tx: Transaccion, entidad: string, entidadId: str
     .orderBy(asc(correos.creado))
 }
 
-let transporte: nodemailer.Transporter | null = null
+let transporte: ReturnType<typeof nodemailer.createTransport> | null = null
 function smtp() {
   transporte ??= nodemailer.createTransport(process.env.SMTP_URL!)
   return transporte

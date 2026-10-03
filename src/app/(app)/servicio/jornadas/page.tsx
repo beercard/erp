@@ -30,9 +30,7 @@ export default async function Jornadas({ searchParams }: PageProps<'/servicio/jo
   const q = (await searchParams) as { desde?: string; hasta?: string }
   const hasta = q.hasta && FECHA.test(q.hasta) ? q.hasta : hoyArgentina()
   const desde = q.desde && FECHA.test(q.desde) && q.desde <= hasta ? q.desde : sumarDias(hasta, -6)
-  const filas = await conEmpresa(sesion, (tx) =>
-    jornadas(tx, desde, sumarDias(desde, 92) < hasta ? sumarDias(desde, 92) : hasta),
-  )
+  const filas = await conEmpresa(sesion, (tx) => jornadas(tx, desde, sumarDias(desde, 92) < hasta ? sumarDias(desde, 92) : hasta))
   const control = 'h-9 rounded-md border border-borde bg-superficie px-2 text-sm'
   return (
     <>

@@ -9,7 +9,11 @@ export async function GET(request: Request) {
   const u = new URL(request.url)
   const hasta = FECHA.test(u.searchParams.get('hasta') ?? '') ? u.searchParams.get('hasta')! : hoyArgentina()
   const pedido = u.searchParams.get('desde') ?? ''
-  const desde = FECHA.test(pedido) && pedido <= hasta ? pedido : `${hasta.slice(0, 7)}-01`
+  // Como mucho dos años por descarga.
+  const desde =
+    FECHA.test(pedido) && pedido <= hasta && Date.parse(hasta) - Date.parse(pedido) <= 731 * 86_400_000
+      ? pedido
+      : `${hasta.slice(0, 7)}-01`
   try {
     const d = await enLaEmpresa('informes.ver', (tx) => informeGestion(tx, { desde, hasta }))
     const xlsx = escribirXlsx([

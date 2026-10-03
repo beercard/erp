@@ -5,9 +5,32 @@
  * deflate, que son los únicos que usan.
  */
 
-async function inflar(datos: Uint8Array): Promise<Uint8Array> {
-  const flujo = new Blob([datos as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
-  return new Uint8Array(await new Response(flujo).arrayBuffer())
+/** Topes contra "bombas ZIP" (un archivo chico que descomprimido ocupa gigas). */
+const MAXIMO_ARCHIVOS = 2_000
+const MAXIMO_TOTAL = 100 * 1024 * 1024
+
+/** Descomprime cortando apenas se pasa del tope, sin cargar todo en memoria antes. */
+async function inflar(datos: Uint8Array, tope: number): Promise<Uint8Array> {
+  const lector = new Blob([datos as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader()
+  const partes: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await lector.read()
+    if (done) break
+    total += value.length
+    if (total > tope) {
+      await lector.cancel()
+      throw new Error('El archivo descomprimido es demasiado grande.')
+    }
+    partes.push(value)
+  }
+  const salida = new Uint8Array(total)
+  let pos = 0
+  for (const p of partes) {
+    salida.set(p, pos)
+    pos += p.length
+  }
+  return salida
 }
 
 /** Archivos del ZIP: nombre → contenido. */
@@ -23,6 +46,8 @@ export async function leerZip(zip: Uint8Array): Promise<Map<string, Uint8Array>>
   }
   if (fin < 0) throw new Error('El archivo no es un ZIP válido.')
   const cantidad = vista.getUint16(fin + 10, true)
+  if (cantidad > MAXIMO_ARCHIVOS) throw new Error('El ZIP tiene demasiados archivos.')
+  let restante = MAXIMO_TOTAL
   let pos = vista.getUint32(fin + 16, true)
   const archivos = new Map<string, Uint8Array>()
   const texto = new TextDecoder()
@@ -39,9 +64,15 @@ export async function leerZip(zip: Uint8Array): Promise<Map<string, Uint8Array>>
     if (nombre.endsWith('/')) continue
     const inicio = local + 30 + vista.getUint16(local + 26, true) + vista.getUint16(local + 28, true)
     const datos = zip.subarray(inicio, inicio + comprimido)
-    if (metodo === 0) archivos.set(nombre, datos)
-    else if (metodo === 8) archivos.set(nombre, await inflar(datos))
-    else throw new Error(`Compresión ${metodo} no soportada en ${nombre}.`)
+    if (metodo === 0) {
+      restante -= datos.length
+      if (restante < 0) throw new Error('El archivo descomprimido es demasiado grande.')
+      archivos.set(nombre, datos)
+    } else if (metodo === 8) {
+      const inflado = await inflar(datos, restante)
+      restante -= inflado.length
+      archivos.set(nombre, inflado)
+    } else throw new Error(`Compresión ${metodo} no soportada en ${nombre}.`)
   }
   return archivos
 }

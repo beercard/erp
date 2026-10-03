@@ -327,6 +327,7 @@ export const recibosValores = pgTable(
     cuentaId: uuid('cuenta_id'),
   },
   (t) => [
+    unique('recibos_valores_empresa_id').on(t.empresaId, t.id),
     index().on(t.empresaId, t.reciboId),
     check(
       'recibos_valores_medio',

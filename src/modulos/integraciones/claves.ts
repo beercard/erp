@@ -5,7 +5,7 @@ import * as z from 'zod'
 
 import type { Transaccion } from '../../db/conexion'
 import { conEmpresa } from '../../db/empresa'
-import { apiClaves } from '../../db/schema'
+import { apiClaves, empresas, membresias } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
 import { primerError } from '../comercial/documentos'
 
@@ -61,7 +61,7 @@ export async function listarClaves(tx: Transaccion) {
     .orderBy(desc(apiClaves.creado))
 }
 
-export type Acceso = { empresaId: string; claveId: string; acceso: 'lectura' | 'total' }
+export type Acceso = { empresaId: string; claveId: string; acceso: 'lectura' | 'total'; usuarioId: string | null }
 
 /** Valida una clave (del encabezado Authorization: Bearer …). Null si no sirve. */
 export async function autenticarClave(clave: string): Promise<Acceso | null> {
@@ -75,12 +75,23 @@ export async function autenticarClave(clave: string): Promise<Acceso | null> {
       .from(apiClaves)
       .where(and(eq(apiClaves.hash, hash(clave.trim())), isNull(apiClaves.revocada)))
     if (!c) return null
+    // La clave deja de servir si la plataforma suspendió la empresa o si quien
+    // la creó ya no tiene acceso a ella.
+    const [e] = await tx.select({ activa: empresas.activa }).from(empresas).where(eq(empresas.id, empresaId))
+    if (!e?.activa) return null
+    if (c.usuarioId) {
+      const [m] = await tx
+        .select({ id: membresias.id })
+        .from(membresias)
+        .where(and(eq(membresias.usuarioId, c.usuarioId), eq(membresias.empresaId, empresaId), eq(membresias.activa, true)))
+      if (!m) return null
+    }
     // Último uso, como mucho una vez por minuto (no escribir en cada pedido).
     const haceUnMinuto = new Date(Date.now() - 60_000)
     await tx
       .update(apiClaves)
       .set({ ultimoUso: new Date() })
       .where(and(eq(apiClaves.id, c.id), or(isNull(apiClaves.ultimoUso), lt(apiClaves.ultimoUso, haceUnMinuto))))
-    return { empresaId, claveId: c.id, acceso: c.acceso as 'lectura' | 'total' }
+    return { empresaId, claveId: c.id, acceso: c.acceso as 'lectura' | 'total', usuarioId: c.usuarioId }
   })
 }

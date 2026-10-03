@@ -64,7 +64,8 @@ export async function pagarConMercadoPagoAccion(): Promise<EstadoSuscripcion> {
       })
     ).url
   } catch (e) {
-    return { error: `No se pudo iniciar el pago: ${e instanceof Error ? e.message : 'error desconocido'}` }
+    console.error('[mercadopago] crear débito', e instanceof Error ? e.message : e)
+    return { error: 'No se pudo iniciar el pago con Mercado Pago. Probá de nuevo en un momento.' }
   }
   redirect(url)
 }

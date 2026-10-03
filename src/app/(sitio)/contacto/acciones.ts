@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers'
 
+import { ipDe } from '@/lib/auth/servidor'
 import { registrarConsulta } from '@/modulos/plataforma/consultas'
 
 export type EstadoContacto = { error?: string; ok?: boolean; codigo?: string } | undefined
@@ -10,7 +11,7 @@ export async function enviarConsultaAccion(_: EstadoContacto, fd: FormData): Pro
   // Trampa para robots: un campo que una persona no ve ni completa.
   if (String(fd.get('sitio_web') ?? '')) return { ok: true }
   const h = await headers()
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || null
+  const ip = ipDe(h)
   const dato = (k: string) => String(fd.get(k) ?? '')
   const r = await registrarConsulta(
     {

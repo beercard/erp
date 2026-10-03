@@ -40,7 +40,9 @@ export async function conApi(
   }
   if (opciones.escribe && sit.soloLectura) return error(403, 'La suscripción no está al día: la API es de solo lectura.')
   try {
-    return await conEmpresa(acceso.empresaId, (tx) => trabajo(tx, acceso))
+    // Con el usuario que creó la clave: la API ve lo mismo que él (grupos de clientes incluidos).
+    const quien = acceso.usuarioId ? { empresa: { id: acceso.empresaId }, usuario: { id: acceso.usuarioId } } : acceso.empresaId
+    return await conEmpresa(quien, (tx) => trabajo(tx, acceso))
   } catch (e) {
     if (e instanceof ErrorApi) return error(e.estado, e.message)
     throw e

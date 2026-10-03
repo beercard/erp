@@ -10,6 +10,7 @@ export class ErrorCanal extends Error {
 }
 
 const ESPERA_MS = 20_000
+const MAXIMO_BYTES = 10 * 1024 * 1024
 
 /** Pedido JSON con tiempo máximo; un error de la plataforma lleva su estado y un mensaje entendible. */
 export async function pedirJson<T>(f: Fetch, url: string, init: RequestInit = {}): Promise<T> {
@@ -19,7 +20,11 @@ export async function pedirJson<T>(f: Fetch, url: string, init: RequestInit = {}
   } catch (e) {
     throw new ErrorCanal(`No se pudo conectar (${e instanceof Error ? e.message : 'sin respuesta'}).`)
   }
+  // Tope de tamaño: una tienda (o lo que se haga pasar por una) no puede llenar la memoria.
+  if (Number(r.headers.get('content-length') ?? 0) > MAXIMO_BYTES)
+    throw new ErrorCanal('La respuesta de la plataforma es demasiado grande.')
   const texto = await r.text()
+  if (texto.length > MAXIMO_BYTES) throw new ErrorCanal('La respuesta de la plataforma es demasiado grande.')
   if (!r.ok) {
     let detalle = texto.slice(0, 300)
     try {

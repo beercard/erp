@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 
+import { anotar, superado } from '@/lib/frenos'
 import { direccionPermitida } from '@/modulos/integraciones/webhooks'
 import { leerFlujo } from '@/modulos/tiendas/flujo'
 import { registrarAvisos } from '@/modulos/tiendas/woocommerce'
@@ -20,6 +21,10 @@ export async function POST(request: Request) {
   } | null
   const flujo = leerFlujo(d?.user_id)
   if (!flujo || flujo.tipo !== 'woocommerce' || !flujo.tienda) return new Response('Pedido vencido.', { status: 400 })
+  // De un solo uso: el state viaja en la URL hacia la tienda y no puede reusarse para pisar las claves.
+  const uso = `flujo:${flujo.n}`
+  if (await superado([uso], 1, 60 * 60_000)) return new Response('Pedido ya usado.', { status: 400 })
+  await anotar([uso])
   if (!d?.consumer_key || !d.consumer_secret) return new Response('Faltan las claves.', { status: 400 })
   if (d.key_permissions && d.key_permissions !== 'read_write') {
     return new Response('Hace falta permiso de lectura y escritura.', { status: 400 })

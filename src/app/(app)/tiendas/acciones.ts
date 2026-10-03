@@ -10,6 +10,7 @@ import { tienePermiso } from '@/lib/permisos'
 import { direccionPermitida } from '@/modulos/integraciones/webhooks'
 import { configurarCanal, desconectarCanal, vincularPublicacion } from '@/modulos/tiendas/canales'
 import { crearFlujo } from '@/modulos/tiendas/flujo'
+import { ErrorCanal } from '@/modulos/tiendas/http'
 import { sincronizarCanal, traerPublicaciones } from '@/modulos/tiendas/sincronizar'
 import { normalizarTienda, urlAutorizacion } from '@/modulos/tiendas/woocommerce'
 
@@ -58,7 +59,10 @@ export async function sincronizarAccion(id: string): Promise<Estado> {
     }
   } catch (e) {
     revalidatePath(`/tiendas/${id}`)
-    return { error: e instanceof Error ? e.message : 'No se pudo sincronizar.' }
+    // Los errores de la plataforma ya vienen explicados; cualquier otro, sin detalles internos.
+    if (e instanceof ErrorCanal) return { error: e.message }
+    console.error('[tiendas] sincronizar', e instanceof Error ? e.message : e)
+    return { error: 'No se pudo sincronizar. Probá de nuevo en un momento.' }
   }
 }
 

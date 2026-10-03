@@ -35,6 +35,12 @@ export async function registrarConsulta(entrada: unknown, ip: string | null, aho
   if (!p.success) return { ok: false as const, error: p.error.issues[0].message }
   const ipHash = ip ? createHash('sha256').update(`consulta:${ip}`).digest('hex').slice(0, 32) : null
   const r = await comoPlataforma(async (tx) => {
+    // Tope general, por si llegan desde muchas conexiones a la vez.
+    const [{ total }] = await tx
+      .select({ total: count() })
+      .from(consultasSitio)
+      .where(gt(consultasSitio.creado, new Date(ahora.getTime() - 3_600_000)))
+    if (total >= 200) return null
     if (ipHash) {
       const [{ n }] = await tx
         .select({ n: count() })

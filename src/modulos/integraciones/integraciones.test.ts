@@ -10,7 +10,7 @@ import { POST as postLecturas } from '../../app/api/v1/lecturas/route'
 import { GET as getOrdenes, POST as postOrdenes } from '../../app/api/v1/ordenes/route'
 import { conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
-import { empresas, lecturas, suscripciones, terceros, webhookEntregas } from '../../db/schema'
+import { empresas, lecturas, membresias, roles, suscripciones, terceros, usuarios, webhookEntregas } from '../../db/schema'
 import { guardarEquipo } from '../contratos/contratos'
 import { cerrarOrden } from '../servicio/servicio'
 import { crearModelos } from '../servicio/tiposOrden'
@@ -54,6 +54,10 @@ describe('API y webhooks', () => {
       .returning()
     empresa = e.id
     await db.insert(suscripciones).values({ empresaId: empresa, plan: 'empresa', estado: 'activa', aplicaciones: ['contratos'] })
+    // Las claves sirven mientras quien las creó tenga acceso a la empresa.
+    await db.insert(usuarios).values({ id: U, email: 'integra@copiadora.com', nombre: 'Integra', hashClave: 'x' })
+    const [dueno] = await db.select().from(roles).where(eq(roles.nombre, 'Dueño'))
+    await db.insert(membresias).values({ usuarioId: U, empresaId: empresa, rolId: dueno.id })
     await en(async (tx) => {
       await tx.insert(terceros).values({ codigo: 'C1', razonSocial: 'Estudio', tipoDocumento: 99, condicionIva: 5 })
       await crearModelos(tx, U)

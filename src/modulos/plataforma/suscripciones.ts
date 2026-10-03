@@ -16,6 +16,7 @@ import {
   suscripciones,
   usuarios,
 } from '../../db/schema'
+import { mensajeDeBase } from '../../lib/errores'
 import { auditar } from '../../lib/auditoria'
 import { validarCuit } from '../../lib/cuit'
 import { hoyArgentina, sumarDias } from '../../lib/fechas'
@@ -397,21 +398,30 @@ export async function registrarPago(
   empresaId: string,
   entrada: { importe: string; medio: string; referencia?: string },
   hoy = hoyArgentina(),
+  /** Meses que cubre el pago; si no se dice, los del ciclo de la suscripción. */
+  mesesPagados?: number,
 ): Promise<Resultado> {
   const s = await suscripcionDe(empresaId)
   const desde = s.pagadoHasta && s.pagadoHasta > hoy ? s.pagadoHasta : hoy
   const [a, m, dia] = desde.split('-').map(Number)
-  const meses = s.ciclo === 'anual' ? 12 : 1
+  const meses = mesesPagados ?? (s.ciclo === 'anual' ? 12 : 1)
   const fin = new Date(Date.UTC(a, m - 1 + meses, Math.min(dia, 28))).toISOString().slice(0, 10)
-  await comoPlataforma(async (tx) => {
-    await tx
-      .update(suscripciones)
-      .set({ estado: 'activa', pagadoHasta: fin, pruebaHasta: null, actualizado: new Date() })
-      .where(eq(suscripciones.empresaId, empresaId))
-    await tx
-      .insert(eventosSuscripcion)
-      .values({ empresaId, tipo: 'pago', detalle: { ...entrada, hasta: fin }, usuarioId: adminId })
-  })
+  try {
+    await comoPlataforma(async (tx) => {
+      // Primero el evento: un índice único sobre la referencia de Mercado Pago
+      // hace que el mismo cobro avisado dos veces a la vez se registre una sola.
+      await tx
+        .insert(eventosSuscripcion)
+        .values({ empresaId, tipo: 'pago', detalle: { ...entrada, hasta: fin, meses }, usuarioId: adminId })
+      await tx
+        .update(suscripciones)
+        .set({ estado: 'activa', pagadoHasta: fin, pruebaHasta: null, actualizado: new Date() })
+        .where(eq(suscripciones.empresaId, empresaId))
+    })
+  } catch (e) {
+    if (/eventos_suscripcion_referencia_mp/.test(mensajeDeBase(e))) return { ok: false, error: 'Ese pago ya estaba registrado.' }
+    throw e
+  }
   return { ok: true }
 }
 

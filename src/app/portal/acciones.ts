@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 
 import { conEmpresa } from '@/db/empresa'
+import { ipDe } from '@/lib/auth/servidor'
+import { anotar, claveIp, superado } from '@/lib/frenos'
 import { enviarPendientes } from '@/modulos/comunicaciones/correo'
 import { entregarPendientes } from '@/modulos/integraciones/webhooks'
 import {
@@ -35,9 +37,14 @@ export type EstadoPortal = { error?: string; ok?: string } | undefined
 const texto = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim()
 
 async function origen() {
+  // En producción APP_URL es obligatoria (el arranque lo controla): el Host lo
+  // manda el cliente y no puede decidir adónde apuntan los enlaces de los correos.
+  if (process.env.APP_URL) return process.env.APP_URL
   const h = await headers()
-  return process.env.APP_URL ?? `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('host')}`
+  return `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('host')}`
 }
+
+const VENTANA = 15 * 60_000
 
 /** Después de responder: los emails y los webhooks que quedaron en cola. */
 const despachar = (empresaId: string) =>
@@ -48,15 +55,30 @@ const despachar = (empresaId: string) =>
 
 export async function ingresarAccion(_: EstadoPortal, fd: FormData): Promise<EstadoPortal> {
   const cuit = texto(fd, 'empresa')
+  const email = texto(fd, 'email').toLowerCase()
+  const ip = claveIp('portal', ipDe(await headers()))
   if (fd.get('olvide') === '1') {
+    // Un correo de recuperación por email cada 15 minutos, y pocos por conexión.
+    const porEmail = `portal:recuperar:${cuit}:${email}`
+    if ((await superado([porEmail], 1, VENTANA)) || (await superado([ip], 10, VENTANA))) {
+      return { ok: 'Si el email tiene usuario en el portal, te llega un enlace para elegir una contraseña nueva.' }
+    }
+    await anotar([porEmail, ip])
     const empresa = await empresaDelPortal(cuit)
     if (!empresa) return { error: 'Esta empresa no tiene el portal de clientes habilitado.' }
-    await recuperarClavePortal(cuit, texto(fd, 'email'), await origen())
+    await recuperarClavePortal(cuit, email, await origen())
     despachar(empresa.id)
     return { ok: 'Si el email tiene usuario en el portal, te llega un enlace para elegir una contraseña nueva.' }
   }
-  const r = await ingresarAlPortal(cuit, texto(fd, 'email'), String(fd.get('clave') ?? ''))
-  if (!r.ok) return { error: r.error }
+  const porCuenta = `portal:ingreso:${cuit}:${email}`
+  if ((await superado([porCuenta], 8, VENTANA)) || (await superado([ip], 30, VENTANA))) {
+    return { error: 'Demasiados intentos fallidos. Esperá 15 minutos y probá de nuevo.' }
+  }
+  const r = await ingresarAlPortal(cuit, email, String(fd.get('clave') ?? ''))
+  if (!r.ok) {
+    await anotar([porCuenta, ip])
+    return { error: r.error }
+  }
   await guardarCookiePortal(r.token, r.vence)
   redirect('/portal')
 }

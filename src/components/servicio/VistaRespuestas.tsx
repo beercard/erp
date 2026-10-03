@@ -64,6 +64,8 @@ function Valor({
     case 'parrafo':
       return <span className="whitespace-pre-line">{valor as string}</span>
     case 'link':
+      // Solo enlaces web: lo importado de otros sistemas puede traer cualquier cosa.
+      if (!/^https?:\/\//i.test(String(valor ?? ''))) return <span>{String(valor ?? '')}</span>
       return (
         <a href={valor as string} target="_blank" rel="noreferrer" className="text-acento hover:underline">
           {valor as string}

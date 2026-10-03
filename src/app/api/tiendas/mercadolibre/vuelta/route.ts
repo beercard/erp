@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     )
     return r.ok ? volver(`/tiendas/${r.id}?conectado=1`) : volverConError(r.error)
   } catch (e) {
-    return volverConError(`No se pudo conectar: ${e instanceof Error ? e.message : 'error desconocido'}`)
+    console.error('[tiendas] vuelta ML', e instanceof Error ? e.message : e)
+    return volverConError('No se pudo conectar con Mercado Libre. Probá de nuevo en un momento.')
   }
 }

@@ -246,9 +246,13 @@ export async function visitaAccion(id: string, _: Estado, formData: FormData): P
     enLaEmpresa('servicio.trabajar', async (tx, s) => {
       const no = await ajena(tx, s, id)
       if (no) return no
+      // El técnico carga sus propias visitas; a nombre de otro, solo la coordinación.
+      const tecnicoId = tienePermiso(s.permisos, 'servicio.cargar')
+        ? valor(formData, 'tecnicoId')
+        : ((await tecnicoDeUsuario(tx, s.usuario))?.id ?? '')
       return registrarVisita(tx, s.usuario.id, id, {
         fecha: valor(formData, 'fecha'),
-        tecnicoId: valor(formData, 'tecnicoId'),
+        tecnicoId,
         horas: valor(formData, 'horas') || '0',
         detalle: valor(formData, 'detalle'),
       })

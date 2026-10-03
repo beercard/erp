@@ -127,23 +127,13 @@ export async function procesarAviso(f: Fetch, tipo: string, id: string) {
     const s = await suscripcionPorDebito(c.preapproval_id)
     if (!s) return 'desconocido'
     const referencia = `mp:${c.id}`
-    const [repetido] = await comoPlataforma((tx) =>
-      tx
-        .select({ id: eventosSuscripcion.id })
-        .from(eventosSuscripcion)
-        .where(
-          and(
-            eq(eventosSuscripcion.empresaId, s.empresaId),
-            eq(eventosSuscripcion.tipo, 'pago'),
-            sql`${eventosSuscripcion.detalle}->>'referencia' = ${referencia}`,
-          ),
-        ),
-    )
-    if (repetido) return 'repetido'
-    // Un cambio de plan que esperaba el pago se aplica antes de registrar el cobro.
+    const monto = Number(c.transaction_amount ?? 0)
+    const alcanza = (objetivo: Parameters<typeof importeDebito>[0]) => monto + 1 >= importeDebito(objetivo)
+    // Un cambio de plan que esperaba el pago se aplica solo si el cobro lo
+    // cubre: un débito viejo y más barato no puede habilitar un plan mejor.
     const [pedido] = await comoPlataforma((tx) =>
       tx
-        .select({ id: eventosSuscripcion.id })
+        .select({ id: eventosSuscripcion.id, detalle: eventosSuscripcion.detalle })
         .from(eventosSuscripcion)
         .where(
           and(
@@ -153,13 +143,34 @@ export async function procesarAviso(f: Fetch, tipo: string, id: string) {
           ),
         ),
     )
-    if (pedido) await resolverPedido(null, pedido.id, true)
-    await registrarPago(null, s.empresaId, {
-      importe: String(c.transaction_amount ?? ''),
-      medio: 'Mercado Pago (débito automático)',
-      referencia,
-    })
-    return 'pagado'
+    const actual = { ...s, ciclo: s.ciclo }
+    let meses: number
+    const d = pedido?.detalle as { plan: string; ciclo: string; aplicaciones: string[]; usuariosAdicionales: number } | undefined
+    if (d && alcanza({ ...d, precioAcordado: d.plan === s.plan ? s.precioAcordado : null })) {
+      await resolverPedido(null, pedido!.id, true)
+      meses = d.ciclo === 'anual' ? 12 : 1
+    } else if (s.ciclo === 'anual' && alcanza({ ...actual, ciclo: 'anual' })) {
+      meses = 12
+    } else if (alcanza({ ...actual, ciclo: 'mensual' })) {
+      meses = 1
+    } else {
+      await comoPlataforma((tx) =>
+        tx.insert(eventosSuscripcion).values({
+          empresaId: s.empresaId,
+          tipo: 'nota',
+          detalle: { texto: `Cobro de Mercado Pago ${referencia} por $ ${monto}: no alcanza para el plan; revisar a mano.` },
+        }),
+      )
+      return 'insuficiente'
+    }
+    const r = await registrarPago(
+      null,
+      s.empresaId,
+      { importe: String(monto), medio: 'Mercado Pago (débito automático)', referencia },
+      undefined,
+      meses,
+    )
+    return r.ok ? 'pagado' : 'repetido'
   }
   if (tipo === 'subscription_preapproval') {
     const p = await pedirJson<{ id: string; status: string }>(f, `${API}/preapproval/${encodeURIComponent(id)}`, {

@@ -9,8 +9,13 @@ import { base, COOKIE_TN, darDeAlta, quienConecta, volver, volverConError } from
 export async function GET(request: Request) {
   const q = new URL(request.url).searchParams
   const tarro = await cookies()
-  const flujo = leerFlujo(q.get('state') ?? tarro.get(COOKIE_TN)?.value)
+  const enUrl = q.get('state')
+  const enCookie = tarro.get(COOKIE_TN)?.value
   tarro.delete(COOKIE_TN)
+  // Si llegan los dos, tienen que ser el mismo: un enlace armado por otro no puede usar la cookie de esta sesión.
+  if (enUrl && enCookie && enUrl !== enCookie)
+    return volverConError('La conexión no coincide con la que iniciaste. Probá de nuevo.')
+  const flujo = leerFlujo(enUrl ?? enCookie)
   const s = await quienConecta()
   if (!flujo || flujo.tipo !== 'tiendanube' || !s || s.empresa.id !== flujo.empresaId || s.usuario.id !== flujo.usuarioId) {
     return volverConError('La conexión venció o no es de esta sesión. Probá de nuevo desde Tiendas online.')
@@ -26,6 +31,7 @@ export async function GET(request: Request) {
     )
     return r.ok ? volver(`/tiendas/${r.id}?conectado=1`) : volverConError(r.error)
   } catch (e) {
-    return volverConError(`No se pudo conectar: ${e instanceof Error ? e.message : 'error desconocido'}`)
+    console.error('[tiendas] vuelta TN', e instanceof Error ? e.message : e)
+    return volverConError('No se pudo conectar con Tienda Nube. Probá de nuevo en un momento.')
   }
 }

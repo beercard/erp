@@ -235,3 +235,36 @@ export const consultasSitio = pgTable(
   },
   (t) => [index().on(t.creado), index().on(t.ipHash, t.creado)],
 )
+
+/**
+ * Freno a la fuerza bruta y al abuso (ingreso, portal, formularios
+ * públicos): un registro por intento. Vive en la base para que funcione con
+ * varias instancias y sobreviva a los reinicios; la tarea periódica borra
+ * lo viejo.
+ */
+export const frenos = pgTable(
+  'frenos',
+  {
+    id: id(),
+    /** Qué se frena: "ingreso:email:x@y.com", "ingreso:ip:1.2.3.4"… (las IP van resumidas). */
+    clave: text('clave').notNull(),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.clave, t.creado), index().on(t.creado)],
+)
+
+/** Pedidos de "olvidé mi contraseña": token de un solo uso (acá queda su hash), vence en una hora. */
+export const recuperacionesClave = pgTable(
+  'recuperaciones_clave',
+  {
+    id: id(),
+    usuarioId: uuid('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    hashToken: text('hash_token').notNull().unique(),
+    vence: timestamp('vence', { withTimezone: true }).notNull(),
+    usada: timestamp('usada', { withTimezone: true }),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.usuarioId)],
+)

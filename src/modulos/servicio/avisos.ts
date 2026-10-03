@@ -184,10 +184,13 @@ export async function responderEncuesta(token: string, entrada: { puntaje: numbe
     const [e] = await tx.select().from(encuestas).where(eq(encuestas.secretoHash, t.secretoHash))
     if (!e) return { ok: false as const, error: 'El enlace no es válido.' }
     if (e.respondida) return { ok: false as const, error: 'Esta encuesta ya fue respondida. ¡Gracias!' }
-    await tx
+    // Solo si sigue sin responder: dos envíos a la vez no se pisan ni avisan dos veces.
+    const hechas = await tx
       .update(encuestas)
       .set({ puntaje, nps, comentario: entrada.comentario.trim().slice(0, 1000) || null, respondida: new Date() })
-      .where(eq(encuestas.id, e.id))
+      .where(and(eq(encuestas.id, e.id), isNull(encuestas.respondida)))
+      .returning({ id: encuestas.id })
+    if (!hechas.length) return { ok: false as const, error: 'Esta encuesta ya fue respondida. ¡Gracias!' }
     const [o] = await tx.select({ numero: ordenesServicio.numero }).from(ordenesServicio).where(eq(ordenesServicio.id, e.ordenId))
     await emitir(tx, 'encuesta.respondida', {
       ordenId: e.ordenId,

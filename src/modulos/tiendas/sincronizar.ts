@@ -98,6 +98,8 @@ export async function traerPublicaciones(empresaId: string, canalId: string, f: 
     let vinculadas = 0
     const vistas = new Set<string>()
     for (const p of productos) {
+      // Solo enlaces web (lo que manda la plataforma no se usa tal cual en un href).
+      if (p.enlace && !/^https?:\/\//i.test(p.enlace)) p.enlace = null
       const k = clave(p.externoId, p.varianteId)
       vistas.add(k)
       const previa = porClave.get(k)

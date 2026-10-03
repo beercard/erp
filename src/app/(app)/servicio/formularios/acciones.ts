@@ -119,6 +119,8 @@ export async function borrarEstadoAccion(id: string): Promise<Estado> {
 /** Quién completa: el técnico (si lo pidió desde Mi agenda) o la oficina. */
 async function autor(tx: Transaccion, s: SesionConEmpresa, quien: 'oficina' | 'tecnico'): Promise<Autor | null> {
   if (quien === 'tecnico') {
+    // Completar como técnico es trabajar: con permiso de solo lectura no alcanza.
+    if (!tienePermiso(s.permisos, 'servicio.trabajar')) return null
     const t = await tecnicoDeUsuario(tx, s.usuario)
     return t ? { quien: 'tecnico', usuarioId: s.usuario.id, tecnicoId: t.id } : null
   }

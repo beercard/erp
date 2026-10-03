@@ -121,11 +121,11 @@ export function conectorWoo(f: Fetch, c: CredencialesWoo): Conector {
   return {
     async productos() {
       const productos: ProductoCanal[] = []
-      for (let pagina = 1; pagina <= 100; pagina++) {
+      for (let pagina = 1; pagina <= 50; pagina++) {
         const lote = await get<Producto[]>(`/products?per_page=100&page=${pagina}&status=publish`)
         for (const p of lote) {
           if (p.type === 'variable') {
-            for (let pv = 1; pv <= 20; pv++) {
+            for (let pv = 1; pv <= 5; pv++) {
               const vs = await get<Variacion[]>(`/products/${p.id}/variations?per_page=100&page=${pv}`)
               for (const v of vs) {
                 productos.push({
