@@ -22,6 +22,7 @@ import {
   Inbox,
   Landmark,
   Link2,
+  MessageCircle,
   LayoutDashboard,
   Map,
   ListChecks,
@@ -144,6 +145,7 @@ export const SECCIONES: Seccion[] = [
       { href: '/crm', permiso: 'crm.ver', texto: 'Embudo de ventas', icono: Target, funcion: 'comercial' },
       { href: '/crm/actividades', permiso: 'crm.ver', texto: 'Mis actividades', icono: CalendarCheck, funcion: 'comercial' },
       { href: '/crm/pronostico', permiso: 'crm.ver', texto: 'Pronóstico', icono: TrendingUp, funcion: 'comercial' },
+      { href: '/whatsapp', permiso: 'whatsapp.atender', texto: 'WhatsApp', icono: MessageCircle, funcion: 'comercial' },
     ],
   },
   {

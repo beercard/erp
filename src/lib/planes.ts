@@ -182,6 +182,7 @@ const FUNCION_DE_MODULO: Record<string, Funcion> = {
   servicio: 'contratos',
   tienda: 'tienda',
   crm: 'comercial',
+  whatsapp: 'comercial',
 }
 
 export function funcionDePermiso(permiso: string): Funcion | null {

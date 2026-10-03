@@ -4,6 +4,8 @@ import QRCode from 'qrcode'
 import type { ReactNode } from 'react'
 
 import { condicionesIva, condicionesPago } from '@/db/schema'
+import type { Transaccion } from '@/db/conexion'
+import { conEmpresa } from '@/db/empresa'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
 import { aImporte, D, formatearMonto } from '@/lib/dinero'
@@ -26,10 +28,13 @@ const cantidad = (v: string) => Number(v).toLocaleString('es-AR', { maximumFract
  * letra y código, datos de emisor y receptor, CAE con su vencimiento y QR.
  * En los B los precios van con IVA y se informa el IVA contenido (Ley 27.743).
  */
-export async function HojaFactura({ id }: { id: string }) {
-  const sesion = await requerirEmpresa()
-  const empresa = await datosEmpresa(sesion.empresa.id)
-  const datos = await enLaEmpresa('ventas.ver', async (tx) => {
+export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: string }) {
+  // Con empresaId viene de un enlace público firmado (sin sesión).
+  const eid = empresaId ?? (await requerirEmpresa()).empresa.id
+  const empresa = await datosEmpresa(eid)
+  const leer = <T,>(trabajo: (tx: Transaccion) => Promise<T>) =>
+    empresaId ? conEmpresa(empresaId, trabajo) : enLaEmpresa('ventas.ver', trabajo)
+  const datos = await leer(async (tx) => {
     const c = await obtenerComprobante(tx, id)
     if (!c) return null
     const codigos = [c.receptorCondicionIva, empresa?.condicionIva].filter((x): x is number => x != null)

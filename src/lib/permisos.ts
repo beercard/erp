@@ -99,6 +99,14 @@ export const MODULOS_PERMISOS: { modulo: string; titulo: string; permisos: Recor
     },
   },
   {
+    modulo: 'whatsapp',
+    titulo: 'WhatsApp',
+    permisos: {
+      'whatsapp.atender': 'Ver y contestar las conversaciones de WhatsApp',
+      'whatsapp.configurar': 'Conectar el número, el agente de atención y quién manda facturas',
+    },
+  },
+  {
     modulo: 'tienda',
     titulo: 'Tiendas online',
     permisos: {
