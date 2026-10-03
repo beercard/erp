@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Store,
+  Target,
   Wallet,
   Wrench,
   X,
@@ -56,6 +57,12 @@ const MODULOS = [
     titulo: 'Facturación electrónica',
     texto: 'Facturas A, B y C, notas de crédito y FCE MiPyME con CAE de ARCA, en segundos.',
     ancla: 'facturacion',
+  },
+  {
+    icono: Target,
+    titulo: 'CRM y embudo de ventas',
+    texto: 'Oportunidades por etapa, actividades agendadas, pronóstico y pase a presupuesto.',
+    ancla: 'crm',
   },
   {
     icono: ShoppingCart,
@@ -160,6 +167,7 @@ const COMPARACION: { q: string; v: boolean | 'parcial'; p: boolean | 'parcial'; 
   { q: '¿El stock se descuenta solo, también en tus tiendas online?', v: true, p: false, s: 'parcial' },
   { q: '¿Sabés al instante quién te debe y desde cuándo?', v: true, p: false, s: true },
   { q: '¿Libro IVA y paquete del contador sin planillas?', v: true, p: false, s: 'parcial' },
+  { q: '¿Seguís cada venta posible hasta cerrarla, con recordatorios?', v: true, p: false, s: 'parcial' },
   { q: '¿Desde el celular y sin instalar nada?', v: true, p: 'parcial', s: false },
   { q: '¿Un solo sistema para ventas, compras, bancos y servicio técnico?', v: true, p: false, s: false },
 ]

@@ -12,7 +12,6 @@ import {
   borrarEtapa,
   completarActividad,
   crearPresupuestoDesde,
-  ganarOportunidad,
   guardarEtapa,
   guardarOportunidad,
   listarMotivos,
@@ -88,6 +87,11 @@ describe('CRM', () => {
   it('valida la oportunidad y toma la probabilidad de la etapa', async () => {
     const sinNadie = await comoAdmin((tx) => guardarOportunidad(tx, admin, { titulo: 'Toner' }))
     expect(sinNadie).toEqual({ ok: false, error: 'Elegí un cliente o escribí la empresa o el contacto del prospecto.' })
+    const miles = ok(
+      await comoAdmin((tx) => guardarOportunidad(tx, admin, { titulo: 'Miles', contacto: 'X', ingresoEsperado: '1.800.000' })),
+    )
+    expect(await comoAdmin((tx) => obtenerOportunidad(tx, miles.id))).toMatchObject({ ingresoEsperado: '1800000.00' })
+    await comoAdmin((tx) => tx.delete(crmOportunidades).where(eq(crmOportunidades.id, miles.id)))
     const mal = await comoAdmin((tx) =>
       guardarOportunidad(tx, admin, { titulo: 'Toner', contacto: 'Juan', ingresoEsperado: '12abc' }),
     )

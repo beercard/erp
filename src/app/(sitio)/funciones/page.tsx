@@ -6,7 +6,7 @@ import { Contenedor, Lista, Llamado, Rotulo } from '@/components/sitio/Bloques'
 export const metadata: Metadata = {
   title: 'Funciones del sistema de gestión',
   description:
-    'Facturación electrónica ARCA, ventas, stock, compras, tesorería, Libro IVA Digital, SICORE, contabilidad, tiendas online y servicio técnico en un solo ERP para pymes.',
+    'Facturación electrónica ARCA, CRM, ventas, stock, compras, tesorería, Libro IVA Digital, SICORE, contabilidad, tiendas online y servicio técnico en un solo ERP para pymes.',
   alternates: { canonical: '/funciones' },
 }
 
@@ -22,6 +22,19 @@ const AREAS = [
       'Percepciones de IIBB por padrón y jurisdicción',
       'Cobranzas con efectivo, transferencias, cheques, ECHEQ y retenciones sufridas',
       'Cuentas corrientes con deuda vencida y resumen de cuenta',
+    ],
+  },
+  {
+    id: 'crm',
+    rotulo: 'CRM',
+    titulo: 'Embudo de ventas: de prospecto a cliente',
+    texto: 'Seguí cada venta posible hasta cerrarla, sin planillas ni recordatorios en papel.',
+    items: [
+      'Embudo por etapas para arrastrar, con totales y pronóstico ponderado',
+      'Llamadas, reuniones, emails y WhatsApp agendados, con aviso de lo vencido',
+      'Alerta de oportunidades estancadas y sin próximo contacto',
+      'Del prospecto al cliente y al presupuesto en un clic',
+      'Motivos de pérdida, tasa de cierre y ventas por vendedor y por origen',
     ],
   },
   {

@@ -16,6 +16,7 @@ import {
   Receipt,
   Scale,
   Search,
+  Target,
   Truck,
   UserPlus,
   Users,
@@ -126,6 +127,20 @@ const ACCIONES = [
   },
   { id: 'nuevo-presupuesto', texto: 'Nuevo presupuesto', href: '/presupuestos/nuevo', icono: FilePlus, claves: 'cotizar crear' },
   { id: 'nuevo-pedido', texto: 'Nuevo pedido', href: '/pedidos/nuevo', icono: FilePlus, claves: 'nota venta crear' },
+  {
+    id: 'crm',
+    texto: 'Ir al embudo de ventas (CRM)',
+    href: '/crm',
+    icono: Target,
+    claves: 'crm oportunidades prospectos pipeline',
+  },
+  {
+    id: 'nueva-oportunidad',
+    texto: 'Nueva oportunidad',
+    href: '/crm/nueva',
+    icono: Target,
+    claves: 'crm prospecto lead venta posible',
+  },
   { id: 'nueva-factura', texto: 'Nueva factura', href: '/facturas/nueva', icono: Receipt, claves: 'facturar comprobante arca' },
   {
     id: 'nueva-cobranza',

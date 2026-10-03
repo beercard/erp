@@ -1,5 +1,6 @@
 import {
   Banknote,
+  CalendarCheck,
   BellRing,
   BookOpen,
   BookOpenCheck,
@@ -40,6 +41,8 @@ import {
   ShoppingBag,
   ShoppingCart,
   Smartphone,
+  Target,
+  TrendingUp,
   Truck,
   Users,
   Wallet,
@@ -67,6 +70,7 @@ export type App =
   | 'servicio'
   | 'tiendas'
   | 'ajustes'
+  | 'crm'
 
 /** Clases escritas enteras para que Tailwind las encuentre. */
 export const COLOR_APP: Record<App, string> = {
@@ -81,6 +85,7 @@ export const COLOR_APP: Record<App, string> = {
   servicio: 'bg-app-servicio/14 text-app-servicio',
   tiendas: 'bg-app-tiendas/14 text-app-tiendas',
   ajustes: 'bg-app-ajustes/14 text-app-ajustes',
+  crm: 'bg-app-crm/14 text-app-crm',
 }
 
 /** Fondo lleno para los íconos grandes del lanzador y del inicio. */
@@ -96,6 +101,7 @@ export const COLOR_APP_LLENO: Record<App, string> = {
   servicio: 'bg-app-servicio',
   tiendas: 'bg-app-tiendas',
   ajustes: 'bg-app-ajustes',
+  crm: 'bg-app-crm',
 }
 
 export type Seccion = {
@@ -127,6 +133,16 @@ export const SECCIONES: Seccion[] = [
     items: [
       { href: '/terceros', permiso: 'maestros.ver', texto: 'Clientes y proveedores', icono: Users },
       { href: '/articulos', permiso: 'maestros.ver', texto: 'Artículos y precios', icono: Package },
+    ],
+  },
+  {
+    titulo: 'CRM',
+    app: 'crm',
+    icono: Target,
+    items: [
+      { href: '/crm', permiso: 'crm.ver', texto: 'Embudo de ventas', icono: Target, funcion: 'comercial' },
+      { href: '/crm/actividades', permiso: 'crm.ver', texto: 'Mis actividades', icono: CalendarCheck, funcion: 'comercial' },
+      { href: '/crm/pronostico', permiso: 'crm.ver', texto: 'Pronóstico', icono: TrendingUp, funcion: 'comercial' },
     ],
   },
   {

@@ -219,9 +219,12 @@ const EsquemaOportunidad = z
       .union([z.string(), z.number()])
       .optional()
       .transform((v) => {
-        // Acepta "1.500.000,50" (como se escribe acá) y "1500000.5" (como lo manda un campo numérico).
+        // Acepta "1.500.000,50" y "1.800.000" (como se escribe acá) y "1500000.5" (como lo manda un campo numérico).
         const t = String(v ?? '').trim()
-        return (t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t) || '0'
+        if (t.includes(',')) return t.replace(/\./g, '').replace(',', '.')
+        // "1.800.000" o "1.500": puntos de miles.
+        if (/^\d{1,3}(\.\d{3})+$/.test(t)) return t.replace(/\./g, '')
+        return t || '0'
       })
       .pipe(z.string().regex(/^\d+(\.\d{1,2})?$/, { error: 'Escribí el ingreso esperado en pesos, sin signos.' })),
     probabilidad: z.coerce.number().int().min(0).max(100).optional(),

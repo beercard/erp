@@ -12,6 +12,7 @@ import { formatearCuit } from '@/lib/cuit'
 import { formatearMonto } from '@/lib/dinero'
 import { cuentaProveedor } from '@/modulos/compras/cuentas'
 import { cuentaCorriente } from '@/modulos/facturacion/cuentas'
+import { oportunidadesDeCliente } from '@/modulos/crm/crm'
 import { obtenerTercero } from '@/modulos/maestros/terceros'
 
 import { FormularioTercero } from '../FormularioTercero'
@@ -28,6 +29,7 @@ export default async function FichaTercero({ params, searchParams }: PageProps<'
   if (!UUID.test(id)) notFound()
   const sesion = await requerirEmpresa()
   const puedeEditar = tienePermiso(sesion.permisos, 'maestros.terceros')
+  const veCrm = tienePermiso(sesion.permisos, 'crm.ver') && sesion.suscripcion.funciones.includes('comercial')
 
   const datos = await enLaEmpresa('maestros.ver', async (tx) => {
     const tercero = await obtenerTercero(tx, id)
@@ -41,7 +43,8 @@ export default async function FichaTercero({ params, searchParams }: PageProps<'
       .limit(10)
     const cuenta = tercero.esCliente ? await cuentaCorriente(tx, id) : null
     const proveedor = tercero.esProveedor ? await cuentaProveedor(tx, id) : null
-    return { tercero, iva, historial, cuenta, proveedor, opciones: await opcionesFormulario(tx) }
+    const oportunidades = tercero.esCliente && veCrm ? await oportunidadesDeCliente(tx, id) : null
+    return { tercero, iva, historial, cuenta, proveedor, oportunidades, opciones: await opcionesFormulario(tx) }
   })
   if (!datos) notFound()
 
@@ -100,6 +103,34 @@ export default async function FichaTercero({ params, searchParams }: PageProps<'
               </p>
               <Link href={`/terceros/${t.id}/cuenta`} className="mt-1 text-xs text-acento hover:underline">
                 Ver movimientos
+              </Link>
+            </Panel>
+          )}
+          {datos.oportunidades && (
+            <Panel className="flex flex-col gap-1 p-4">
+              <h2 className="text-sm font-semibold">Oportunidades</h2>
+              <p className="cifras text-xl font-medium">
+                {formatearMonto(
+                  datos.oportunidades.filter((o) => o.estado === 'abierta').reduce((s, o) => s + Number(o.ingresoEsperado), 0),
+                  '$',
+                )}
+              </p>
+              <p className="text-xs text-texto-2">
+                {datos.oportunidades.filter((o) => o.estado === 'abierta').length} abiertas ·{' '}
+                {datos.oportunidades.filter((o) => o.estado === 'ganada').length} ganadas
+              </p>
+              <ul className="mt-1 flex flex-col gap-1">
+                {datos.oportunidades.slice(0, 4).map((o) => (
+                  <li key={o.id} className="truncate text-xs">
+                    <Link href={`/crm/${o.id}`} className="hover:text-acento">
+                      {o.titulo}
+                    </Link>{' '}
+                    <span className="text-texto-3">· {o.estado === 'abierta' ? o.etapa : o.estado}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link href={`/crm/nueva`} className="mt-1 text-xs text-acento hover:underline">
+                Nueva oportunidad
               </Link>
             </Panel>
           )}
