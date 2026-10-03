@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import QRCode from 'qrcode'
 
+import { arcaSimulado } from '@/modulos/arca/cliente'
 import { ChipEstado, VistaDocumento } from '@/components/comercial/VistaDocumento'
 import { Aviso, Boton, BotonEnlace, EncabezadoPagina, Panel } from '@/components/ui'
 
@@ -38,7 +39,7 @@ export default async function Comprobante({ params, searchParams }: PageProps<'/
     const [config] = await tx.select({ ambiente: arcaConfiguracion.ambiente }).from(arcaConfiguracion)
     const [deuda] = c.estado === 'autorizado' && c.clase !== 'nota_credito' ? await pendientes(tx, { ids: [id] }) : []
     const [wa] = await tx.select({ activa: whatsappCuentas.activa }).from(whatsappCuentas)
-    return { c, ambiente: config?.ambiente ?? null, deuda, conWhatsapp: Boolean(wa?.activa) }
+    return { c, ambiente: config?.ambiente ?? (arcaSimulado() ? 'homologacion' : null), deuda, conWhatsapp: Boolean(wa?.activa) }
   })
   if (!datos) notFound()
   const { c, ambiente, deuda } = datos

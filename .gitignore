@@ -43,3 +43,7 @@ next-env.d.ts
 
 # Base local de desarrollo (PGlite) y credenciales generadas
 /.data/
+
+# Pruebas en navegador
+/test-results/
+/playwright-report/

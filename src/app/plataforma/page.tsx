@@ -9,6 +9,7 @@ import { formatearCuit } from '@/lib/cuit'
 import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 import { FUNCIONES, MESES_COBRADOS_EN_ANUAL, planPorId, precioDeLista, situacion, type Funcion } from '@/lib/planes'
 import { listarConsultas } from '@/modulos/plataforma/consultas'
+import { erroresRecientes, estadoCron } from '@/modulos/plataforma/monitoreo'
 import { listarSuscripciones, pedidosPendientes } from '@/modulos/plataforma/suscripciones'
 
 import { atenderConsultaAccion, resolverPedidoAccion } from './acciones'
@@ -28,7 +29,13 @@ export default async function Plataforma({ searchParams }: PageProps<'/plataform
   await exigirAdmin()
   const { estado: filtro } = (await searchParams) as { estado?: string }
   const hoy = hoyArgentina()
-  const [todas, pedidos, consultas] = await Promise.all([listarSuscripciones(), pedidosPendientes(), listarConsultas(50)])
+  const [todas, pedidos, consultas, cron, errores] = await Promise.all([
+    listarSuscripciones(),
+    pedidosPendientes(),
+    listarConsultas(50),
+    estadoCron(),
+    erroresRecientes(15),
+  ])
   const filas = todas.map((e) => {
     const datos = {
       plan: e.plan ?? 'gratis',
@@ -69,6 +76,41 @@ export default async function Plataforma({ searchParams }: PageProps<'/plataform
           </div>
         ))}
       </div>
+
+      <Panel>
+        <h2 className="flex flex-wrap items-center gap-2 border-b border-borde px-4 py-3 text-sm font-semibold">
+          Salud del servicio
+          <Chip tono={!cron ? 'aviso' : cron.atrasado || !cron.ok ? 'error' : 'ok'}>
+            {!cron
+              ? 'La tarea periódica nunca corrió'
+              : cron.atrasado
+                ? `Tarea periódica atrasada: última ${cron.ultimo.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}`
+                : `Tarea periódica al día${cron.ok ? '' : ' (con errores)'}: ${cron.ultimo.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}`}
+          </Chip>
+        </h2>
+        {errores.length ? (
+          <ul className="divide-y divide-borde text-sm">
+            {errores.map((e) => (
+              <li key={e.huella} className="flex flex-wrap justify-between gap-2 px-4 py-2">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{e.mensaje}</span>
+                  <span className="text-xs text-texto-3">
+                    {e.ruta} · {e.tipo}
+                  </span>
+                </span>
+                <span className="cifras text-right text-xs text-texto-2">
+                  {e.cantidad} {e.cantidad === 1 ? 'vez' : 'veces'}
+                  <span className="block">
+                    {e.ultimo.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-4 py-3 text-sm text-texto-3">Sin errores registrados.</p>
+        )}
+      </Panel>
 
       {pedidos.length > 0 && (
         <Panel className="overflow-x-auto">

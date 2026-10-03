@@ -7,3 +7,7 @@ node_modules
 *.log
 coverage
 tsconfig.tsbuildinfo
+**/.env*
+!.env.example
+test-results
+playwright-report

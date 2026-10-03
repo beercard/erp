@@ -505,6 +505,13 @@
       "when": 1791042240994,
       "tag": "0071_turnos_vales_bloqueos_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1791047617807,
+      "tag": "0072_monitoreo",
+      "breakpoints": true
     }
   ]
 }

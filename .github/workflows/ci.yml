@@ -1,0 +1,56 @@
+# Controles en cada push y pull request: tipos, estilo, pruebas, compilación
+# y los recorridos clave en navegador (con ARCA simulado y base nueva).
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  controles:
+    name: Tipos, estilo, pruebas y compilación
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  navegador:
+    name: Recorridos en navegador
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+        env:
+          CI: 1
+          NEXT_TELEMETRY_DISABLED: 1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: informe-playwright
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7

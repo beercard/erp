@@ -1,0 +1,9 @@
+# HTTPS automático (Let's Encrypt) para el dominio de deploy/.env.
+{$DOMINIO} {
+	encode zstd gzip
+	reverse_proxy app:3000
+	# Los archivos que suben los técnicos (fotos) pueden pesar.
+	request_body {
+		max_size 25MB
+	}
+}

@@ -30,6 +30,10 @@ Están todas en [`.env.example`](../.env.example). Si falta una obligatoria, el 
 
 ## 3. Desplegar
 
+**En una VPS propia (Ubuntu 24.04):** está todo armado en [`deploy/`](../deploy/LEEME.md): `instalar.sh` deja el servidor listo en un paso (firewall, SSH con clave, Docker, la aplicación con Postgres y HTTPS, la tarea periódica, la copia diaria y la prueba de restauración semanal).
+
+**Con la imagen sola:**
+
 ```bash
 docker build -t erp .
 docker run -d --name erp --restart unless-stopped --env-file .env -p 3000:3000 erp
@@ -135,3 +139,13 @@ PRUEBAS_POSTGRES=postgres://erp:erp@localhost:5432/erp npm test
 ```
 
 Cada archivo de pruebas crea su base (`erp_prueba_…`); el usuario necesita `CREATEDB`.
+
+## 11. Monitoreo
+
+- `GET /api/salud`: servidor y base. `GET /api/salud?cron=1`: además, 503 si la tarea periódica no corre hace más de 45 minutos (para un monitor externo).
+- Errores del servidor (páginas, rutas y acciones): se agrupan por huella y se ven en el panel de la plataforma; se avisan por correo a `AVISOS_ADMIN` (o a quienes administran la plataforma) como mucho cada 6 horas por error. Código: `src/modulos/plataforma/monitoreo.ts` y `src/instrumentation.ts`.
+
+## 12. Pruebas automáticas
+
+- En cada push, GitHub Actions (`.github/workflows/ci.yml`) corre tipos, estilo, pruebas, compilación y los recorridos en navegador.
+- Recorridos en navegador (`e2e/`): `npx playwright test`. Levanta su propio servidor con una base nueva, los datos de demostración y **ARCA simulado** (`ARCA_SIMULADO=1`, que en producción se ignora). Con un Chromium ya instalado: `PW_CHROMIUM=/ruta/chrome npx playwright test`.

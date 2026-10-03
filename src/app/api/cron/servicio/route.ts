@@ -11,6 +11,7 @@ import { liquidarPendientes } from '@/modulos/contabilidad/cierre'
 import { avisarVencimientos } from '@/modulos/impuestos/vencimientos'
 import { ponerAlDia } from '@/modulos/servicio/avisos'
 import { limpiarFrenos } from '@/lib/frenos'
+import { latido, registrarError } from '@/modulos/plataforma/monitoreo'
 import { revisarPendientes } from '@/modulos/cobros/cobros'
 import { resumenDiario } from '@/modulos/crm/extras'
 import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
@@ -80,9 +81,16 @@ export async function POST(request: Request) {
       ])
       resultado.pedidosTiendas += tiendas.importados
       resultado.errores += tiendas.errores
-    } catch {
+    } catch (falla) {
       resultado.errores++
+      await registrarError({
+        mensaje: `Tarea periódica, empresa ${e.id}: ${falla instanceof Error ? falla.message : String(falla)}`,
+        ruta: '/api/cron/servicio',
+        tipo: 'cron',
+      })
     }
   }
+  // Latido: si deja de llegar, /api/salud?cron=1 lo avisa al monitor externo.
+  await latido('cron', resultado, resultado.errores === 0).catch(() => undefined)
   return Response.json(resultado)
 }

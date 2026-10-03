@@ -5,6 +5,7 @@ import {
   date,
   index,
   inet,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -268,3 +269,27 @@ export const recuperacionesClave = pgTable(
   },
   (t) => [index().on(t.usuarioId)],
 )
+
+/**
+ * Monitoreo (de plataforma): el último paso de cada tarea periódica, para
+ * saber si dejó de correr.
+ */
+export const latidos = pgTable('latidos', {
+  nombre: text('nombre').primaryKey(),
+  ultimo: timestamp('ultimo', { withTimezone: true }).notNull().defaultNow(),
+  ok: boolean('ok').notNull().default(true),
+  detalle: jsonb('detalle').$type<Record<string, unknown>>(),
+})
+
+/** Errores del servidor agrupados por huella (mensaje y ruta), con aviso a la plataforma. */
+export const erroresServidor = pgTable('errores_servidor', {
+  huella: text('huella').primaryKey(),
+  mensaje: text('mensaje').notNull(),
+  ruta: text('ruta'),
+  tipo: text('tipo'),
+  digest: text('digest'),
+  cantidad: integer('cantidad').notNull().default(1),
+  primero: timestamp('primero', { withTimezone: true }).notNull().defaultNow(),
+  ultimo: timestamp('ultimo', { withTimezone: true }).notNull().defaultNow(),
+  avisado: timestamp('avisado', { withTimezone: true }),
+})

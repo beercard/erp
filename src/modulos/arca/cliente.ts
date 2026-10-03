@@ -1,7 +1,7 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, max } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
-import { arcaConfiguracion, arcaTickets } from '../../db/schema'
+import { arcaConfiguracion, arcaTickets, comprobantes } from '../../db/schema'
 import { descifrar } from './certificado'
 import { ErrorArca, transporteHttp, type Transporte } from './soap'
 import { pedirTicket } from './wsaa'
@@ -64,12 +64,41 @@ async function credenciales(tx: Transaccion, cuit: string, transporte: Transport
   return { ambiente, c: { token: ticket.token, firma: ticket.firma, cuit } }
 }
 
+/**
+ * ARCA simulado, solo fuera de producción (ARCA_SIMULADO=1): autoriza todo con
+ * un CAE inventado. Sirve para la demo y las pruebas en navegador sin
+ * certificado. En producción se ignora.
+ */
+export const arcaSimulado = () => process.env.ARCA_SIMULADO === '1' && process.env.NODE_ENV !== 'production'
+
+function clienteSimulado(tx: Transaccion): ClienteArca {
+  return {
+    ambiente: 'homologacion',
+    ultimoAutorizado: async (puntoVenta, tipo) => {
+      const [u] = await tx
+        .select({ n: max(comprobantes.numero) })
+        .from(comprobantes)
+        .where(and(eq(comprobantes.puntoVenta, puntoVenta), eq(comprobantes.tipo, tipo), eq(comprobantes.estado, 'autorizado')))
+      return u?.n ?? 0
+    },
+    solicitarCae: async () => ({
+      resultado: 'A',
+      cae: String(70_000_000_000_000 + Math.floor(Math.random() * 9_999_999_999_999)),
+      caeVence: new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10),
+      observaciones: [],
+      errores: [],
+    }),
+    consultar: async () => null,
+  }
+}
+
 /** Cliente de ARCA de la empresa de la transacción. */
 export async function clienteArca(
   tx: Transaccion,
   cuit: string,
   transporte: Transporte = transporteHttp(),
 ): Promise<ClienteArca> {
+  if (arcaSimulado()) return clienteSimulado(tx)
   const { ambiente, c } = await credenciales(tx, cuit, transporte)
   const ws = wsfe(transporte, ambiente)
   return {
