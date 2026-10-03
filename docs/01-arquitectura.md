@@ -65,7 +65,20 @@ ERP en la nube para pymes argentinas, vendido como servicio (SaaS). El primer cl
   - Durante la prueba, o al pasar al plan gratis, se aplican en el momento.
   - Si hay que cobrar, quedan como pedido y la plataforma los confirma al registrar el pago.
   - El cobro automático (Mercado Pago Suscripciones) es el paso siguiente.
-- **Panel de la plataforma:** `/plataforma`, solo para usuarios con `admin_plataforma`. Muestra empresas, estado, ingreso mensual recurrente, pedidos y pagos. No da acceso a los datos de negocio de las empresas.
+- **Consola de la plataforma:** `/plataforma`, solo para usuarios con `admin_plataforma`. Tiene menú lateral con estas secciones:
+  - **Resumen:** ingreso mensual recurrente, conversión de la prueba, cobrado y altas por mes, y vencimientos de la semana.
+  - **Empresas:** buscador y ficha de cada una. La ficha tiene suscripción, pagos, notas internas, suspender o reactivar, extender la prueba, dar de baja, usuarios, invitaciones y últimos ingresos.
+  - **Pedidos y consultas.**
+  - **Usuarios:** activar, desactivar y cerrar sesiones.
+  - **Operación:** tarea periódica, copias, restauración, correo saliente por empresa y errores.
+  - **Auditoría.**
+
+  El código está en `src/modulos/plataforma/consola.ts`. Todo lo que hace quien administra queda en `auditoria_plataforma`. La aplicación no puede dar ni quitar `admin_plataforma`: eso se hace con `scripts/admin-plataforma.mjs` (ver `drizzle/0055_endurecimiento.sql`).
+- **Acceso de soporte:** desde la ficha de una empresa, quien administra puede entrar a verla sin ser miembro.
+  - Es de solo lectura: solo tiene los permisos `.ver` que habilita el plan.
+  - Dura una hora (`sesiones.soporte_hasta`) y se ve un aviso arriba mientras está abierto.
+  - Queda registrado en la auditoría de la empresa (entidad `soporte`) y en la de la plataforma.
+  - Fuera de ese acceso, la consola no lee datos de negocio: de adentro de cada empresa solo cuenta correos e ingresos.
 
 ### 10. Integraciones
 - API propia, con tokens por empresa. La tienda online de KOMSA es la primera integración: consulta stock y precios y manda pedidos como lo haría la de cualquier cliente.

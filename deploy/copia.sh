@@ -19,6 +19,16 @@ DIAS="${COPIAS_DIAS:-14}"
 mkdir -p "$DIR"
 ARCHIVO="$DIR/erp-$(date +%F-%H%M).dump"
 
+# Deja el resultado en la base (tabla latidos) para la consola de la plataforma
+# (Operación). Si no se puede, la copia sigue igual.
+latido() {
+  local q="insert into latidos (nombre, ultimo, ok, detalle) values ('copia', now(), $1, '$2'::jsonb)
+    on conflict (nombre) do update set ultimo = excluded.ultimo, ok = excluded.ok, detalle = excluded.detalle"
+  if [ -n "${SIN_DOCKER:-}" ]; then psql -qtA "$DATABASE_URL" -c "$q" >/dev/null
+  else docker compose exec -T db psql -qtA -U erp -d erp -c "$q" >/dev/null; fi
+}
+trap 'latido false "{\"error\": \"falló en la línea $LINENO\"}" || true' ERR
+
 volcar() {
   if [ -n "${SIN_DOCKER:-}" ]; then
     pg_dump --format=custom --no-owner "$DATABASE_URL"
@@ -42,5 +52,6 @@ else
 fi
 
 find "$DIR" -name 'erp-*.dump' -mtime "+$DIAS" -delete
+latido true "{\"archivo\": \"$(basename "$ARCHIVO")\", \"tamano\": \"$(du -h "$ARCHIVO" | cut -f1)\", \"externa\": $([ -n "${RCLONE_DESTINO:-}" ] && echo true || echo false)}" || true
 [ -n "${COPIA_AVISO_URL:-}" ] && curl -fsS -m 20 "$COPIA_AVISO_URL" >/dev/null || true
 echo "[$(date -Is)] Listo."

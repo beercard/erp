@@ -24,6 +24,13 @@ restaurar() {
   else docker compose exec -T db pg_restore --no-owner --exit-on-error -U erp -d "$PRUEBA" <"$ARCHIVO"; fi
 }
 
+# El resultado queda en la base de verdad (tabla latidos) para la consola de la plataforma.
+latido() {
+  sql "insert into latidos (nombre, ultimo, ok, detalle) values ('restauracion', now(), $1, '$2'::jsonb)
+    on conflict (nombre) do update set ultimo = excluded.ultimo, ok = excluded.ok, detalle = excluded.detalle" erp >/dev/null || true
+}
+trap 'latido false "{\"error\": \"falló en la línea $LINENO\"}"' ERR
+
 echo "Restaurando $ARCHIVO en $PRUEBA…"
 sql "drop database if exists $PRUEBA"
 sql "create database $PRUEBA"
@@ -39,6 +46,8 @@ POLITICAS=$(sql "select count(*) from pg_policies where schemaname = 'public'" "
 echo "Migraciones: $MIGRACIONES · empresas: $EMPRESAS · usuarios: $USUARIOS · comprobantes: $COMPROBANTES · políticas: $POLITICAS"
 if [ "$MIGRACIONES" -lt 1 ] || [ "$EMPRESAS" -lt 1 ] || [ "$POLITICAS" -lt 10 ]; then
   echo "LA COPIA NO SIRVE: faltan datos. Revisar ya."
+  latido false "{\"error\": \"faltan datos\", \"empresas\": $EMPRESAS, \"politicas\": $POLITICAS}"
   exit 2
 fi
+latido true "{\"archivo\": \"$(basename "$ARCHIVO")\", \"empresas\": $EMPRESAS, \"usuarios\": $USUARIOS, \"comprobantes\": $COMPROBANTES}"
 echo "Restauración correcta."

@@ -589,6 +589,13 @@
       "when": 1791052520151,
       "tag": "0083_contador_cierra_periodos",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1791059017728,
+      "tag": "0084_consola_plataforma",
+      "breakpoints": true
     }
   ]
 }

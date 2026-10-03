@@ -1,4 +1,4 @@
-import { ChevronsUpDown } from 'lucide-react'
+import { ChevronsUpDown, LifeBuoy } from 'lucide-react'
 import Link from 'next/link'
 
 import { Lanzador } from '@/components/shell/Lanzador'
@@ -11,6 +11,7 @@ import { Isotipo } from '@/components/sitio/Logo'
 import { requerirEmpresa } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
 import { MARCA } from '@/lib/marca'
+import { salirSoporteAccion } from '@/app/plataforma/acciones'
 
 const TONO_AVISO = {
   info: 'border-info/30 bg-info-suave text-info',
@@ -77,7 +78,31 @@ export default async function LayoutApp({ children }: LayoutProps<'/'>) {
         </aside>
 
         <div className="flex min-w-0 flex-col">
-          {aviso && (
+          {sesion.soporte && (
+            <div
+              role="status"
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-info/30 bg-info-suave px-4 py-2 text-sm text-info sm:px-8"
+            >
+              <LifeBuoy aria-hidden className="size-4 shrink-0" />
+              <span className="flex-1">
+                <strong className="font-semibold">Modo soporte, solo lectura.</strong> Estás viendo {sesion.empresa.razonSocial}{' '}
+                como soporte de la plataforma hasta las{' '}
+                {sesion.soporte.hasta.toLocaleTimeString('es-AR', {
+                  timeZone: 'America/Argentina/Buenos_Aires',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                })}{' '}
+                h. Queda registrado en la auditoría de la empresa.
+              </span>
+              <form action={salirSoporteAccion.bind(null, sesion.empresa.id)}>
+                <button type="submit" className="font-semibold underline">
+                  Salir del modo soporte
+                </button>
+              </form>
+            </div>
+          )}
+          {aviso && !sesion.soporte && (
             <div role="status" className={`border-b px-4 py-2 text-sm sm:px-8 ${TONO_AVISO[aviso.tono]}`}>
               {aviso.texto}{' '}
               <Link href="/configuracion/suscripcion" className="font-medium underline">
