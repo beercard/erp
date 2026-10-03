@@ -426,7 +426,17 @@ export async function verificarPago(
     )
     return { estado: 'pendiente' }
   }
-  return conEmpresa(empresaId, (tx) => registrarAprobado(tx, pago.id, pas, consulta))
+  const r = await conEmpresa(empresaId, (tx) => registrarAprobado(tx, pago.id, pas, consulta))
+  if (r.nuevo) {
+    // Aviso al cliente por WhatsApp (si está conectado). Que falle no cambia el cobro.
+    try {
+      const { avisarPagoAcreditado } = await import('../whatsapp/whatsapp')
+      await avisarPagoAcreditado(empresaId, pago.terceroId, pago.importe, pago.concepto, f)
+    } catch (e) {
+      console.error('[cobros] aviso WhatsApp', e instanceof Error ? e.message : e)
+    }
+  }
+  return { estado: r.estado, reciboId: r.reciboId }
 }
 
 async function registrarAprobado(
@@ -436,7 +446,8 @@ async function registrarAprobado(
   consulta: { pagoExternoId?: string; importe?: number; detalle?: string },
 ) {
   const [pago] = await tx.select().from(pagosOnline).where(eq(pagosOnline.id, pagoId)).for('update')
-  if (!pago || pago.estado !== 'pendiente') return { estado: pago?.estado ?? 'inexistente', reciboId: pago?.reciboId ?? null }
+  if (!pago || pago.estado !== 'pendiente')
+    return { estado: pago?.estado ?? 'inexistente', reciboId: pago?.reciboId ?? null, nuevo: false }
   // Lo que cobró la pasarela (si lo informa); si no, lo pedido.
   const cobrado = consulta.importe && consulta.importe > 0 ? monto(String(consulta.importe)) : monto(pago.importe)
   let resto = cobrado
@@ -480,7 +491,7 @@ async function registrarAprobado(
         actualizado: new Date(),
       })
       .where(eq(pagosOnline.id, pago.id))
-    return { estado: 'aprobado', reciboId: null }
+    return { estado: 'aprobado', reciboId: null, nuevo: true }
   }
   await tx
     .update(pagosOnline)
@@ -500,7 +511,7 @@ async function registrarAprobado(
     entidadId: pago.id,
     despues: { estado: 'aprobado', reciboId: r.id },
   })
-  return { estado: 'aprobado', reciboId: r.id }
+  return { estado: 'aprobado', reciboId: r.id, nuevo: true }
 }
 
 /** Busca el pago de un aviso que llegó a la dirección de una pasarela (Clover): por el id del checkout. */

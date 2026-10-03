@@ -364,6 +364,7 @@ export async function enviarAConversacion(
   )
   if (!conv) return { ok: false, error: 'Esa conversación no existe.' }
   const dentro = conv.ultimoEntrante && Date.now() - conv.ultimoEntrante.getTime() < VENTANA_MS
+  if (!dentro && conv.baja) return { ok: false, error: 'El contacto pidió no recibir mensajes (escribió BAJA).' }
   if (!dentro && !cred.cuenta.plantilla) {
     return {
       ok: false,
@@ -516,4 +517,33 @@ export async function sinLeer(tx: Transaccion) {
     .from(whatsappConversaciones)
     .where(and(eq(whatsappConversaciones.estado, 'abierta'), sql`${whatsappConversaciones.noLeidos} > 0`))
   return Number(r?.n ?? 0)
+}
+
+/**
+ * Aviso al cliente de que se acreditó su pago online (si la empresa tiene
+ * WhatsApp y el cliente un teléfono). Fuera de la ventana va con la
+ * plantilla; si no hay plantilla o pidió la baja, no se manda.
+ */
+export async function avisarPagoAcreditado(
+  empresaId: string,
+  terceroId: string,
+  importe: string,
+  concepto: string,
+  f: Fetch = fetch,
+) {
+  const cred = await credencialesDe(empresaId)
+  if (!cred) return
+  const [t] = await conEmpresa(empresaId, (tx) =>
+    tx.select({ telefono: terceros.telefono, nombre: terceros.razonSocial }).from(terceros).where(eq(terceros.id, terceroId)),
+  )
+  if (!t?.telefono) return
+  const monto = Number(importe).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })
+  await enviarATelefono(
+    empresaId,
+    t.telefono,
+    `¡Gracias! Recibimos tu pago de ${monto} (${concepto}). Ya quedó registrado en tu cuenta.`,
+    { tipo: 'sistema' },
+    terceroId,
+    f,
+  )
 }

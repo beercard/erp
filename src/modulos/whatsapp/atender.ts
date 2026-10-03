@@ -21,6 +21,27 @@ export async function atenderEntrantes(entrantes: Entrante[], f: Fetch = fetch) 
       tx.select().from(whatsappConversaciones).where(eq(whatsappConversaciones.id, e.conversacionId)),
     )
     if (!conv) continue
+    // BAJA / ALTA: el contacto decide si se le puede escribir con plantillas.
+    const palabra = (e.mensaje.texto ?? '').trim().toLowerCase()
+    if (!conv.usuarioId && ['baja', 'stop', 'alta'].includes(palabra)) {
+      const alta = palabra === 'alta'
+      await conEmpresa(e.empresaId, (tx) =>
+        tx
+          .update(whatsappConversaciones)
+          .set({ baja: alta ? null : new Date() })
+          .where(eq(whatsappConversaciones.id, conv.id)),
+      )
+      await enviarAConversacion(
+        e.empresaId,
+        conv.id,
+        alta
+          ? 'Listo, vas a volver a recibir nuestros avisos.'
+          : 'Listo, no te vamos a mandar más avisos. Si querés volver a recibirlos, escribí ALTA.',
+        sistema,
+        f,
+      )
+      continue
+    }
     if (conv.usuarioId) {
       if (cred.cuenta.registroFacturas) await registrarFactura(e, conv.usuarioId, cred.credenciales, f)
       continue

@@ -1,0 +1,1 @@
+ALTER TABLE "whatsapp_conversaciones" ADD COLUMN "baja" timestamp with time zone;

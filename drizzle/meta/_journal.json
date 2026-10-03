@@ -470,6 +470,13 @@
       "when": 1791004338613,
       "tag": "0066_whatsapp_seguridad",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1791005906671,
+      "tag": "0067_whatsapp_baja",
+      "breakpoints": true
     }
   ]
 }

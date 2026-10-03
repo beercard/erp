@@ -97,6 +97,8 @@ export const whatsappConversaciones = pgTable(
     ultimoEntrante: timestamp('ultimo_entrante', { withTimezone: true }),
     ultimoMensaje: timestamp('ultimo_mensaje', { withTimezone: true }),
     resumen: text('resumen'),
+    /** Pidió no recibir más mensajes (escribió BAJA): fuera de la ventana de 24 horas no se le escribe. */
+    baja: timestamp('baja', { withTimezone: true }),
     noLeidos: integer('no_leidos').notNull().default(0),
     ...marcasDeTiempo(),
   },
