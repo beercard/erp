@@ -193,6 +193,11 @@ export const remitos = pgTable(
     /** emitido | anulado */
     estado: text('estado').notNull().default('emitido'),
     observaciones: text('observaciones'),
+    /** Código de Operación de Traslado (ARBA) y datos de su pedido. */
+    cot: text('cot'),
+    cotIntegridad: text('cot_integridad'),
+    cotPedido: timestamp('cot_pedido', { withTimezone: true }),
+    patente: text('patente'),
     usuarioId: uuid('usuario_id'),
     anuladoPor: uuid('anulado_por'),
     anulado: timestamp('anulado', { withTimezone: true }),

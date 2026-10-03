@@ -17,6 +17,7 @@ import { auditar } from '../../lib/auditoria'
 import { aImporte, D, monto } from '../../lib/dinero'
 import { decimal, primerError } from '../comercial/documentos'
 import { siguienteNumero } from '../comercial/numeracion'
+import { alicuotasPadron } from '../impuestos/padronesIibb'
 import { filasDe, pendientesCompras } from './compras'
 import { calcularRetencionGanancias, type ResultadoRetencion } from './ganancias'
 import { resolverCuenta } from '../tesoreria/cuentas'
@@ -103,14 +104,16 @@ export type Liquidacion = {
   basePesos: string
   regimen: string | null
   retencion: (ResultadoRetencion & { concepto: string }) | null
-  /** La retención en la moneda del pago. */
+  /** Retención de Ingresos Brutos (alícuota del padrón de la provincia o la general). */
+  retencionIibb: { provincia: string; base: string; alicuota: string; importe: string; delPadron: boolean } | null
+  /** Las retenciones en la moneda del pago. */
   retencionMonedaPago: string
   /** Lo que se entrega en valores. */
   aPagar: string
 }
 
 /**
- * Calcula el pago sin grabarlo: cuánto cancela, la retención de Ganancias y
+ * Calcula el pago sin grabarlo: cuánto cancela, las retenciones (Ganancias e IIBB) y
  * cuánto hay que entregar. Lo usa la pantalla (vista previa) y la emisión.
  */
 export async function liquidarPago(
@@ -203,7 +206,32 @@ export async function liquidarPago(
       }
     }
   }
-  const retencionMonedaPago = retencion ? convertir(retencion.importe, 'PES', d.moneda, cot) : new D(0)
+  let retencionIibb: Liquidacion['retencionIibb'] = null
+  if (
+    config?.iibbActiva &&
+    config.iibbProvincia &&
+    proveedor.condicionIva !== 6 &&
+    basePesos.gt(0) &&
+    basePesos.gte(config.iibbMinimo)
+  ) {
+    const padron =
+      proveedor.tipoDocumento === 80 && proveedor.numeroDocumento
+        ? (await alicuotasPadron(tx, proveedor.numeroDocumento, d.fecha))[config.iibbProvincia]
+        : undefined
+    const alicuota = padron?.retencion ?? config.iibbAlicuotaGeneral
+    const importe = alicuota ? aImporte(basePesos.times(alicuota).dividedBy(100)) : '0.00'
+    if (alicuota && monto(importe).gt(0)) {
+      retencionIibb = {
+        provincia: config.iibbProvincia,
+        base: aImporte(basePesos),
+        alicuota: monto(alicuota).toFixed(4),
+        importe,
+        delPadron: padron?.retencion != null,
+      }
+    }
+  }
+  const retenidoPesos = monto(retencion?.importe ?? 0).plus(retencionIibb?.importe ?? 0)
+  const retencionMonedaPago = retenidoPesos.gt(0) ? convertir(aImporte(retenidoPesos), 'PES', d.moneda, cot) : new D(0)
   return {
     ok: true,
     liquidacion: {
@@ -212,6 +240,7 @@ export async function liquidarPago(
       basePesos: aImporte(basePesos),
       regimen,
       retencion,
+      retencionIibb,
       retencionMonedaPago: aImporte(retencionMonedaPago),
       aPagar: aImporte(cancelado.minus(retencionMonedaPago)),
     },
@@ -339,6 +368,17 @@ export async function emitirPago(
       base: l.retencion.base,
       alicuota: l.retencion.alicuota,
       importe: l.retencion.importe,
+    })
+  }
+  if (l.retencionIibb) {
+    await tx.insert(retenciones).values({
+      pagoId: pago.id,
+      impuesto: 'iibb',
+      regimen: l.retencionIibb.provincia,
+      numero: await siguienteNumero(tx, 'certificado_iibb'),
+      base: l.retencionIibb.base,
+      alicuota: l.retencionIibb.alicuota,
+      importe: l.retencionIibb.importe,
     })
   }
   if (l.destinos.length) {

@@ -1,4 +1,15 @@
-import { Building2, BookLock, ChevronRight, CreditCard, Landmark, Newspaper, Percent, Plug, ShieldCheck } from 'lucide-react'
+import {
+  Building2,
+  BookLock,
+  ChevronRight,
+  CreditCard,
+  FileStack,
+  Landmark,
+  Newspaper,
+  Percent,
+  Plug,
+  ShieldCheck,
+} from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -46,6 +57,13 @@ export default async function Configuracion() {
       titulo: 'Retenciones a proveedores',
       texto: 'Retención de Ganancias (RG 830): regímenes, mínimos y escala.',
       icono: Percent,
+      permiso: 'empresa.datos',
+    },
+    {
+      href: '/configuracion/padrones',
+      titulo: 'Padrones de IIBB y ARBA',
+      texto: 'Alícuotas de percepción y retención por CUIT, retención de IIBB al pagar y acceso a ARBA (COT).',
+      icono: FileStack,
       permiso: 'empresa.datos',
     },
     {

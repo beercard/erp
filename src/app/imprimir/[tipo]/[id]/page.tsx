@@ -113,6 +113,7 @@ export default async function Imprimir({ params }: PageProps<'/imprimir/[tipo]/[
           <div className="text-right">
             <p className="text-base font-bold">{titulo}</p>
             <p>Fecha: {fechaCorta(doc.d.fecha)}</p>
+            {doc.tipo === 'remito' && doc.d.cot && <p className="cifras font-bold">COT {doc.d.cot}</p>}
             <p className="cifras">CUIT {formatearCuit(empresa.cuit)}</p>
             {empresa.iibbNumero && <p className="cifras">IIBB {empresa.iibbNumero}</p>}
             {empresa.inicioActividades && <p>Inicio de actividades: {fechaCorta(empresa.inicioActividades)}</p>}

@@ -306,6 +306,13 @@ export const retencionesConfiguracion = pgTable(
     empresaId: empresaId(),
     /** Retiene Ganancias al pagar (agente de retención). */
     gananciasActiva: boolean('ganancias_activa').notNull().default(false),
+    /** Retiene Ingresos Brutos al pagar, como agente de la provincia indicada. */
+    iibbActiva: boolean('iibb_activa').notNull().default(false),
+    iibbProvincia: text('iibb_provincia').references(() => provincias.codigo),
+    /** No se retiene si la base del pago es menor. */
+    iibbMinimo: importe('iibb_minimo').notNull().default('0'),
+    /** Alícuota para los que no están en el padrón (vacío: no se les retiene). */
+    iibbAlicuotaGeneral: precio('iibb_alicuota_general'),
     ...marcasDeTiempo(),
   },
   (t) => [uniqueIndex().on(t.empresaId)],

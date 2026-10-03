@@ -19,6 +19,7 @@ import {
   arcaConfiguracion,
 } from '../../db/schema'
 import { auditar } from '../../lib/auditoria'
+import { alicuotasPadron } from '../impuestos/padronesIibb'
 import { controlarPeriodoIva } from '../impuestos/presentaciones'
 import { validarCuit } from '../../lib/cuit'
 import { aImporte, D, monto } from '../../lib/dinero'
@@ -118,14 +119,21 @@ type Percepcion = typeof percepcionesIibb.$inferSelect
  * discrimina IVA: el precio es final.
  *
  * Percepción: manda la alícuota de la ficha del cliente (0 = no se le
- * percibe). Sin alícuota en la ficha, la general se aplica solo a clientes de
+ * percibe); después, la del padrón de IIBB de la provincia de la percepción
+ * vigente a la fecha. Sin ninguna de las dos, la general se aplica solo a clientes de
  * la provincia de la percepción: un régimen provincial alcanza a los que
  * están en esa jurisdicción, no a todos.
  */
 export function calcularComprobante(
   letra: Letra,
   items: { cantidad: string; precioUnitario: string; descuento?: string | null; alicuotaIva: number }[],
-  percepcion: { alicuotaCliente: string | null; provinciaCliente: string | null; activas: Percepcion[] },
+  percepcion: {
+    alicuotaCliente: string | null
+    provinciaCliente: string | null
+    activas: Percepcion[]
+    /** Alícuotas del padrón de IIBB del cliente, por provincia. */
+    padron?: Record<string, { percepcion: string | null }>
+  },
 ) {
   const { lineas, totales } = calcularTotales(items)
   const iva = letra === 'C' ? [] : totales.porAlicuota
@@ -135,7 +143,8 @@ export function calcularComprobante(
   for (const p of percepcion.activas) {
     if (p.soloLetraA && letra !== 'A') continue
     const deLaProvincia = !p.provincia || p.provincia === percepcion.provinciaCliente
-    const alicuota = percepcion.alicuotaCliente ?? (deLaProvincia ? p.alicuota : '0')
+    const delPadron = p.provincia ? percepcion.padron?.[p.provincia]?.percepcion : null
+    const alicuota = percepcion.alicuotaCliente ?? delPadron ?? (deLaProvincia ? p.alicuota : '0')
     if (monto(alicuota).lte(0) || neto.lt(p.minimoBase)) continue
     const importe = aImporte(neto.times(alicuota).dividedBy(100))
     if (monto(importe).lte(0)) continue
@@ -263,6 +272,10 @@ export async function guardarComprobante(
       alicuotaCliente: tercero.percepcionIibb,
       provinciaCliente: tercero.provincia,
       activas,
+      padron:
+        activas.length && tercero.tipoDocumento === 80 && tercero.numeroDocumento
+          ? await alicuotasPadron(tx, tercero.numeroDocumento, d.fecha)
+          : {},
     },
   )
 

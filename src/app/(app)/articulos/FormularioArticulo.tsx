@@ -155,6 +155,25 @@ export function FormularioArticulo({
                   opciones={opciones.proveedores}
                   defaultValue={v('proveedorId')}
                 />
+                <Campo
+                  id="codigoCot"
+                  name="codigoCot"
+                  etiqueta="Nomenclador COT (ARBA)"
+                  defaultValue={v('codigoCot')}
+                  error={e.codigoCot}
+                  inputMode="numeric"
+                  className="cifras"
+                  placeholder="Solo si viaja por Buenos Aires"
+                />
+                <Campo
+                  id="unidadCot"
+                  name="unidadCot"
+                  etiqueta="Unidad COT (tabla de ARBA)"
+                  defaultValue={v('unidadCot')}
+                  error={e.unidadCot}
+                  inputMode="numeric"
+                  className="cifras"
+                />
                 <div className="flex flex-col justify-end gap-2 pb-1 sm:col-span-2">
                   <label className="flex items-center gap-2 text-sm">
                     <input

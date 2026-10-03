@@ -313,9 +313,22 @@ export function FormularioPago({
                   <dt className="font-sans text-texto-2">
                     Retención de Ganancias ({liq.retencion.concepto}, régimen {liq.regimen})
                   </dt>
-                  <dd>− {formatearMonto(liq.retencionMonedaPago, simbolo)}</dd>
+                  <dd>− {formatearMonto(liq.retencion.importe, '$')}</dd>
                 </div>
                 <p className="font-sans text-xs text-texto-3">{liq.retencion.explicacion}</p>
+              </div>
+            )}
+            {liq.retencionIibb && (
+              <div className="flex flex-col gap-0.5">
+                <div className="flex justify-between">
+                  <dt className="font-sans text-texto-2">Retención de IIBB ({liq.retencionIibb.provincia})</dt>
+                  <dd>− {formatearMonto(liq.retencionIibb.importe, '$')}</dd>
+                </div>
+                <p className="font-sans text-xs text-texto-3">
+                  {Number(liq.retencionIibb.alicuota).toLocaleString('es-AR')} % sobre{' '}
+                  {formatearMonto(liq.retencionIibb.base, '$')}
+                  {liq.retencionIibb.delPadron ? ', alícuota del padrón' : ', alícuota general (no figura en el padrón)'}
+                </p>
               </div>
             )}
             <div className="mt-1 flex justify-between border-t border-borde pt-2 text-base font-medium">

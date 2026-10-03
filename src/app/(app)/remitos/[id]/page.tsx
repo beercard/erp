@@ -6,12 +6,13 @@ import { notFound } from 'next/navigation'
 import { ChipEstado } from '@/components/comercial/VistaDocumento'
 import { Aviso, Boton, BotonEnlace, EncabezadoPagina, Panel } from '@/components/ui'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
-import { fechaCorta } from '@/lib/fechas'
+import { fechaCorta, hoyArgentina } from '@/lib/fechas'
 import { tienePermiso } from '@/lib/permisos'
 import { formatearNumero } from '@/modulos/comercial/numeracion'
 import { obtenerRemito } from '@/modulos/comercial/remitos'
 
 import { anularRemitoAccion } from '../../comercial/acciones'
+import { PedirCot } from './Cot'
 
 export const metadata: Metadata = { title: 'Remito' }
 
@@ -89,6 +90,19 @@ export default async function Remito({ params, searchParams }: PageProps<'/remit
           {r.observaciones && <p className="border-t border-borde px-3 py-3 text-sm text-texto-2">{r.observaciones}</p>}
         </Panel>
         <aside className="flex flex-col gap-3">
+          {r.cot ? (
+            <Panel className="p-4 text-sm">
+              <p className="text-texto-2">COT (ARBA)</p>
+              <p className="cifras text-lg font-medium">{r.cot}</p>
+              {r.patente && <p className="text-xs text-texto-2">Patente {r.patente}</p>}
+            </Panel>
+          ) : (
+            puedeAnular && (
+              <Panel className="p-4">
+                <PedirCot remitoId={r.id} hoy={hoyArgentina()} />
+              </Panel>
+            )
+          )}
           {r.pedido && (
             <Panel className="p-4 text-sm">
               Del{' '}

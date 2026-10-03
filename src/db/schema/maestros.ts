@@ -226,6 +226,9 @@ export const articulos = pgTable(
     loteReposicion: cantidad('lote_reposicion'),
     /** Proveedor habitual; sin dato, el de la última compra. */
     proveedorId: uuid('proveedor_id'),
+    /** COT (ARBA): código del nomenclador de productos y de la unidad de medida de la tabla de ARBA. */
+    codigoCot: text('codigo_cot'),
+    unidadCot: smallint('unidad_cot'),
     activo: boolean('activo').notNull().default(true),
     ...marcasDeTiempo(),
   },

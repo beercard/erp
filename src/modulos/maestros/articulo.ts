@@ -51,6 +51,22 @@ export const EsquemaArticulo = z.object({
   stockMinimo: decimal(),
   loteReposicion: decimal('El lote tiene que ser un número.'),
   proveedorId: uuid,
+  /** COT de ARBA: código del nomenclador (6 dígitos) y unidad de medida de la tabla de ARBA. */
+  codigoCot: z
+    .preprocess(
+      (v) => (typeof v === 'string' && v.trim() ? v.replace(/\D/g, '') : null),
+      z
+        .string()
+        .regex(/^\d{6}$/, { error: 'El código del nomenclador del COT tiene 6 dígitos.' })
+        .nullable(),
+    )
+    .optional(),
+  unidadCot: z
+    .preprocess(
+      (v) => (typeof v === 'string' && v.trim() ? Number(v) : null),
+      z.number().int().min(1).max(99, { error: 'La unidad del COT es un código de 1 o 2 dígitos.' }).nullable(),
+    )
+    .optional(),
 })
 
 export type DatosArticulo = z.infer<typeof EsquemaArticulo>
