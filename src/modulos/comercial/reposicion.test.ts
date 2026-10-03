@@ -33,8 +33,7 @@ describe('Reposición de stock', () => {
           condicionIva: 1,
         })
         .returning()
-      let ok: string
-      ;[{ id: toner }, { id: papel }, { id: ok }] = await tx
+      const arts = await tx
         .insert(articulos)
         .values([
           { codigo: 'T1', nombre: 'Tóner negro', stockMinimo: '10', proveedorId: proveedor, costo: '15000' },
@@ -42,6 +41,8 @@ describe('Reposición de stock', () => {
           { codigo: 'OK', nombre: 'Con stock', stockMinimo: '5' },
         ])
         .returning()
+      ;[{ id: toner }, { id: papel }] = arts
+      const ok = arts[2].id
       await registrarMovimientos(tx, U, [
         { articuloId: toner, depositoId: dep.id, cantidad: '3', tipo: 'inicial' },
         { articuloId: papel, depositoId: dep.id, cantidad: '40', tipo: 'inicial' },
