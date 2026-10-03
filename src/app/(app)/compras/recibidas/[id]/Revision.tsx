@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 
+import { LETRAS_COMPRA, NOMBRE_LETRA_COMPRA } from '@/modulos/compras/tipos'
 import { Aviso, Boton } from '@/components/ui'
 
 import { registrarAccion } from '../acciones'
@@ -63,8 +64,10 @@ export function Revision({ id, d: leido, tributos }: { id: string; d: Datos; tri
         <label className={etiqueta}>
           Letra
           <select name="letra" defaultValue={d.letra ?? 'A'} className={campo}>
-            {['A', 'B', 'C', 'M'].map((l) => (
-              <option key={l}>{l}</option>
+            {LETRAS_COMPRA.map((l) => (
+              <option key={l} value={l}>
+                {NOMBRE_LETRA_COMPRA[l]}
+              </option>
             ))}
           </select>
         </label>

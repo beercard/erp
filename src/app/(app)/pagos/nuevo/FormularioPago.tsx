@@ -18,7 +18,7 @@ import { fechaCorta } from '@/lib/fechas'
 import { formatearNumero } from '@/modulos/comercial/formato'
 import { MEDIOS_PAGO, type MedioPago } from '@/modulos/compras/medios'
 import type { Liquidacion } from '@/modulos/compras/pagos'
-import { abreviaturaCompra } from '@/modulos/compras/tipos'
+import { abreviaturaCompra, AVISO_SUJETA_RETENCION, datosTipoCompra } from '@/modulos/compras/tipos'
 
 type Proveedor = Awaited<ReturnType<typeof buscarProveedores>>[number]
 type Pendiente = Awaited<ReturnType<typeof pendientesProveedor>>[number]
@@ -296,6 +296,9 @@ export function FormularioPago({
         </Panel>
       )}
 
+      {deuda?.some((p) => datosTipoCompra(p.tipo)?.letra === 'M' && /[1-9]/.test(aplicar[p.id] ?? '')) && (
+        <Aviso tono="aviso">{AVISO_SUJETA_RETENCION}</Aviso>
+      )}
       {errorLiquidacion && hayAlgo && <Aviso>{errorLiquidacion}</Aviso>}
       {liq && (
         <Panel className="p-4">

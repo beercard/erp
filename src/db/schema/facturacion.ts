@@ -61,9 +61,17 @@ export const arcaConfiguracion = pgTable(
     certificadoVence: timestamp('certificado_vence', { withTimezone: true }),
     /** Consumidor final: desde este total hay que identificar al comprador. */
     umbralConsumidorFinal: importe('umbral_consumidor_final').notNull().default('10000000'),
+    /** RG 5762/2025: comun | sujeta_retencion (A con códigos 51 a 53) | cbu_informada. */
+    regimenClaseA: text('regimen_clase_a').notNull().default('comun'),
+    /** CBU donde se cobran los comprobantes A con leyenda (22 dígitos). */
+    cbuInformada: text('cbu_informada'),
     ...marcasDeTiempo(),
   },
-  (t) => [uniqueIndex().on(t.empresaId), check('arca_ambiente', sql`${t.ambiente} in ('homologacion', 'produccion')`)],
+  (t) => [
+    uniqueIndex().on(t.empresaId),
+    check('arca_ambiente', sql`${t.ambiente} in ('homologacion', 'produccion')`),
+    check('arca_regimen_clase_a', sql`${t.regimenClaseA} in ('comun', 'sujeta_retencion', 'cbu_informada')`),
+  ],
 )
 
 /**
@@ -121,6 +129,8 @@ export const comprobantes = pgTable(
     letra: text('letra').notNull(),
     /** Código de ARCA (1 = factura A, 6 = factura B, 3 = nota de crédito A, …). */
     tipo: smallint('tipo').notNull(),
+    /** Leyenda de la RG 5762/2025 que va impresa (A sujeta a retención o pago en CBU informada). */
+    leyenda: text('leyenda'),
     puntoVenta: integer('punto_venta').notNull(),
     /** Nulo mientras es borrador: lo asigna ARCA al autorizar. */
     numero: integer('numero'),

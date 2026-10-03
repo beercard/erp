@@ -512,6 +512,13 @@
       "when": 1791047617807,
       "tag": "0072_monitoreo",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1791048383423,
+      "tag": "0073_rg5762",
+      "breakpoints": true
     }
   ]
 }

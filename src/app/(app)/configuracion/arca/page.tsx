@@ -9,7 +9,7 @@ import { formatearCuit } from '@/lib/cuit'
 import { diasHasta } from '@/modulos/arca/certificado'
 
 import { cambiarAmbienteAccion } from '../../facturacion/acciones'
-import { FormularioCertificado, FormularioPercepcion, ProbarConexion } from './FormulariosArca'
+import { FormularioCertificado, FormularioPercepcion, FormularioRegimen, ProbarConexion } from './FormulariosArca'
 
 export const metadata: Metadata = { title: 'ARCA' }
 
@@ -21,6 +21,8 @@ export default async function ConfiguracionArca() {
         ambiente: arcaConfiguracion.ambiente,
         vence: arcaConfiguracion.certificadoVence,
         tiene: arcaConfiguracion.certificado,
+        regimen: arcaConfiguracion.regimenClaseA,
+        cbu: arcaConfiguracion.cbuInformada,
       })
       .from(arcaConfiguracion)
     const [percepcion] = await tx.select().from(percepcionesIibb).limit(1)
@@ -72,6 +74,7 @@ export default async function ConfiguracionArca() {
               </div>
             )}
           </Panel>
+          <FormularioRegimen regimen={config?.regimen ?? 'comun'} cbu={config?.cbu ?? ''} />
           <FormularioPercepcion
             provincias={datos.provs.map((p) => ({ valor: p.codigo, texto: p.nombre }))}
             inicial={{

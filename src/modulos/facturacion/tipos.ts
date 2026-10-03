@@ -12,8 +12,14 @@ export type Clase = 'factura' | 'nota_debito' | 'nota_credito'
 export const TIPO_DEBITO_INTERNO = 99
 export type Letra = 'A' | 'B' | 'C'
 
-/** Código de comprobante de ARCA por letra y clase (y FCE MiPyME). */
-const CODIGOS: Record<'comun' | 'fce', Record<Letra, Record<Clase, number>>> = {
+type Variante = 'comun' | 'fce' | 'retencion'
+
+/**
+ * Código de comprobante de ARCA por letra y clase (y FCE MiPyME). Desde la
+ * RG 5762/2025 los códigos 51 a 53 (las viejas "M") son A con la leyenda
+ * "OPERACIÓN SUJETA A RETENCIÓN".
+ */
+const CODIGOS: Record<Variante, Partial<Record<Letra, Record<Clase, number>>>> = {
   comun: {
     A: { factura: 1, nota_debito: 2, nota_credito: 3 },
     B: { factura: 6, nota_debito: 7, nota_credito: 8 },
@@ -24,20 +30,37 @@ const CODIGOS: Record<'comun' | 'fce', Record<Letra, Record<Clase, number>>> = {
     B: { factura: 206, nota_debito: 207, nota_credito: 208 },
     C: { factura: 211, nota_debito: 212, nota_credito: 213 },
   },
+  retencion: {
+    A: { factura: 51, nota_debito: 52, nota_credito: 53 },
+  },
 }
+
+/** Leyendas de la RG 5762/2025 en los comprobantes A. */
+export const LEYENDA_SUJETA_RETENCION = 'OPERACIÓN SUJETA A RETENCIÓN'
+export const LEYENDA_CBU_INFORMADA = 'PAGO EN CBU INFORMADA'
+
+/** Régimen de emisión de comprobantes A de la empresa (lo informa ARCA). */
+export const REGIMENES_CLASE_A = {
+  comun: 'Factura A común',
+  sujeta_retencion: `A con leyenda "${LEYENDA_SUJETA_RETENCION}" (códigos 51 a 53)`,
+  cbu_informada: `A con leyenda "${LEYENDA_CBU_INFORMADA}"`,
+} as const
+export type RegimenClaseA = keyof typeof REGIMENES_CLASE_A
 
 const NOMBRE_CLASE: Record<Clase, string> = { factura: 'Factura', nota_debito: 'Nota de débito', nota_credito: 'Nota de crédito' }
 
-export function codigoComprobante(letra: Letra, clase: Clase, fce = false): number {
-  return CODIGOS[fce ? 'fce' : 'comun'][letra][clase]
+export function codigoComprobante(letra: Letra, clase: Clase, fce = false, sujetaRetencion = false): number {
+  if (sujetaRetencion && letra === 'A' && !fce) return CODIGOS.retencion.A![clase]
+  return CODIGOS[fce ? 'fce' : 'comun'][letra]![clase]
 }
 
-/** Datos de un código de ARCA: letra, clase y si es FCE. */
-export function datosTipo(tipo: number): { letra: Letra; clase: Clase; fce: boolean } {
-  for (const variante of ['comun', 'fce'] as const) {
+/** Datos de un código de ARCA: letra, clase, si es FCE y si es A sujeta a retención (51 a 53). */
+export function datosTipo(tipo: number): { letra: Letra; clase: Clase; fce: boolean; sujetaRetencion: boolean } {
+  for (const variante of ['comun', 'fce', 'retencion'] as const) {
     for (const letra of ['A', 'B', 'C'] as const) {
       for (const clase of ['factura', 'nota_debito', 'nota_credito'] as const) {
-        if (CODIGOS[variante][letra][clase] === tipo) return { letra, clase, fce: variante === 'fce' }
+        if (CODIGOS[variante][letra]?.[clase] === tipo)
+          return { letra, clase, fce: variante === 'fce', sujetaRetencion: variante === 'retencion' }
       }
     }
   }

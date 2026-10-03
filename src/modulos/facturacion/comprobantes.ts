@@ -32,6 +32,9 @@ import { controlarLimite } from '../plataforma/suscripciones'
 import { enPesos, imputarNotaCreditoAsociada } from './cuentas'
 import {
   codigoComprobante,
+  LEYENDA_CBU_INFORMADA,
+  LEYENDA_SUJETA_RETENCION,
+  type RegimenClaseA,
   datosTipo,
   documentoReceptor,
   letraPara,
@@ -191,7 +194,6 @@ export async function guardarComprobante(
     .from(condicionesIva)
     .where(eq(condicionesIva.codigo, tercero.condicionIva ?? 5))
   const letra = letraPara(empresa.condicionIva, condicion?.letraDesdeInscripto)
-  const tipo = codigoComprobante(letra, d.clase, d.fce)
 
   const [pv] = await tx.select().from(puntosVenta).where(eq(puntosVenta.numero, d.puntoVenta))
   if (!pv || !pv.activo || !['electronico', 'fce'].includes(pv.tipo)) {
@@ -213,6 +215,25 @@ export async function guardarComprobante(
     }
     if (asociado.clase === 'nota_credito') return { ok: false, error: 'Una nota no se asocia a una nota de crédito.' }
   }
+
+  // RG 5762/2025: la A puede ir con leyenda (y la sujeta a retención con los códigos 51 a 53).
+  // Las notas siguen a su comprobante; las facturas, al régimen que ARCA le asignó a la empresa.
+  const [arca] = await tx
+    .select({ regimen: arcaConfiguracion.regimenClaseA, cbu: arcaConfiguracion.cbuInformada })
+    .from(arcaConfiguracion)
+  const regimen = (arca?.regimen ?? 'comun') as RegimenClaseA
+  const sujetaRetencion =
+    letra === 'A' && !d.fce && (asociado ? datosTipo(asociado.tipo).sujetaRetencion : regimen === 'sujeta_retencion')
+  const tipo = codigoComprobante(letra, d.clase, d.fce, sujetaRetencion)
+  const conCbu =
+    letra === 'A' &&
+    !d.fce &&
+    !sujetaRetencion &&
+    (asociado ? asociado.leyenda === LEYENDA_CBU_INFORMADA : regimen === 'cbu_informada')
+  if ((sujetaRetencion || conCbu) && !asociado && arca?.cbu?.length !== 22) {
+    return { ok: false, error: 'Los comprobantes A con leyenda se cobran en la CBU informada: cargala en Configuración → ARCA.' }
+  }
+  const leyenda = sujetaRetencion ? LEYENDA_SUJETA_RETENCION : conCbu ? LEYENDA_CBU_INFORMADA : null
 
   if (d.concepto !== 1 && (!d.servicioDesde || !d.servicioHasta || !d.vencimiento)) {
     return { ok: false, error: 'Para servicios, ARCA pide el período facturado (desde y hasta) y el vencimiento del pago.' }
@@ -248,6 +269,7 @@ export async function guardarComprobante(
     clase: d.clase,
     letra,
     tipo,
+    leyenda,
     puntoVenta: d.puntoVenta,
     fecha: d.fecha,
     terceroId: d.terceroId,

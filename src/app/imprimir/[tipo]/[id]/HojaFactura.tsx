@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import QRCode from 'qrcode'
 import type { ReactNode } from 'react'
 
-import { condicionesIva, condicionesPago } from '@/db/schema'
+import { arcaConfiguracion, condicionesIva, condicionesPago } from '@/db/schema'
 import type { Transaccion } from '@/db/conexion'
 import { conEmpresa } from '@/db/empresa'
 import { enLaEmpresa, requerirEmpresa } from '@/lib/auth/servidor'
@@ -14,7 +14,7 @@ import { TASAS_IVA } from '@/modulos/comercial/calculo'
 import { formatearNumero } from '@/modulos/comercial/formato'
 import { datosEmpresa } from '@/modulos/empresa/datos'
 import { obtenerComprobante } from '@/modulos/facturacion/comprobantes'
-import { abreviatura, datosTipo, urlQr } from '@/modulos/facturacion/tipos'
+import { abreviatura, datosTipo, LEYENDA_CBU_INFORMADA, urlQr } from '@/modulos/facturacion/tipos'
 
 import { BotonImprimir } from './BotonImprimir'
 
@@ -48,11 +48,12 @@ export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: s
           .from(condicionesPago)
           .where(inArray(condicionesPago.id, [c.condicionPagoId]))
       : []
-    return { c, ivas: new Map(ivas.map((i) => [i.codigo, i.nombre])), condicion }
+    const [arca] = await tx.select({ cbu: arcaConfiguracion.cbuInformada }).from(arcaConfiguracion)
+    return { c, ivas: new Map(ivas.map((i) => [i.codigo, i.nombre])), condicion, cbu: arca?.cbu ?? null }
   })
   // Solo se imprimen los emitidos por el ERP: los migrados están en PYMEXIS y los internos no son fiscales.
   if (!datos || !empresa || datos.c.estado !== 'autorizado' || !datos.c.numero || datos.c.origen !== 'erp') notFound()
-  const { c, ivas, condicion } = datos
+  const { c, ivas, condicion, cbu } = datos
   const { letra, clase, fce } = datosTipo(c.tipo)
   const discrimina = letra === 'A'
   const simbolo = SIMBOLO[c.moneda] ?? c.moneda
@@ -111,6 +112,12 @@ export async function HojaFactura({ id, empresaId }: { id: string; empresaId?: s
           </div>
           <div className="flex flex-col gap-0.5 p-3">
             <p className="text-base font-bold">{fce ? `${TITULO[clase]} DE CRÉDITO ELECTRÓNICA MiPyME` : TITULO[clase]}</p>
+            {c.leyenda && (
+              <p className="border border-texto px-1.5 py-0.5 text-[11px] font-bold">
+                {c.leyenda}
+                {c.leyenda === LEYENDA_CBU_INFORMADA && cbu ? ` · CBU ${cbu}` : ''}
+              </p>
+            )}
             <p className="cifras">
               <b className="font-sans">Punto de venta:</b> {String(c.puntoVenta).padStart(5, '0')}{' '}
               <b className="ml-2 font-sans">Comp. Nro:</b> {String(c.numero).padStart(8, '0')}

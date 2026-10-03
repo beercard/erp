@@ -61,3 +61,23 @@ Ventas netas (sin IVA, en pesos, notas de crédito restando) del rango: resumen,
 - Archivos de importación para SIFERE (percepciones y retenciones de IIBB sufridas) y para los agentes provinciales (ARBA, AGIP): los formatos cambian por jurisdicción; hoy el detalle sale en Excel.
 - SIRE (retenciones de IVA y SUSS) y prorrateo del crédito fiscal.
 - Etapa 7: contabilidad (plan de cuentas y asientos automáticos).
+
+## Padrón de ARCA por CUIT
+
+En la ficha de un cliente o proveedor, **Completar desde ARCA** trae de la constancia de inscripción la razón social (o apellido y nombre), la condición frente al IVA (inscripto, exento, monotributo o sin inscripción), el domicilio fiscal y la provincia, y avisa si el CUIT está inactivo.
+
+- Servicio de ARCA `ws_sr_constancia_inscripcion` (`getPersona_v2`), con el mismo certificado de la empresa. Hay que **asociarlo** en ARCA: Administrador de relaciones de clave fiscal → nueva relación → ese servicio (además del de factura electrónica).
+- Código: `src/modulos/arca/padron.ts`.
+
+## Comprobantes A de la RG 5762/2025
+
+Desde el 1/12/2025 no hay factura M. En Configuración → ARCA se elige cómo emite la empresa sus A, según lo que le asignó ARCA:
+
+| Régimen                     | Código                         | Leyenda impresa                    |
+| --------------------------- | ------------------------------ | ---------------------------------- |
+| A común                     | 1, 2, 3                        | —                                  |
+| A sujeta a retención        | 51, 52, 53 (los de la vieja M) | OPERACIÓN SUJETA A RETENCIÓN       |
+| A con pago en CBU informada | 1, 2, 3                        | PAGO EN CBU INFORMADA (con la CBU) |
+
+- Con leyenda hace falta cargar la **CBU informada**. Las notas de crédito y débito siguen siempre a su factura, aunque después cambie el régimen.
+- **En compras**, los comprobantes 51 a 53 se muestran como "A sujeta a retención" (FA-R): al pagarlos, el sistema avisa que corresponde retener el 100 % del IVA y el 6 % de Ganancias sobre el neto y pagar en la CBU informada del proveedor.

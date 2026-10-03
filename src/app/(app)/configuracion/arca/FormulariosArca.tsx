@@ -2,7 +2,13 @@
 
 import { useActionState } from 'react'
 
-import { guardarCertificadoAccion, guardarPercepcionAccion, probarConexionAccion } from '@/app/(app)/facturacion/acciones'
+import {
+  guardarCertificadoAccion,
+  guardarPercepcionAccion,
+  guardarRegimenAccion,
+  probarConexionAccion,
+} from '@/app/(app)/facturacion/acciones'
+import { REGIMENES_CLASE_A } from '@/modulos/facturacion/tipos'
 import { Aviso, Boton, Panel } from '@/components/ui'
 
 const control = 'h-9 w-full rounded-md border border-borde bg-superficie px-2 text-sm focus:border-acento'
@@ -112,6 +118,52 @@ export function FormularioPercepcion({
             </Boton>
           </div>
         </div>
+      </form>
+    </Panel>
+  )
+}
+
+/** RG 5762/2025: cómo emite la empresa sus comprobantes A. */
+export function FormularioRegimen({ regimen, cbu }: { regimen: string; cbu: string }) {
+  const [estado, accion, enviando] = useActionState(guardarRegimenAccion, undefined)
+  return (
+    <Panel className="p-4">
+      <h2 className="text-sm font-semibold">Comprobantes A (RG 5762/2025)</h2>
+      <p className="mt-1 mb-3 text-xs text-texto-2">
+        Desde diciembre de 2025 no hay más factura M. Según lo que ARCA le asignó a la empresa, las A salen comunes, con la
+        leyenda &ldquo;OPERACIÓN SUJETA A RETENCIÓN&rdquo; (códigos 51 a 53; el cliente retiene IVA y Ganancias) o con &ldquo;PAGO
+        EN CBU INFORMADA&rdquo;. En los dos casos con leyenda se cobra en la CBU informada.
+      </p>
+      <form action={accion} className="flex flex-col gap-3">
+        <fieldset className="flex flex-col gap-2 text-sm">
+          {Object.entries(REGIMENES_CLASE_A).map(([valor, texto]) => (
+            <label key={valor} className="flex items-start gap-2">
+              <input
+                type="radio"
+                name="regimen"
+                value={valor}
+                defaultChecked={regimen === valor}
+                className="mt-1 accent-acento"
+              />
+              {texto}
+            </label>
+          ))}
+        </fieldset>
+        <label className="flex flex-col gap-1 text-xs font-medium text-texto-2">
+          CBU informada
+          <input
+            name="cbu"
+            defaultValue={cbu}
+            inputMode="numeric"
+            maxLength={26}
+            className="cifras h-9 rounded-md border border-borde bg-superficie px-2 text-sm"
+          />
+        </label>
+        {estado?.error && <Aviso>{estado.error}</Aviso>}
+        {estado?.ok && <Aviso tono="ok">{estado.ok}</Aviso>}
+        <Boton type="submit" disabled={enviando}>
+          Guardar
+        </Boton>
       </form>
     </Panel>
   )

@@ -10,6 +10,7 @@ import {
   pendientesProveedor,
   registrarCompraAccion,
 } from '@/app/(app)/compras/acciones'
+import { LETRAS_COMPRA, NOMBRE_LETRA_COMPRA } from '@/modulos/compras/tipos'
 import { Buscador } from '@/components/comercial/Buscador'
 import { Aviso, Boton, BotonEnlace, Chip, Panel, Tecla } from '@/components/ui'
 import { D, formatearMonto, normalizarNumero } from '@/lib/dinero'
@@ -330,8 +331,10 @@ export function FormularioCompra({
               <label className="flex flex-col gap-1">
                 <span className={etiqueta}>Letra</span>
                 <select value={letra} onChange={(e) => setLetra(e.target.value)} className={control}>
-                  {['A', 'B', 'C', 'M'].map((l) => (
-                    <option key={l}>{l}</option>
+                  {LETRAS_COMPRA.map((l) => (
+                    <option key={l} value={l}>
+                      {NOMBRE_LETRA_COMPRA[l]}
+                    </option>
                   ))}
                 </select>
               </label>

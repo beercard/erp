@@ -23,7 +23,7 @@ export class SinConfiguracionArca extends Error {}
 const MARGEN_MS = 5 * 60_000
 
 /** Ticket vigente de la empresa, o uno nuevo si no hay. */
-async function credenciales(tx: Transaccion, cuit: string, transporte: Transporte) {
+export async function credenciales(tx: Transaccion, cuit: string, transporte: Transporte, servicio = 'wsfe') {
   const [config] = await tx.select().from(arcaConfiguracion)
   if (!config?.certificado || !config.claveCifrada) {
     throw new SinConfiguracionArca('Falta cargar el certificado de ARCA en Configuración → ARCA.')
@@ -32,7 +32,7 @@ async function credenciales(tx: Transaccion, cuit: string, transporte: Transport
   const [guardado] = await tx
     .select()
     .from(arcaTickets)
-    .where(and(eq(arcaTickets.ambiente, ambiente), eq(arcaTickets.servicio, 'wsfe')))
+    .where(and(eq(arcaTickets.ambiente, ambiente), eq(arcaTickets.servicio, servicio)))
   if (guardado && guardado.vence.getTime() - Date.now() > MARGEN_MS) {
     return { ambiente, c: { token: guardado.token, firma: guardado.firma, cuit } }
   }
@@ -41,7 +41,7 @@ async function credenciales(tx: Transaccion, cuit: string, transporte: Transport
     ticket = await pedirTicket({
       transporte,
       ambiente,
-      servicio: 'wsfe',
+      servicio,
       certificado: config.certificado,
       clave: descifrar(config.claveCifrada),
     })
@@ -56,7 +56,8 @@ async function credenciales(tx: Transaccion, cuit: string, transporte: Transport
   }
   await tx
     .insert(arcaTickets)
-    .values({ ambiente, servicio: 'wsfe', token: ticket.token, firma: ticket.firma, vence: ticket.vence })
+
+    .values({ ambiente, servicio, token: ticket.token, firma: ticket.firma, vence: ticket.vence })
     .onConflictDoUpdate({
       target: [arcaTickets.empresaId, arcaTickets.ambiente, arcaTickets.servicio],
       set: { token: ticket.token, firma: ticket.firma, vence: ticket.vence },
