@@ -99,7 +99,7 @@ export type MovimientoCuenta = {
 }
 
 /** Todo lo que entró y salió de una cuenta, en orden. */
-function libro(cuentaId: string) {
+export function libro(cuentaId: string) {
   return sql`
     select 'recibo_valor' as origen, rv.id, r.fecha, rv.importe::numeric as importe, rv.medio as tipo,
       'Recibo ' || lpad(r.numero::text, 8, '0') || ' · ' || t.razon_social as descripcion,

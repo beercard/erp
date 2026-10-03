@@ -41,3 +41,18 @@ La empresa conecta sus pasarelas y le manda a su cliente un **link de pago del E
 
 - Pasarelas: `src/modulos/cobros/pasarelas.ts`. Lógica: `src/modulos/cobros/cobros.ts`. Pruebas: `cobros.test.ts`.
 - Pantallas: `src/app/(app)/cobros-online/`, página pública `src/app/pago/[clave]/`, avisos `src/app/api/cobros/aviso/[clave]/`.
+
+## Cierre de caja (Cobranzas → Cierre de caja)
+
+Inspirado en el cierre de un POS (como el de cobrando.app):
+
+- **Turno abierto** de cada caja (cuenta de tipo caja de Tesorería): desde el último cierre o el comienzo del día.
+- **Resumen en vivo:**
+  - Cobrado y cantidad de recibos, con promedio.
+  - Efectivo esperado: saldo inicial + entradas − salidas de la caja.
+  - Ventas facturadas y recibos anulados.
+  - Cobrado por medio de pago y por cajero, y cobros online acreditados.
+  - Retiros, gastos y otros movimientos de la caja.
+- **Cierre:** conteo por billete y moneda (o el total), con la diferencia en el momento ("Cuadra", "Sobran", "Faltan") y observaciones. Si no cuadra, queda un **arqueo con su ajuste** y la caja sigue con lo contado. El próximo turno arranca desde ese cierre.
+- **Historial** de cierres con su diferencia, detalle imprimible y **Excel** (un cierre con sus hojas, o la lista de cierres de la caja).
+- Ver: `ventas.ver`. Cerrar: `ventas.cobrar`. Código: `src/modulos/tesoreria/cierres.ts` y `src/app/(app)/cobranzas/caja/`.

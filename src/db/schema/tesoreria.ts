@@ -6,6 +6,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -161,6 +162,41 @@ export const arqueos = pgTable(
   (t) => [
     index().on(t.empresaId, t.cuentaId, t.fecha),
     deLaEmpresa('arqueos_cuenta_fk', t.empresaId, t.cuentaId, cuentasTesoreria),
+  ],
+)
+
+/**
+ * Cierre de caja de un turno o del día: lo que entró y salió de la caja
+ * desde el cierre anterior, el efectivo esperado contra el contado, la
+ * diferencia y un resumen de las cobranzas del período (por medio y por
+ * cajero). La diferencia queda como arqueo con su ajuste.
+ */
+export const cierresCaja = pgTable(
+  'cierres_caja',
+  {
+    id: id(),
+    empresaId: empresaId(),
+    cuentaId: uuid('cuenta_id').notNull(),
+    desde: timestamp('desde', { withTimezone: true }).notNull(),
+    hasta: timestamp('hasta', { withTimezone: true }).notNull(),
+    saldoInicial: importe('saldo_inicial').notNull(),
+    ingresos: importe('ingresos').notNull(),
+    egresos: importe('egresos').notNull(),
+    esperado: importe('esperado').notNull(),
+    contado: importe('contado').notNull(),
+    diferencia: importe('diferencia').notNull(),
+    /** Conteo por billete y moneda, si se hizo. */
+    conteo: jsonb('conteo').$type<Record<string, number>>(),
+    /** Cobranzas por medio y por cajero, cobros online, ventas y movimientos del período. */
+    resumen: jsonb('resumen').$type<Record<string, unknown>>().notNull(),
+    arqueoId: uuid('arqueo_id'),
+    observaciones: text('observaciones'),
+    usuarioId: uuid('usuario_id'),
+    creado: timestamp('creado', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index().on(t.empresaId, t.cuentaId, t.hasta),
+    deLaEmpresa('cierres_caja_cuenta_fk', t.empresaId, t.cuentaId, cuentasTesoreria),
   ],
 )
 

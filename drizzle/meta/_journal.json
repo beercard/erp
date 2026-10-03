@@ -477,6 +477,20 @@
       "when": 1791005906671,
       "tag": "0067_whatsapp_baja",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1791039260152,
+      "tag": "0068_cierres_caja",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1791039262448,
+      "tag": "0069_cierres_caja_seguridad",
+      "breakpoints": true
     }
   ]
 }

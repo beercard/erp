@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Calculator, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -24,11 +24,16 @@ export default async function Cobranzas({ searchParams }: PageProps<'/cobranzas'
         titulo="Cobranzas"
         bajada={`${filas.length} recibos${texto ? ` para “${texto}”` : ''}`}
         acciones={
-          tienePermiso(sesion.permisos, 'ventas.cobrar') && (
-            <BotonEnlace href="/cobranzas/nueva" variante="primario">
-              <Plus aria-hidden className="size-4" /> Nueva cobranza
+          <>
+            <BotonEnlace href="/cobranzas/caja">
+              <Calculator aria-hidden className="size-4" /> Cierre de caja
             </BotonEnlace>
-          )
+            {tienePermiso(sesion.permisos, 'ventas.cobrar') && (
+              <BotonEnlace href="/cobranzas/nueva" variante="primario">
+                <Plus aria-hidden className="size-4" /> Nueva cobranza
+              </BotonEnlace>
+            )}
+          </>
         }
       />
       <form className="mb-3" role="search">
