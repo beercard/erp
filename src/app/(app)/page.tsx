@@ -1,5 +1,20 @@
 import { and, count, eq, gte, inArray, sql } from 'drizzle-orm'
-import { Boxes, Circle, CircleCheck, ClipboardList, FilePlus, Package, UserPlus, Users } from 'lucide-react'
+import {
+  Boxes,
+  Circle,
+  CircleCheck,
+  ClipboardList,
+  FileInput,
+  FilePlus,
+  HandCoins,
+  Receipt,
+  Smartphone,
+  Truck,
+  UserPlus,
+  Wallet,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -25,6 +40,65 @@ import { cotizacionVigente } from '@/modulos/comercial/cotizacion'
 import { WidgetCotizacion } from './WidgetCotizacion'
 
 export const metadata: Metadata = { title: 'Inicio' }
+
+/** Las tareas de todos los días, en botones grandes. Cada uno aparece solo si quien entra puede hacerlo. */
+const TAREAS: { href: string; texto: string; ayuda: string; icono: LucideIcon; permiso: string }[] = [
+  { href: '/facturas/nueva', texto: 'Facturar', ayuda: 'Factura A, B o C con CAE', icono: Receipt, permiso: 'ventas.facturar' },
+  {
+    href: '/cobranzas/nueva',
+    texto: 'Cobrar',
+    ayuda: 'Registrar un pago de un cliente',
+    icono: Wallet,
+    permiso: 'ventas.cobrar',
+  },
+  {
+    href: '/presupuestos/nuevo',
+    texto: 'Presupuestar',
+    ayuda: 'Armar y mandar un presupuesto',
+    icono: FilePlus,
+    permiso: 'ventas.presupuestos',
+  },
+  {
+    href: '/pedidos/nuevo',
+    texto: 'Cargar un pedido',
+    ayuda: 'Lo que pidió un cliente',
+    icono: ClipboardList,
+    permiso: 'ventas.pedidos',
+  },
+  { href: '/remitos/nuevo', texto: 'Entregar', ayuda: 'Remito que descuenta stock', icono: Truck, permiso: 'ventas.remitos' },
+  { href: '/stock', texto: 'Ver el stock', ayuda: 'Cuánto hay de cada artículo', icono: Boxes, permiso: 'stock.ver' },
+  {
+    href: '/compras/nueva',
+    texto: 'Cargar una compra',
+    ayuda: 'Factura de un proveedor',
+    icono: FileInput,
+    permiso: 'compras.cargar',
+  },
+  {
+    href: '/pagos/nuevo',
+    texto: 'Pagar a un proveedor',
+    ayuda: 'Con las retenciones calculadas',
+    icono: HandCoins,
+    permiso: 'compras.pagar',
+  },
+  {
+    href: '/servicio/nueva',
+    texto: 'Nueva orden de servicio',
+    ayuda: 'Un pedido de visita técnica',
+    icono: Wrench,
+    permiso: 'servicio.cargar',
+  },
+  { href: '/tecnico', texto: 'Mi agenda', ayuda: 'Mis visitas de hoy', icono: Smartphone, permiso: 'servicio.trabajar' },
+]
+
+function saludo(ahora = new Date()) {
+  const hora = Number(
+    new Intl.DateTimeFormat('es-AR', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Argentina/Buenos_Aires' }).format(
+      ahora,
+    ),
+  )
+  return hora < 13 ? 'Buen día' : hora < 20 ? 'Buenas tardes' : 'Buenas noches'
+}
 
 export default async function Inicio() {
   const sesion = await requerirEmpresa()
@@ -86,20 +160,28 @@ export default async function Inicio() {
     { hecho: datos.emitidos > 0, texto: 'Emitir la primera factura', href: '/facturas/nueva' },
   ]
   const hechos = pasos.filter((p) => p.hecho).length
+  // Los primeros pasos son tarea de quien configura la empresa, y desaparecen al completarlos.
+  const verPasos = tienePermiso(sesion.permisos, 'empresa.datos') && hechos < pasos.length
+  const tareas = TAREAS.filter((t) => tienePermiso(sesion.permisos, t.permiso)).slice(0, 8)
 
   const cifras = [
-    { valor: datos.clientes, texto: 'clientes activos', href: '/terceros?tipo=clientes' },
-    { valor: datos.proveedores, texto: 'proveedores', href: '/terceros?tipo=proveedores' },
-    { valor: datos.articulos, texto: 'artículos', href: '/articulos' },
-    { valor: datos.pedidosAbiertos, texto: 'pedidos por entregar', href: '/pedidos' },
-    { valor: datos.presupuestosEnviados, texto: 'presupuestos esperando respuesta', href: '/presupuestos' },
+    { valor: datos.clientes, texto: 'clientes activos', href: '/terceros?tipo=clientes', permiso: 'maestros.ver' },
+    { valor: datos.proveedores, texto: 'proveedores', href: '/terceros?tipo=proveedores', permiso: 'maestros.ver' },
+    { valor: datos.articulos, texto: 'artículos', href: '/articulos', permiso: 'maestros.ver' },
+    { valor: datos.pedidosAbiertos, texto: 'pedidos por entregar', href: '/pedidos', permiso: 'ventas.ver' },
+    {
+      valor: datos.presupuestosEnviados,
+      texto: 'presupuestos esperando respuesta',
+      href: '/presupuestos',
+      permiso: 'ventas.ver',
+    },
     { valor: datos.cambios, texto: 'cambios en los últimos 7 días' },
-  ]
+  ].filter((c) => !c.permiso || tienePermiso(sesion.permisos, c.permiso))
 
   return (
     <>
       <EncabezadoPagina
-        titulo={`Buen día, ${sesion.usuario.nombre.split(' ')[0]}`}
+        titulo={`${saludo()}, ${sesion.usuario.nombre.split(' ')[0]}`}
         bajada={
           <>
             Buscá cualquier cliente, artículo o acción con <Tecla>Ctrl</Tecla> <Tecla>K</Tecla>.
@@ -112,6 +194,31 @@ export default async function Inicio() {
           </BotonEnlace>
         }
       />
+
+      {tareas.length > 0 && (
+        <section aria-labelledby="tareas" className="mb-6">
+          <h2 id="tareas" className="mb-3 text-sm font-semibold text-texto-2">
+            ¿Qué querés hacer?
+          </h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {tareas.map(({ href, texto, ayuda, icono: Icono }) => (
+              <Link
+                key={href}
+                href={href}
+                className="group flex flex-col items-start gap-2 rounded-lg border border-borde bg-superficie p-4 transition hover:border-acento/60 hover:shadow-[var(--sombra)] sm:flex-row sm:items-center sm:gap-3"
+              >
+                <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-acento-suave text-acento transition group-hover:bg-acento group-hover:text-sobre-acento">
+                  <Icono aria-hidden className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-semibold">{texto}</span>
+                  <span className="line-clamp-2 block text-xs text-texto-2 sm:truncate">{ayuda}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-borde bg-borde lg:grid-cols-6">
         {cifras.map((c) => {
@@ -133,61 +240,43 @@ export default async function Inicio() {
         })}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <Panel className="h-fit">
-          <div className="flex items-center justify-between gap-3 border-b border-borde px-4 py-3">
-            <h2 className="text-sm font-semibold">{hechos === pasos.length ? 'Todo listo para trabajar' : 'Primeros pasos'}</h2>
-            <span className="cifras text-xs text-texto-2">
-              {hechos} de {pasos.length}
-            </span>
-          </div>
-          <ol className="divide-y divide-borde">
-            {pasos.map((p) => (
-              <li key={p.texto}>
-                <Link href={p.href} className="flex items-center gap-3 px-4 py-2.5 hover:bg-superficie-2">
-                  {p.hecho ? (
-                    <CircleCheck aria-label="Hecho" className="size-4 shrink-0 text-ok" />
-                  ) : (
-                    <Circle aria-label="Pendiente" className="size-4 shrink-0 text-texto-3" />
-                  )}
-                  <span className={`text-sm ${p.hecho ? 'text-texto-2 line-through' : 'font-medium'}`}>{p.texto}</span>
-                </Link>
-              </li>
-            ))}
-          </ol>
-          <p className="border-t border-borde px-4 py-3 text-xs text-texto-2">
-            Plan {sesion.suscripcion.nombrePlan}.{' '}
-            <Link href="/configuracion/suscripcion" className="text-acento hover:underline">
-              Ver la suscripción
-            </Link>
-          </p>
-        </Panel>
+      <div className={`mt-6 grid gap-6 ${verPasos ? 'lg:grid-cols-[minmax(0,1fr)_340px]' : 'lg:grid-cols-[340px]'}`}>
+        {verPasos && (
+          <Panel className="h-fit">
+            <div className="flex items-center justify-between gap-3 border-b border-borde px-4 py-3">
+              <h2 className="text-sm font-semibold">{hechos === pasos.length ? 'Todo listo para trabajar' : 'Primeros pasos'}</h2>
+              <span className="cifras text-xs text-texto-2">
+                {hechos} de {pasos.length}
+              </span>
+            </div>
+            <ol className="divide-y divide-borde">
+              {pasos.map((p) => (
+                <li key={p.texto}>
+                  <Link href={p.href} className="flex items-center gap-3 px-4 py-2.5 hover:bg-superficie-2">
+                    {p.hecho ? (
+                      <CircleCheck aria-label="Hecho" className="size-4 shrink-0 text-ok" />
+                    ) : (
+                      <Circle aria-label="Pendiente" className="size-4 shrink-0 text-texto-3" />
+                    )}
+                    <span className={`text-sm ${p.hecho ? 'text-texto-2 line-through' : 'font-medium'}`}>{p.texto}</span>
+                  </Link>
+                </li>
+              ))}
+            </ol>
+            <p className="border-t border-borde px-4 py-3 text-xs text-texto-2">
+              Plan {sesion.suscripcion.nombrePlan}.{' '}
+              <Link href="/configuracion/suscripcion" className="text-acento hover:underline">
+                Ver la suscripción
+              </Link>
+            </p>
+          </Panel>
+        )}
         <div className="flex h-fit flex-col gap-6">
           <WidgetCotizacion
             vigente={datos.dolar}
             hoy={hoyArgentina()}
             puedeCargar={tienePermiso(sesion.permisos, 'maestros.configuracion')}
           />
-          <Panel className="p-4">
-            <h2 className="text-sm font-semibold">Accesos rápidos</h2>
-            <div className="mt-3 flex flex-col gap-2">
-              <BotonEnlace href="/presupuestos/nuevo" className="justify-start">
-                <FilePlus aria-hidden className="size-4" /> Nuevo presupuesto
-              </BotonEnlace>
-              <BotonEnlace href="/pedidos" className="justify-start">
-                <ClipboardList aria-hidden className="size-4" /> Pedidos por entregar
-              </BotonEnlace>
-              <BotonEnlace href="/stock" className="justify-start">
-                <Boxes aria-hidden className="size-4" /> Stock
-              </BotonEnlace>
-              <BotonEnlace href="/terceros" className="justify-start">
-                <Users aria-hidden className="size-4" /> Clientes y proveedores
-              </BotonEnlace>
-              <BotonEnlace href="/articulos" className="justify-start">
-                <Package aria-hidden className="size-4" /> Artículos y precios
-              </BotonEnlace>
-            </div>
-          </Panel>
         </div>
       </div>
     </>

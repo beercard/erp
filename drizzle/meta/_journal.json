@@ -372,6 +372,13 @@
       "when": 1790986389226,
       "tag": "0052_consultas_sitio",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1790987577401,
+      "tag": "0053_portal_cuenta",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ClipboardList, Gauge, Wallet, Wrench } from 'lucide-react'
 import Link from 'next/link'
 
 import { Chip, Panel } from '@/components/ui'
@@ -16,6 +17,16 @@ export default async function InicioPortal() {
     equipos: await equiposDelCliente(tx, s.cliente.id),
     ordenes: await ordenesDelCliente(tx, s.cliente.id),
   }))
+  const acciones = [
+    ...(s.ordenes ? [{ href: '/portal/pedir', texto: 'Pedir servicio', ayuda: 'Una visita técnica', icono: Wrench }] : []),
+    ...(s.contadores && equipos.length
+      ? [{ href: '/portal/contadores', texto: 'Cargar contadores', ayuda: 'Las lecturas del mes', icono: Gauge }]
+      : []),
+    ...(s.cuenta ? [{ href: '/portal/cuenta', texto: 'Mi cuenta', ayuda: 'Saldo y facturas', icono: Wallet }] : []),
+    ...(s.formularios
+      ? [{ href: '/portal/formularios', texto: 'Formularios', ayuda: 'Pedidos y planillas', icono: ClipboardList }]
+      : []),
+  ]
   const abiertas = ordenes.filter((o) => !o.estado.startsWith('cerrada') && o.estado !== 'cancelada')
   const anteriores = ordenes.filter((o) => !abiertas.includes(o))
   const fila = (o: (typeof ordenes)[number]) => (
@@ -44,17 +55,24 @@ export default async function InicioPortal() {
   )
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-xl font-semibold">Hola{s.usuario.nombre ? `, ${s.usuario.nombre}` : ''}</h1>
-        {s.ordenes && (
-          <Link
-            href="/portal/pedir"
-            className="inline-flex h-10 items-center rounded-md bg-acento px-4 text-sm font-medium text-sobre-acento hover:bg-acento-hover"
-          >
-            Pedir servicio técnico
-          </Link>
-        )}
-      </div>
+      <h1 className="text-xl font-semibold">Hola{s.usuario.nombre ? `, ${s.usuario.nombre}` : ''}</h1>
+      {acciones.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {acciones.map(({ href, texto, ayuda, icono: Icono }, i) => (
+            <Link
+              key={href}
+              href={href}
+              className={`flex flex-col gap-2 rounded-lg border p-4 transition hover:shadow-[var(--sombra)] ${
+                i === 0 ? 'border-transparent bg-acento text-sobre-acento' : 'border-borde bg-superficie hover:border-acento/60'
+              }`}
+            >
+              <Icono aria-hidden className="size-6" />
+              <span className="font-semibold">{texto}</span>
+              <span className={`text-xs ${i === 0 ? 'opacity-85' : 'text-texto-2'}`}>{ayuda}</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       <Panel>
         <h2 className="border-b border-borde px-4 py-3 text-sm font-semibold">Servicios en curso</h2>

@@ -299,6 +299,8 @@ export type SesionPortal = {
   color: string
   ordenes: boolean
   contadores: boolean
+  /** Ve su cuenta corriente (saldo y facturas). */
+  cuenta: boolean
   /** Hay formularios habilitados para el portal. */
   formularios: boolean
   encuesta: boolean
@@ -336,6 +338,7 @@ export async function leerSesionPortal(token: string | undefined): Promise<Sesio
       color: config.portalColor,
       ordenes: config.portalOrdenes,
       contadores: config.portalContadores,
+      cuenta: config.portalCuenta,
       formularios:
         (
           await tx

@@ -94,6 +94,10 @@ export function FormularioConfiguracion({ inicial, portal }: { inicial: Configur
             los contadores
           </label>
           <label className="flex items-center gap-2">
+            <input type="checkbox" name="portalCuenta" defaultChecked={inicial.portalCuenta} /> Los clientes ven su cuenta: saldo,
+            facturas impagas y movimientos
+          </label>
+          <label className="flex items-center gap-2">
             <input
               type="color"
               name="portalColor"

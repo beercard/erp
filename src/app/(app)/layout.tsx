@@ -42,13 +42,13 @@ export default async function LayoutApp({ children }: LayoutProps<'/'>) {
               <span className="cifras block text-[11px] text-texto-3">{formatearCuit(sesion.empresa.cuit)}</span>
             </span>
           </Link>
-          <Navegacion funciones={sesion.suscripcion.funciones} />
+          <Navegacion funciones={sesion.suscripcion.funciones} permisos={sesion.permisos} />
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-borde bg-superficie/95 px-4 backdrop-blur sm:px-6">
-          <MenuMovil funciones={sesion.suscripcion.funciones} />
+          <MenuMovil funciones={sesion.suscripcion.funciones} permisos={sesion.permisos} />
           <Link href="/empresas" className="hidden truncate text-sm font-semibold sm:block lg:hidden">
             {sesion.empresa.razonSocial}
           </Link>

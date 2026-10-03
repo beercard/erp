@@ -511,6 +511,8 @@ export const configuracionServicio = pgTable(
     portal: boolean('portal').notNull().default(false),
     portalOrdenes: boolean('portal_ordenes').notNull().default(true),
     portalContadores: boolean('portal_contadores').notNull().default(true),
+    /** El cliente ve su saldo, sus facturas impagas y sus movimientos. */
+    portalCuenta: boolean('portal_cuenta').notNull().default(false),
     /** Color del portal (el de la marca de la empresa). */
     portalColor: text('portal_color').notNull().default('#0f766e'),
     /** Radio (metros) alrededor del cliente para dar por llegado o ido al técnico según el GPS. */

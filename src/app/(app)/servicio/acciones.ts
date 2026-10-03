@@ -555,6 +555,7 @@ export async function guardarConfiguracionAccion(_: Estado, formData: FormData):
         portal: formData.get('portal') === 'on',
         portalOrdenes: formData.get('portalOrdenes') === 'on',
         portalContadores: formData.get('portalContadores') === 'on',
+        portalCuenta: formData.get('portalCuenta') === 'on',
         portalColor: valor(formData, 'portalColor') || undefined,
         radioGeocerca: valor(formData, 'radioGeocerca') || undefined,
       }),

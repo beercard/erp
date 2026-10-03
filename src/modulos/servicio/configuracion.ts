@@ -22,6 +22,7 @@ export async function obtenerConfiguracion(tx: Transaccion) {
       portal: false,
       portalOrdenes: true,
       portalContadores: true,
+      portalCuenta: false,
       portalColor: '#0f766e',
       radioGeocerca: 150,
     }
@@ -53,6 +54,7 @@ const Esquema = z
     portal: z.boolean().default(false),
     portalOrdenes: z.boolean().default(true),
     portalContadores: z.boolean().default(true),
+    portalCuenta: z.boolean().default(false),
     portalColor: z
       .string()
       .trim()
