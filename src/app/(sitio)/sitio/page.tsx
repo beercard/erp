@@ -265,6 +265,13 @@ export default function Inicio() {
               Ver precios
             </Pildora>
           </div>
+          <p className="-mt-2 text-sm text-texto-2">
+            Gratis para facturar · Gestión completa desde{' '}
+            <span className="font-mono font-semibold text-texto">
+              $ {PLANES.find((p) => p.precioMensual > 0)!.precioMensual.toLocaleString('es-AR')}
+            </span>{' '}
+            por mes + IVA
+          </p>
         </Contenedor>
 
         {/* Vitrina del producto */}
@@ -534,6 +541,26 @@ export default function Inicio() {
             bajada="Empezá gratis y crecé cuando lo necesites. Sin permanencia ni letra chica."
           />
           <PlanesPortada />
+          <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-3xl bg-barra p-8 text-sobre-barra sm:p-10 lg:flex-row lg:items-center">
+            <div aria-hidden className="absolute -right-20 -bottom-24 size-72 rounded-full bg-marca/60 blur-3xl" />
+            <div className="relative">
+              <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">¿No sabés qué plan te conviene?</h3>
+              <p className="mt-2 max-w-xl text-sobre-barra-2">
+                Contanos cómo trabaja tu empresa y te mostramos el sistema funcionando con tu operación, no con datos de ejemplo.
+              </p>
+            </div>
+            <div className="relative flex flex-wrap items-center gap-4">
+              <Pildora href="/contacto" variante="blanco">
+                Agendá una demo
+              </Pildora>
+              <Link
+                href="/contacto?motivo=escribir"
+                className="font-semibold text-sobre-barra underline-offset-4 hover:underline"
+              >
+                Prefiero que me escriban
+              </Link>
+            </div>
+          </div>
           <p className="text-center text-sm text-texto-2">
             ¿Tiendas online, contratos y equipos o más usuarios?{' '}
             <Link href="/precios" className="font-semibold text-acento hover:underline">
