@@ -81,7 +81,7 @@ export function TarjetasPlanes({
 /** Tabla comparativa de funciones por plan. */
 export function ComparativaPlanes() {
   return (
-    <div className="overflow-x-auto rounded-xl border border-borde bg-superficie shadow-suave">
+    <div className="overflow-x-auto tarjeta">
       <table className="w-full min-w-[640px] text-sm">
         <thead className="border-b border-borde text-left text-xs text-texto-2">
           <tr>

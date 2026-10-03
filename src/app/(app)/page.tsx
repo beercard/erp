@@ -1,5 +1,6 @@
 import { and, count, eq, gte, inArray, sql } from 'drizzle-orm'
 import {
+  ArrowUpRight,
   Boxes,
   Circle,
   CircleCheck,
@@ -24,7 +25,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { type App, COLOR_APP, COLOR_APP_LLENO } from '@/components/shell/menu'
-import { BotonEnlace, EncabezadoPagina, Panel, Tecla } from '@/components/ui'
+import { BotonEnlace, Panel, Tecla } from '@/components/ui'
 import { comoPlataforma, conEmpresa } from '@/db/empresa'
 import {
   arcaConfiguracion,
@@ -231,7 +232,7 @@ export default async function Inicio() {
     },
     {
       valor: datos.pedidosAbiertos,
-      texto: 'pedidos por entregar',
+      texto: 'pedidos a entregar',
       href: '/pedidos',
       permiso: 'ventas.ver',
       icono: ClipboardList,
@@ -239,83 +240,84 @@ export default async function Inicio() {
     },
     {
       valor: datos.presupuestosEnviados,
-      texto: 'presupuestos esperando respuesta',
+      texto: 'presupuestos enviados',
       href: '/presupuestos',
       permiso: 'ventas.ver',
       icono: FileText,
       app: 'ventas' as App,
     },
-    { valor: datos.cambios, texto: 'cambios en los últimos 7 días', icono: History, app: 'ajustes' as App },
+    { valor: datos.cambios, texto: 'cambios en 7 días', icono: History, app: 'ajustes' as App },
   ].filter((c) => !c.permiso || tienePermiso(sesion.permisos, c.permiso))
+
+  const hoyLargo = new Intl.DateTimeFormat('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'America/Argentina/Buenos_Aires',
+  }).format(new Date())
+  const principal = tareas[0]
 
   return (
     <>
-      <EncabezadoPagina
-        titulo={`${saludo()}, ${sesion.usuario.nombre.split(' ')[0]}`}
-        bajada={
-          <>
-            <span className="sm:hidden">Tocá la lupa de arriba para buscar cualquier cliente, artículo o acción.</span>
-            <span className="hidden sm:inline">
-              Buscá cualquier cliente, artículo o acción con <Tecla>Ctrl</Tecla> <Tecla>K</Tecla>.
-            </span>
-          </>
-        }
-        acciones={
-          <BotonEnlace href="/terceros/nuevo" variante="primario">
-            <UserPlus aria-hidden className="size-4" />
-            Nuevo cliente
-          </BotonEnlace>
-        }
-      />
-
-      {tareas.length > 0 && (
-        <section aria-labelledby="tareas" className="mb-6">
-          <h2 id="tareas" className="mb-3 text-sm font-semibold text-texto-2">
-            ¿Qué querés hacer?
-          </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {tareas.map(({ href, texto, ayuda, icono: Icono, app }) => (
-              <Link
-                key={href}
-                href={href}
-                className="group flex flex-col items-start gap-3 rounded-xl border border-borde bg-superficie p-4 shadow-suave transition hover:-translate-y-px hover:border-borde-fuerte hover:shadow-panel sm:flex-row sm:items-center"
-              >
-                <span
-                  aria-hidden
-                  className={`grid size-11 shrink-0 place-items-center rounded-xl text-white shadow-suave transition group-hover:scale-105 ${COLOR_APP_LLENO[app]}`}
-                >
-                  <Icono className="size-5" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-semibold">{texto}</span>
-                  <span className="line-clamp-2 block text-xs text-texto-2 sm:truncate">{ayuda}</span>
-                </span>
-              </Link>
-            ))}
+      <section className="tarjeta relative mb-6 overflow-hidden px-5 py-6 sm:px-7 sm:py-7">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 [background-image:radial-gradient(70%_120%_at_100%_0%,var(--acento-suave),transparent_60%)]"
+        />
+        <div className="relative flex flex-wrap items-end justify-between gap-5">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-texto-2 first-letter:uppercase">{hoyLargo}</p>
+            <h1 className="mt-1 text-[28px] leading-tight font-bold tracking-tight">
+              {saludo()}, {sesion.usuario.nombre.split(' ')[0]}
+            </h1>
+            <p className="mt-1.5 text-sm text-texto-2">
+              <span className="sm:hidden">Tocá la lupa de arriba para buscar cualquier cliente, artículo o acción.</span>
+              <span className="hidden sm:inline">
+                Buscá cualquier cliente, artículo o acción con <Tecla>Ctrl</Tecla> <Tecla>K</Tecla>.
+              </span>
+            </p>
           </div>
-        </section>
-      )}
+          <div className="flex flex-wrap gap-2">
+            <BotonEnlace href="/terceros/nuevo">
+              <UserPlus aria-hidden />
+              Nuevo cliente
+            </BotonEnlace>
+            {principal && (
+              <BotonEnlace href={principal.href} variante="primario">
+                <principal.icono aria-hidden />
+                {principal.texto}
+              </BotonEnlace>
+            )}
+          </div>
+        </div>
+      </section>
 
-      <section aria-labelledby="resumen">
-        <h2 id="resumen" className="mb-3 text-sm font-semibold text-texto-2">
+      <section aria-labelledby="resumen" className="mb-6">
+        <h2 id="resumen" className="sr-only">
           Resumen
         </h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          {cifras.map((c) => {
+        <div className="tarjeta grid grid-cols-2 overflow-hidden md:grid-cols-3 xl:grid-cols-6">
+          {cifras.map((c, n) => {
             const contenido = (
               <>
-                <span className={`mb-3 grid size-8 place-items-center rounded-lg ${COLOR_APP[c.app]}`}>
-                  <c.icono aria-hidden className="size-4" />
+                <span className="flex items-center gap-2 text-[13px] font-medium text-texto-2">
+                  <span className={`grid size-6 place-items-center rounded-md ${COLOR_APP[c.app]}`}>
+                    <c.icono aria-hidden className="size-3.5" />
+                  </span>
+                  <span className="line-clamp-2 leading-tight first-letter:uppercase">{c.texto}</span>
                 </span>
-                <span className="cifras block text-2xl leading-none font-semibold tracking-tight">
+                <span className="cifras mt-3 flex items-center justify-between text-[26px] leading-none font-bold tracking-tight">
                   {c.valor.toLocaleString('es-AR')}
+                  {c.href && (
+                    <ArrowUpRight aria-hidden className="size-4 text-texto-3 opacity-0 transition group-hover:opacity-100" />
+                  )}
                 </span>
-                <span className="mt-1.5 block text-xs text-texto-2">{c.texto}</span>
               </>
             )
-            const clase = 'rounded-xl border border-borde bg-superficie p-4 shadow-suave'
+            // Separadores entre celdas que se acomodan a 2, 3 o 6 columnas.
+            const clase = `group block border-texto/[0.07] px-4 py-4 sm:px-5 ${n % 2 ? 'border-l' : ''} ${n >= 2 ? 'border-t' : ''} md:border-l md:border-t-0 ${n % 3 === 0 ? 'md:border-l-0' : ''} ${n >= 3 ? 'md:border-t xl:border-t-0' : ''} xl:border-l ${n === 0 ? 'xl:border-l-0' : ''}`
             return c.href ? (
-              <Link key={c.texto} href={c.href} className={`${clase} transition hover:border-borde-fuerte hover:shadow-panel`}>
+              <Link key={c.texto} href={c.href} className={`${clase} transition-colors hover:bg-superficie-2`}>
                 {contenido}
               </Link>
             ) : (
@@ -326,6 +328,34 @@ export default async function Inicio() {
           })}
         </div>
       </section>
+
+      {tareas.length > 0 && (
+        <section aria-labelledby="tareas" className="mb-6">
+          <h2 id="tareas" className="mb-3 text-[15px] font-semibold">
+            ¿Qué querés hacer?
+          </h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {tareas.map(({ href, texto, ayuda, icono: Icono, app }) => (
+              <Link
+                key={href}
+                href={href}
+                className="tarjeta group flex flex-col items-start gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-panel sm:flex-row sm:items-center"
+              >
+                <span
+                  aria-hidden
+                  className={`grid size-11 shrink-0 place-items-center rounded-xl text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.25),inset_0_-1px_0_rgb(0_0_0/0.15)] ${COLOR_APP_LLENO[app]}`}
+                >
+                  <Icono className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{texto}</span>
+                  <span className="line-clamp-2 block text-xs text-texto-2">{ayuda}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className={`mt-6 grid gap-6 ${verPasos ? 'lg:grid-cols-[minmax(0,1fr)_340px]' : 'lg:grid-cols-[340px]'}`}>
         {verPasos && (
@@ -349,11 +379,11 @@ export default async function Inicio() {
             <ol className="divide-y divide-borde">
               {pasos.map((p) => (
                 <li key={p.texto}>
-                  <Link href={p.href} className="flex items-center gap-3 px-4 py-2.5 hover:bg-superficie-2">
+                  <Link href={p.href} className="group flex items-center gap-3 px-4 py-2.5 hover:bg-superficie-2">
                     {p.hecho ? (
-                      <CircleCheck aria-label="Hecho" className="size-4 shrink-0 text-ok" />
+                      <CircleCheck aria-label="Hecho" className="size-5 shrink-0 fill-acento text-sobre-acento" />
                     ) : (
-                      <Circle aria-label="Pendiente" className="size-4 shrink-0 text-texto-3" />
+                      <Circle aria-label="Pendiente" strokeDasharray="3 3" className="size-5 shrink-0 text-texto-3" />
                     )}
                     <span className={`text-sm ${p.hecho ? 'text-texto-2 line-through' : 'font-medium'}`}>{p.texto}</span>
                   </Link>

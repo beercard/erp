@@ -140,7 +140,7 @@ export function Calendario({
         <section
           aria-label="Pendientes"
           {...destino('pendientes', { tecnicoId: null, programada: null })}
-          className={`flex max-h-[70vh] flex-col gap-1.5 overflow-y-auto rounded-xl border border-borde bg-superficie shadow-suave p-2 ${sobre === 'pendientes' ? 'ring-2 ring-acento' : ''}`}
+          className={`flex max-h-[70vh] flex-col gap-1.5 overflow-y-auto tarjeta p-2 ${sobre === 'pendientes' ? 'ring-2 ring-acento' : ''}`}
         >
           <h2 className="px-1 text-xs font-semibold tracking-wide text-texto-2 uppercase">
             Pendientes <span className="font-normal text-texto-3">({pendientes.length})</span>
@@ -151,7 +151,7 @@ export function Calendario({
           ))}
         </section>
 
-        <div className="overflow-x-auto rounded-xl border border-borde bg-superficie shadow-suave">
+        <div className="overflow-x-auto tarjeta">
           <table className="w-full min-w-[900px] table-fixed border-collapse text-sm">
             <thead>
               <tr className="border-b border-borde text-xs text-texto-2">

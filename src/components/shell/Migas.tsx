@@ -14,28 +14,25 @@ export function Migas({ funciones, permisos }: { funciones: string[]; permisos: 
   const { seccion, item } = donde
   const adentro = ruta !== item.href
   const Icono = seccion.icono ?? item.icono
+  // En la pantalla principal de un área se ve solo el área (el título ya dice la pantalla);
+  // más adentro (una ficha, un alta), el camino de vuelta.
   return (
-    <nav aria-label="Ubicación" className="hidden min-w-0 items-center gap-1.5 text-sm md:flex">
+    <nav aria-label="Ubicación" className="mb-3 flex min-w-0 items-center gap-1.5 text-[13px] text-texto-2">
       {seccion.app && (
-        <span aria-hidden className={`grid size-6 shrink-0 place-items-center rounded-md ${COLOR_APP[seccion.app]}`}>
-          <Icono className="size-3.5" strokeWidth={2.2} />
+        <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-md ${COLOR_APP[seccion.app]}`}>
+          <Icono className="size-3" strokeWidth={2.4} />
         </span>
       )}
-      {seccion.titulo && seccion.titulo !== item.texto && (
+      {seccion.titulo && seccion.titulo !== item.texto && <span className="truncate">{seccion.titulo}</span>}
+      {adentro && (
         <>
-          <span className="truncate text-texto-2">{seccion.titulo}</span>
-          <ChevronRight aria-hidden className="size-3.5 shrink-0 text-texto-3" />
+          {seccion.titulo !== item.texto && <ChevronRight aria-hidden className="size-3.5 shrink-0 text-texto-3" />}
+          <Link href={item.href} className="truncate font-medium text-texto hover:text-acento hover:underline">
+            {item.texto}
+          </Link>
         </>
       )}
-      {adentro ? (
-        <Link href={item.href} className="truncate font-medium text-texto hover:text-acento">
-          {item.texto}
-        </Link>
-      ) : (
-        <span aria-current="page" className="truncate font-medium text-texto">
-          {item.texto}
-        </span>
-      )}
+      {!adentro && seccion.titulo === item.texto && <span className="truncate">{item.texto}</span>}
     </nav>
   )
 }

@@ -31,10 +31,7 @@ export function BotonesInicio({ centrado = false }: { centrado?: boolean }) {
       >
         Probar {DIAS_DE_PRUEBA} días gratis
       </Link>
-      <Link
-        href="/contacto"
-        className="rounded-xl border border-borde bg-superficie shadow-suave px-6 py-3 text-center font-medium hover:bg-superficie-2"
-      >
+      <Link href="/contacto" className="tarjeta px-6 py-3 text-center font-medium hover:bg-superficie-2">
         Hablar con un asesor
       </Link>
     </div>

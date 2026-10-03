@@ -7,8 +7,7 @@ import { SOLUCIONES } from '@/components/sitio/soluciones'
 
 import { enviarConsultaAccion } from './acciones'
 
-const campo =
-  'h-11 w-full rounded-xl border border-borde bg-superficie shadow-suave px-3 text-[15px] focus:border-acento focus:outline-none focus:ring-2 focus:ring-acento/20'
+const campo = 'h-11 w-full tarjeta px-3 text-[15px] focus:border-acento focus:outline-none focus:ring-2 focus:ring-acento/20'
 
 export function FormularioContacto({ origen }: { origen: string }) {
   const [estado, accion, enviando] = useActionState(enviarConsultaAccion, undefined)

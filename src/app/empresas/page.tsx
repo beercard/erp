@@ -49,7 +49,7 @@ export default async function PaginaEmpresas() {
           ))}
         </Panel>
       )}
-      <details className="mt-6 rounded-xl border border-borde bg-superficie shadow-suave" open={sesion.empresas.length === 0}>
+      <details className="mt-6 tarjeta" open={sesion.empresas.length === 0}>
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
           <Plus aria-hidden className="mr-1.5 inline size-4 align-[-3px]" />
           Crear una empresa

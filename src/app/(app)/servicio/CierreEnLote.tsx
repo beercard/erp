@@ -54,7 +54,7 @@ export function CierreEnLote({ ordenes, total }: { ordenes: Orden[]; total: numb
     })
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-borde bg-superficie shadow-suave p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-3 tarjeta p-3 text-sm">
         <span className="font-medium">{elegidas.size ? `${elegidas.size} elegidas` : 'Marcá las órdenes revisadas'}</span>
         <label className="flex items-center gap-1">
           <input type="radio" name="modo" checked={modo === 'propuesto'} onChange={() => setModo('propuesto')} />
@@ -93,7 +93,7 @@ export function CierreEnLote({ ordenes, total }: { ordenes: Orden[]; total: numb
           )}
         </Aviso>
       )}
-      <div className="overflow-x-auto rounded-xl border border-borde bg-superficie shadow-suave">
+      <div className="overflow-x-auto tarjeta">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="border-b border-borde text-left text-xs text-texto-2">
             <tr>

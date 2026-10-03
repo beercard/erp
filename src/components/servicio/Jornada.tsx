@@ -48,7 +48,7 @@ export function Jornada({ desde }: { desde: Date | null }) {
       ponerCompartir(tipo === 'entrada')
     })
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-borde bg-superficie shadow-suave px-3 py-2 text-sm">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 tarjeta px-3 py-2 text-sm">
       <span className="flex items-center gap-2">
         <Clock aria-hidden className={`size-4 ${desde ? 'text-ok' : 'text-texto-3'}`} />
         <span>

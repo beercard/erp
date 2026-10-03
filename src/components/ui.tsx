@@ -12,15 +12,14 @@ function unir(...clases: (string | false | null | undefined)[]) {
 }
 
 const VARIANTES = {
-  primario:
-    'bg-acento text-sobre-acento hover:bg-acento-hover border-transparent [box-shadow:inset_0_1px_0_rgb(255_255_255/0.12),var(--sombra-xs)]',
-  secundario: 'bg-superficie text-texto border-borde-fuerte/80 hover:bg-superficie-2 hover:border-borde-fuerte shadow-suave',
-  fantasma: 'bg-transparent text-texto-2 border-transparent hover:bg-superficie-2 hover:text-texto',
-  peligro: 'bg-error text-white border-transparent hover:opacity-90 shadow-suave',
+  primario: 'bg-acento text-sobre-acento hover:bg-acento-hover boton-lleno',
+  secundario: 'bg-superficie text-texto hover:bg-superficie-2 boton-relieve',
+  fantasma: 'bg-transparent text-texto-2 hover:bg-texto/[0.06] hover:text-texto',
+  peligro: 'bg-error text-white hover:brightness-95 boton-lleno',
 } as const
 
 const BASE_BOTON =
-  'inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 h-9 text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] active:translate-y-px disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap [&_svg]:shrink-0'
+  'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 h-9 text-[13px] font-semibold transition-[background-color,color,box-shadow] disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap [&_svg]:shrink-0 [&_svg]:size-4'
 
 type Variante = keyof typeof VARIANTES
 
@@ -136,7 +135,7 @@ export function Chip({ tono = 'neutro', children }: { tono?: keyof typeof TONOS;
   return (
     <span
       className={unir(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-current/15 ring-inset',
+        'inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-xs font-semibold whitespace-nowrap',
         TONOS[tono],
       )}
     >
@@ -147,7 +146,7 @@ export function Chip({ tono = 'neutro', children }: { tono?: keyof typeof TONOS;
 }
 
 export function Panel({ className, ...props }: ComponentProps<'section'>) {
-  return <section className={unir('rounded-xl border border-borde bg-superficie shadow-suave', className)} {...props} />
+  return <section className={unir('tarjeta', className)} {...props} />
 }
 
 /**
@@ -156,9 +155,9 @@ export function Panel({ className, ...props }: ComponentProps<'section'>) {
  */
 export function EncabezadoPagina({ titulo, bajada, acciones }: { titulo: string; bajada?: ReactNode; acciones?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 pb-6">
+    <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 pb-6">
       <div className="min-w-0">
-        <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-balance">{titulo}</h1>
+        <h1 className="text-2xl leading-tight font-bold tracking-tight text-balance">{titulo}</h1>
         {bajada && <p className="mt-1.5 text-sm text-texto-2">{bajada}</p>}
       </div>
       {acciones && <div className="flex flex-wrap items-center gap-2">{acciones}</div>}
@@ -173,7 +172,7 @@ export function Aviso({ tono = 'error', children }: { tono?: 'error' | 'ok' | 'a
   return (
     <div
       role={tono === 'error' ? 'alert' : 'status'}
-      className={unir('flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-sm ring-1 ring-current/15 ring-inset', TONOS[tono])}
+      className={unir('flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-sm ring-1 ring-current/15 ring-inset', TONOS[tono])}
     >
       <Icono aria-hidden className="mt-0.5 size-4 shrink-0" />
       <div className="min-w-0 flex-1">{children}</div>

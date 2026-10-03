@@ -70,7 +70,7 @@ export function MenuUsuario({
         aria-expanded={abierto}
         aria-haspopup="true"
         title={`${nombre} · ${rol}`}
-        className="grid size-9 place-items-center rounded-full p-0.5 hover:bg-superficie-2 aria-expanded:bg-superficie-2"
+        className="grid size-9 place-items-center rounded-full p-0.5 hover:bg-white/10 aria-expanded:bg-white/10"
       >
         <span className="grid size-8 place-items-center rounded-full bg-acento text-xs font-semibold text-sobre-acento">
           {iniciales}

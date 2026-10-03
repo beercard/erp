@@ -73,7 +73,7 @@ export default async function Solucion({ params }: PageProps<'/soluciones/[slug]
             <h2 className="text-2xl font-semibold tracking-tight">¿Te pasa esto?</h2>
             <ul className="flex flex-col gap-3">
               {s.dolores.map((d) => (
-                <li key={d} className="flex gap-3 rounded-xl border border-borde bg-superficie shadow-suave p-4">
+                <li key={d} className="flex gap-3 tarjeta p-4">
                   <AlertCircle aria-hidden className="mt-0.5 size-5 shrink-0 text-aviso" />
                   <span>{d}</span>
                 </li>

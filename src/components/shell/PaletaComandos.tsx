@@ -245,13 +245,13 @@ export function PaletaComandos({ funciones = [] }: { funciones?: string[] }) {
         type="button"
         onClick={() => setAbierta(true)}
         aria-label="Buscar (Ctrl + K)"
-        className="flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-borde bg-superficie-2/70 px-3 text-sm text-texto-3 transition-colors hover:border-borde-fuerte hover:bg-superficie"
+        className="flex h-9 w-full max-w-xl items-center gap-2 rounded-lg bg-barra-2 px-3 text-sm text-sobre-barra-2 ring-1 ring-white/10 transition-colors ring-inset hover:bg-white/15 hover:text-sobre-barra"
       >
         <Search aria-hidden className="size-4" />
         <span className="flex-1 truncate text-left">Buscar clientes, artículos o acciones…</span>
-        <span className="hidden items-center gap-1 sm:flex">
-          <Tecla>Ctrl</Tecla>
-          <Tecla>K</Tecla>
+        <span className="hidden items-center gap-1 text-[11px] font-medium sm:flex">
+          <kbd className="rounded-md bg-white/10 px-1.5 py-px font-sans">Ctrl</kbd>
+          <kbd className="rounded-md bg-white/10 px-1.5 py-px font-sans">K</kbd>
         </span>
       </button>
       <Command.Dialog

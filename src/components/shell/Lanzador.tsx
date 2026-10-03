@@ -37,7 +37,7 @@ export function Lanzador({ funciones, permisos }: { funciones: string[]; permiso
         aria-expanded={abierto}
         aria-haspopup="true"
         title="Aplicaciones"
-        className="grid size-9 place-items-center rounded-lg text-texto-2 hover:bg-superficie-2 hover:text-texto aria-expanded:bg-superficie-2"
+        className="grid size-9 place-items-center rounded-lg text-sobre-barra-2 hover:bg-white/10 hover:text-sobre-barra aria-expanded:bg-white/10 aria-expanded:text-sobre-barra"
       >
         <LayoutGrid aria-hidden className="size-[18px]" />
         <span className="sr-only">Aplicaciones</span>

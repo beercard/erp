@@ -53,8 +53,10 @@ export function Navegacion({ funciones, permisos }: { funciones: string[]; permi
   }
 
   const claseItem = (activo: boolean) =>
-    `group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] transition-colors ${
-      activo ? 'bg-acento-suave font-medium text-acento' : 'text-texto-2 hover:bg-superficie-2 hover:text-texto'
+    `group flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] transition-colors ${
+      activo
+        ? 'bg-superficie font-semibold text-texto shadow-[0_1px_0_var(--tarjeta-borde-abajo),0_0_0_1px_var(--tarjeta-borde)]'
+        : 'font-medium text-texto-2 hover:bg-texto/[0.05] hover:text-texto'
     }`
 
   return (
@@ -69,7 +71,7 @@ export function Navegacion({ funciones, permisos }: { funciones: string[]; permi
                 type="button"
                 onClick={() => alternar(s.titulo!)}
                 aria-expanded={!cerrada}
-                className="group mb-0.5 flex h-7 items-center gap-2 rounded-md px-2 text-xs font-semibold text-texto-2 hover:bg-superficie-2 hover:text-texto"
+                className="group mb-0.5 flex h-7 items-center gap-2 rounded-md px-2 text-xs font-semibold text-texto-2 hover:bg-texto/[0.05] hover:text-texto"
               >
                 {IconoSeccion && s.app && (
                   <span aria-hidden className={`grid size-5 place-items-center rounded-[5px] ${COLOR_APP[s.app]}`}>
@@ -93,7 +95,7 @@ export function Navegacion({ funciones, permisos }: { funciones: string[]; permi
                     <Link
                       key={item.href}
                       href={`/configuracion/suscripcion?funcion=${item.funcion}`}
-                      className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] text-texto-3 hover:bg-superficie-2"
+                      className="flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] text-texto-3 hover:bg-texto/[0.05]"
                       title={`Incluido desde el plan ${plan?.nombre}`}
                     >
                       <Icono aria-hidden className="size-4 shrink-0" />
@@ -115,7 +117,7 @@ export function Navegacion({ funciones, permisos }: { funciones: string[]; permi
           </div>
         )
       })}
-      <div className="mt-auto border-t border-borde pt-3">
+      <div className="mt-auto border-t border-texto/10 pt-3">
         <Link
           href={CONFIGURACION.href}
           aria-current={ruta.startsWith(CONFIGURACION.href) ? 'page' : undefined}

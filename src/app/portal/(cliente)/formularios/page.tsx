@@ -33,7 +33,7 @@ export default async function FormulariosPortal({ searchParams }: PageProps<'/po
               <form action={empezarFormularioAccion.bind(null, f.id)}>
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-borde bg-superficie shadow-suave p-4 text-left hover:border-acento"
+                  className="flex w-full items-center justify-between gap-3 tarjeta p-4 text-left hover:border-acento"
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <FileText aria-hidden className="size-5 shrink-0 text-acento" />

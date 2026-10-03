@@ -97,7 +97,7 @@ export default async function PaginaTerceros({ searchParams }: PageProps<'/terce
                     ? `${t.tipoDocumento} ${t.tipoDocumento === 'CUIT' || t.tipoDocumento === 'CUIL' ? formatearCuit(t.numeroDocumento) : t.numeroDocumento}`
                     : '—'}
                 </td>
-                <td className="px-4 py-2.5 text-texto-2">{t.condicionIva}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap text-texto-2">{t.condicionIva}</td>
                 <td className="px-4 py-2.5 text-texto-2">{[t.localidad, t.provincia].filter(Boolean).join(', ') || '—'}</td>
                 <td className="px-4 py-2.5">
                   <span className="flex gap-1">

@@ -22,7 +22,7 @@ export function MenuMovil({ funciones, permisos }: { funciones: string[]; permis
         aria-expanded={abierto}
         aria-controls="menu-movil"
         aria-label={abierto ? 'Cerrar menú' : 'Abrir menú'}
-        className="grid size-9 place-items-center rounded-lg text-texto-2 hover:bg-superficie-2"
+        className="grid size-9 place-items-center rounded-lg text-sobre-barra hover:bg-white/10"
       >
         {abierto ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
       </button>

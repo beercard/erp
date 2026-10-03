@@ -6,31 +6,42 @@
  * Neutros fríos con un leve tinte hacia el acento (petróleo).
  */
 :root {
-  --fondo: #f4f5f7;
-  --lateral: #fbfbfc;
+  --fondo: #f1f2f3;
+  --lateral: #ebeced;
   --superficie: #ffffff;
-  --superficie-2: #f0f2f5;
-  --texto: #12161d;
-  --texto-2: #4a5462;
-  --texto-3: #7b8594;
-  --borde: #e3e6eb;
-  --borde-fuerte: #cdd2da;
+  --superficie-2: #f6f7f7;
+  --texto: #1a1c1d;
+  --texto-2: #5c6164;
+  --texto-3: #8a8f92;
+  --borde: #e3e4e5;
+  --borde-fuerte: #c6c9cc;
   --acento: #0b6b77;
-  --acento-hover: #095a64;
-  --acento-suave: #e3f1f2;
+  --acento-hover: #08585f;
+  --acento-suave: #e2f0f1;
   --sobre-acento: #ffffff;
-  --anillo: rgb(11 107 119 / 0.22);
-  --ok: #17703f;
-  --ok-suave: #e3f3e9;
-  --aviso: #8f5d00;
-  --aviso-suave: #fbf1db;
-  --error: #b02a1f;
-  --error-suave: #fbe8e5;
-  --info: #2454ad;
-  --info-suave: #e6edfa;
-  --sombra-xs: 0 1px 2px rgb(16 24 40 / 0.05);
-  --sombra: 0 1px 3px rgb(16 24 40 / 0.07), 0 1px 2px rgb(16 24 40 / 0.04);
-  --sombra-lg: 0 16px 40px -12px rgb(16 24 40 / 0.22), 0 4px 10px -4px rgb(16 24 40 / 0.08);
+  --anillo: rgb(11 107 119 / 0.24);
+  --ok: #146c3b;
+  --ok-suave: #ddf3e4;
+  --aviso: #8a5a00;
+  --aviso-suave: #fdf0d4;
+  --error: #b42318;
+  --error-suave: #fde8e6;
+  --info: #1f55b5;
+  --info-suave: #e3ecfb;
+  /* Barra superior oscura de lado a lado, como los admins de comercio. */
+  --barra: #12191b;
+  --barra-2: #253033;
+  --sobre-barra: #eef3f4;
+  --sobre-barra-2: #98a6aa;
+  /* Relieve de tarjetas y botones: borde de abajo más marcado, luz arriba. */
+  --tarjeta-borde: rgb(0 0 0 / 0.07);
+  --tarjeta-borde-abajo: rgb(0 0 0 / 0.15);
+  --boton-borde: rgb(0 0 0 / 0.12);
+  --boton-borde-abajo: rgb(0 0 0 / 0.26);
+  --luz: rgb(255 255 255 / 0.9);
+  --sombra-xs: 0 1px 0 rgb(26 26 26 / 0.05);
+  --sombra: 0 1px 0 rgb(26 26 26 / 0.05), 0 4px 10px -4px rgb(26 26 26 / 0.12);
+  --sombra-lg: 0 20px 44px -12px rgb(26 26 26 / 0.28), 0 4px 10px -4px rgb(26 26 26 / 0.1);
 
   /*
    * Color de cada aplicación (como los íconos de Odoo): sirve para reconocer
@@ -55,61 +66,79 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema='claro']) {
-    --fondo: #0c0f14;
-    --lateral: #10141a;
-    --superficie: #151a21;
-    --superficie-2: #1c222b;
-    --texto: #e7ebf1;
-    --texto-2: #a5afbd;
-    --texto-3: #6f7987;
-    --borde: #262d37;
-    --borde-fuerte: #363e4a;
-    --acento: #4cb3bf;
-    --acento-hover: #6cc6d0;
-    --acento-suave: #12313a;
-    --sobre-acento: #06181b;
-    --anillo: rgb(76 179 191 / 0.3);
-    --ok: #63c98d;
-    --ok-suave: #143222;
-    --aviso: #e2b257;
+    --fondo: #111415;
+    --lateral: #0c0f10;
+    --superficie: #1b1f21;
+    --superficie-2: #22272a;
+    --texto: #eceff0;
+    --texto-2: #a6aeb2;
+    --texto-3: #727b80;
+    --borde: #2b3134;
+    --borde-fuerte: #3b4246;
+    --acento: #4fb8c4;
+    --acento-hover: #72cbd4;
+    --acento-suave: #12343a;
+    --sobre-acento: #04191c;
+    --anillo: rgb(79 184 196 / 0.3);
+    --ok: #67cc91;
+    --ok-suave: #15301f;
+    --aviso: #e6b45a;
     --aviso-suave: #33270f;
-    --error: #f08a7e;
+    --error: #f28b7f;
     --error-suave: #3a1c18;
-    --info: #86a9ee;
+    --info: #8aacf0;
     --info-suave: #17243d;
-    --sombra-xs: 0 1px 2px rgb(0 0 0 / 0.3);
-    --sombra: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
-    --sombra-lg: 0 16px 40px -12px rgb(0 0 0 / 0.7), 0 4px 10px -4px rgb(0 0 0 / 0.4);
+    --barra: #070a0b;
+    --barra-2: #1d2427;
+    --sobre-barra: #eef3f4;
+    --sobre-barra-2: #8c999d;
+    --tarjeta-borde: rgb(255 255 255 / 0.07);
+    --tarjeta-borde-abajo: rgb(255 255 255 / 0.04);
+    --boton-borde: rgb(255 255 255 / 0.1);
+    --boton-borde-abajo: rgb(0 0 0 / 0.5);
+    --luz: rgb(255 255 255 / 0.06);
+    --sombra-xs: 0 1px 0 rgb(0 0 0 / 0.3);
+    --sombra: 0 1px 0 rgb(0 0 0 / 0.3), 0 4px 10px -4px rgb(0 0 0 / 0.5);
+    --sombra-lg: 0 20px 44px -12px rgb(0 0 0 / 0.75), 0 4px 10px -4px rgb(0 0 0 / 0.4);
     color-scheme: dark;
   }
 }
 
 :root[data-tema='oscuro'] {
-  --fondo: #0c0f14;
-  --lateral: #10141a;
-  --superficie: #151a21;
-  --superficie-2: #1c222b;
-  --texto: #e7ebf1;
-  --texto-2: #a5afbd;
-  --texto-3: #6f7987;
-  --borde: #262d37;
-  --borde-fuerte: #363e4a;
-  --acento: #4cb3bf;
-  --acento-hover: #6cc6d0;
-  --acento-suave: #12313a;
-  --sobre-acento: #06181b;
-  --anillo: rgb(76 179 191 / 0.3);
-  --ok: #63c98d;
-  --ok-suave: #143222;
-  --aviso: #e2b257;
+  --fondo: #111415;
+  --lateral: #0c0f10;
+  --superficie: #1b1f21;
+  --superficie-2: #22272a;
+  --texto: #eceff0;
+  --texto-2: #a6aeb2;
+  --texto-3: #727b80;
+  --borde: #2b3134;
+  --borde-fuerte: #3b4246;
+  --acento: #4fb8c4;
+  --acento-hover: #72cbd4;
+  --acento-suave: #12343a;
+  --sobre-acento: #04191c;
+  --anillo: rgb(79 184 196 / 0.3);
+  --ok: #67cc91;
+  --ok-suave: #15301f;
+  --aviso: #e6b45a;
   --aviso-suave: #33270f;
-  --error: #f08a7e;
+  --error: #f28b7f;
   --error-suave: #3a1c18;
-  --info: #86a9ee;
+  --info: #8aacf0;
   --info-suave: #17243d;
-  --sombra-xs: 0 1px 2px rgb(0 0 0 / 0.3);
-  --sombra: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
-  --sombra-lg: 0 16px 40px -12px rgb(0 0 0 / 0.7), 0 4px 10px -4px rgb(0 0 0 / 0.4);
+  --barra: #070a0b;
+  --barra-2: #1d2427;
+  --sobre-barra: #eef3f4;
+  --sobre-barra-2: #8c999d;
+  --tarjeta-borde: rgb(255 255 255 / 0.07);
+  --tarjeta-borde-abajo: rgb(255 255 255 / 0.04);
+  --boton-borde: rgb(255 255 255 / 0.1);
+  --boton-borde-abajo: rgb(0 0 0 / 0.5);
+  --luz: rgb(255 255 255 / 0.06);
+  --sombra-xs: 0 1px 0 rgb(0 0 0 / 0.3);
+  --sombra: 0 1px 0 rgb(0 0 0 / 0.3), 0 4px 10px -4px rgb(0 0 0 / 0.5);
+  --sombra-lg: 0 20px 44px -12px rgb(0 0 0 / 0.75), 0 4px 10px -4px rgb(0 0 0 / 0.4);
   color-scheme: dark;
 }
 
@@ -148,6 +177,10 @@
   --color-app-tiendas: var(--app-tiendas);
   --color-app-ajustes: var(--app-ajustes);
   --color-marca: var(--marca);
+  --color-barra: var(--barra);
+  --color-barra-2: var(--barra-2);
+  --color-sobre-barra: var(--sobre-barra);
+  --color-sobre-barra-2: var(--sobre-barra-2);
   --color-marca-2: var(--marca-2);
   --shadow-panel: var(--sombra);
   --shadow-suave: var(--sombra-xs);
@@ -285,6 +318,47 @@ form[role='search'] input[name='q'] {
   background-repeat: no-repeat;
   background-position: 0.75rem center;
   background-size: 16px;
+}
+
+/*
+ * Tarjeta con relieve (el lenguaje de los admins de comercio): blanca, con
+ * el borde de abajo apenas más marcado. Es la base de Panel y de los
+ * bloques del inicio.
+ */
+@utility tarjeta {
+  border-radius: 0.75rem;
+  border: 1px solid var(--tarjeta-borde);
+  border-bottom-color: var(--tarjeta-borde-abajo);
+  background-color: var(--superficie);
+  box-shadow: var(--sombra-xs);
+}
+
+/* Botones con volumen: luz arriba, borde de abajo más oscuro, se hunden al apretar. */
+@utility boton-relieve {
+  box-shadow:
+    inset 0 1px 0 var(--luz),
+    inset 0 0 0 1px var(--boton-borde),
+    inset 0 -1px 0 var(--boton-borde-abajo),
+    0 1px 0 rgb(0 0 0 / 0.04);
+  &:active {
+    box-shadow:
+      inset 0 0 0 1px var(--boton-borde),
+      inset 0 2px 2px rgb(0 0 0 / 0.12);
+  }
+}
+@utility boton-lleno {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 60%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    inset 0 -1px 0 rgb(0 0 0 / 0.35),
+    0 0 0 1px rgb(0 0 0 / 0.18),
+    0 1px 1px rgb(0 0 0 / 0.12);
+  &:active {
+    background-image: none;
+    box-shadow:
+      inset 0 2px 3px rgb(0 0 0 / 0.3),
+      0 0 0 1px rgb(0 0 0 / 0.18);
+  }
 }
 
 /* Entrada de paneles flotantes (menús, lanzador). */
