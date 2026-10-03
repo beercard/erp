@@ -12,8 +12,14 @@ export const maxDuration = 300
 const FECHA = /^\d{4}-\d{2}-\d{2}$/
 
 export async function POST(request: Request) {
+  // Se compara con el Host del pedido: dentro del contenedor request.url es http://localhost:3000.
   const origen = request.headers.get('origin')
-  if (!origen || origen !== new URL(request.url).origin) return Response.json({ error: 'Origen no permitido.' }, { status: 403 })
+  const host = request.headers.get('host')
+  let mismo = false
+  try {
+    mismo = !!origen && !!host && new URL(origen).host === host
+  } catch {}
+  if (!mismo) return Response.json({ error: 'Origen no permitido.' }, { status: 403 })
   const u = new URL(request.url)
   const formato = u.searchParams.get('formato') as FormatoPadron
   if (!(formato in FORMATOS_PADRON) || !request.body)

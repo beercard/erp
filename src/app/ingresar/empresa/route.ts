@@ -11,8 +11,12 @@ import { empresaPorCodigo } from '@/modulos/plataforma/codigos'
 export async function GET(request: Request) {
   const u = new URL(request.url)
   const codigo = (u.searchParams.get('codigo') ?? '').trim().toLowerCase().slice(0, 60)
+  // Relativa: dentro del contenedor request.url es http://localhost:3000, no la dirección pública.
   const volver = (motivo: string) =>
-    Response.redirect(new URL(`/ingresar?codigo=${encodeURIComponent(codigo)}&error=${motivo}`, request.url), 303)
+    new Response(null, {
+      status: 303,
+      headers: { Location: `/ingresar?codigo=${encodeURIComponent(codigo)}&error=${motivo}` },
+    })
   // Freno a quien prueba códigos al azar para ver qué empresas usan el sistema.
   const porIp = claveIp('codigo-empresa', ipDe(request.headers))
   if (await superado([porIp], 30, 15 * 60_000)) return volver('intentos')
