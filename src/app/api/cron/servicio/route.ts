@@ -19,6 +19,8 @@ import { enviarResumenDueno } from '@/modulos/informes/resumenDueno'
 import { facturarPedidosPagados } from '@/modulos/tiendas/facturar'
 import { sincronizarEmpresa } from '@/modulos/tiendas/sincronizar'
 import { clienteArca } from '@/modulos/arca/cliente'
+import { avanzarLotes, facturarRecurrentes } from '@/modulos/facturacion/automatica'
+import { emitirFacturasSuscripcion } from '@/modulos/plataforma/facturasSuscripcion'
 
 /**
  * Tarea programada del servicio técnico (llamarla cada 15 a 60 minutos desde
@@ -26,7 +28,8 @@ import { clienteArca } from '@/modulos/arca/cliente'
  * día vencimientos, preventivos, avisos, alertas de SLA y recordatorios de
  * todas las empresas, avisa los vencimientos impositivos que se acercan o
  * se pasaron, asienta las operaciones nuevas (si la contabilidad está en
- * marcha), arma el resumen diario del CRM y el del dueño, manda los correos y los webhooks, y sincroniza las tiendas online.
+ * marcha), arma el resumen diario del CRM y el del dueño, manda los correos y los webhooks, sincroniza las tiendas online y
+ * emite las facturas automáticas (recurrentes, lotes y las de las suscripciones de Vektra).
  * Sin CRON_SECRET no hace nada.
  */
 const horaArgentina = () =>
@@ -60,6 +63,9 @@ export async function POST(request: Request) {
     facturasTiendas: 0,
     recordatoriosDeuda: 0,
     resumenesDueno: 0,
+    facturasRecurrentes: 0,
+    facturasLotes: 0,
+    facturasSuscripcion: 0,
     errores: 0,
   }
   await limpiarFrenos().catch(() => undefined)
@@ -94,6 +100,13 @@ export async function POST(request: Request) {
       resultado.errores += tiendas.errores
       // Pedidos pagados de tiendas con "facturar solo": remito, factura en ARCA y recibo.
       resultado.facturasTiendas += (await facturarPedidosPagados(e.id, (tx, cuit) => clienteArca(tx, cuit))).facturados
+      // Facturas recurrentes (abonos) que tocan hoy, desde las 7, y lotes que quedaron a medias.
+      if (horaArgentina() >= 7) {
+        const r = await facturarRecurrentes(e.id, (tx, cuit) => clienteArca(tx, cuit))
+        resultado.facturasRecurrentes += r.emitidas
+        resultado.errores += r.errores
+      }
+      resultado.facturasLotes += (await avanzarLotes(e.id, (tx, cuit) => clienteArca(tx, cuit))).procesadas
     } catch (falla) {
       resultado.errores++
       await registrarError({
@@ -102,6 +115,17 @@ export async function POST(request: Request) {
         tipo: 'cron',
       })
     }
+  }
+  // Vektra se factura sola los pagos de las suscripciones (si está VEKTRA_EMPRESA_ID).
+  try {
+    resultado.facturasSuscripcion = (await emitirFacturasSuscripcion((tx, cuit) => clienteArca(tx, cuit))).emitidas
+  } catch (falla) {
+    resultado.errores++
+    await registrarError({
+      mensaje: `Facturas de suscripciones: ${falla instanceof Error ? falla.message : String(falla)}`,
+      ruta: '/api/cron/servicio',
+      tipo: 'cron',
+    })
   }
   // Latido: si deja de llegar, /api/salud?cron=1 lo avisa al monitor externo.
   await latido('cron', resultado, resultado.errores === 0).catch(() => undefined)

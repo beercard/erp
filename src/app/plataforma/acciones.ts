@@ -20,6 +20,8 @@ import { cambiarCodigo } from '@/modulos/plataforma/codigos'
 import { marcarAtendida } from '@/modulos/plataforma/consultas'
 import { actualizarSuscripcion, registrarPago, resolverPedido } from '@/modulos/plataforma/suscripciones'
 
+import { reintentarFacturasSuscripcion } from '@/modulos/plataforma/facturasSuscripcion'
+
 import { exigirAdmin } from './admin'
 
 export type EstadoAdmin = { error?: string; ok?: string } | undefined
@@ -90,6 +92,13 @@ export async function suspenderAccion(empresaId: string, suspender: boolean): Pr
 export async function extenderPruebaAccion(empresaId: string, _: EstadoAdmin, formData: FormData): Promise<EstadoAdmin> {
   const admin = await quienAdministra()
   return estado(await extenderPrueba(admin, empresaId, valor(formData, 'dias')), 'Prueba extendida.')
+}
+
+/** Vuelve a intentar las facturas de suscripción que fallaron (las emite la próxima tarea periódica). */
+export async function reintentarFacturasAccion(ids: string[]): Promise<EstadoAdmin> {
+  await quienAdministra()
+  await reintentarFacturasSuscripcion(ids)
+  return estado({ ok: true }, 'Se vuelven a intentar en la próxima vuelta de la tarea periódica.')
 }
 
 // ---------------------------------------------------------------- Empresa

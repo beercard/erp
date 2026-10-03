@@ -14,6 +14,7 @@ const PLATAFORMA = new Set([
   'invitaciones',
   'suscripciones',
   'eventos_suscripcion',
+  'facturas_suscripcion',
   'cuentas_canal',
   'crm_formularios',
   'claves_cobro',

@@ -25,28 +25,42 @@ export class ErrorApi extends Error {
 
 export const error = (estado: number, mensaje: string) => Response.json({ error: mensaje }, { status: estado })
 
+type Opciones = { escribe?: boolean; funciones?: Funcion[]; unaDe?: Funcion[] }
+
+/** Valida la clave, el plan y la suscripción. Devuelve el acceso o la respuesta de error. */
+export async function accesoApi(request: Request, opciones: Opciones): Promise<{ acceso: Acceso } | { respuesta: Response }> {
+  const clave = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
+  const acceso = clave ? await autenticarClave(clave).catch(() => null) : null
+  const no = (estado: number, mensaje: string) => ({ respuesta: error(estado, mensaje) })
+  if (!acceso) return no(401, 'Falta la clave de la API o no es válida (Authorization: Bearer erp_…).')
+  if (opciones.escribe && acceso.acceso !== 'total') return no(403, 'Esta clave es de solo lectura.')
+  const sit = situacion(await suscripcionDe(acceso.empresaId), hoyArgentina())
+  for (const f of ['api', ...(opciones.funciones ?? [])] as Funcion[]) {
+    if (!sit.funciones.includes(f)) return no(403, `El plan de la empresa no incluye ${f === 'api' ? 'la API' : f}.`)
+  }
+  if (opciones.unaDe && !opciones.unaDe.some((f) => sit.funciones.includes(f))) {
+    return no(403, `El plan de la empresa no incluye ${opciones.unaDe.join(' ni ')}.`)
+  }
+  if (opciones.escribe && sit.soloLectura) return no(403, 'La suscripción no está al día: la API es de solo lectura.')
+  return { acceso }
+}
+
+/** Una transacción en la empresa de la clave, con el usuario que la creó: la API ve lo mismo que él (grupos de clientes incluidos). */
+export function enApi<T>(acceso: Acceso, trabajo: (tx: Transaccion) => Promise<T>) {
+  const quien = acceso.usuarioId ? { empresa: { id: acceso.empresaId }, usuario: { id: acceso.usuarioId } } : acceso.empresaId
+  return conEmpresa(quien, trabajo)
+}
+
 export async function conApi(
   request: Request,
   /** funciones: hacen falta todas; unaDe: alcanza con cualquiera. */
-  opciones: { escribe?: boolean; funciones?: Funcion[]; unaDe?: Funcion[] },
+  opciones: Opciones,
   trabajo: (tx: Transaccion, acceso: Acceso) => Promise<Response>,
 ): Promise<Response> {
-  const clave = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
-  const acceso = clave ? await autenticarClave(clave).catch(() => null) : null
-  if (!acceso) return error(401, 'Falta la clave de la API o no es válida (Authorization: Bearer erp_…).')
-  if (opciones.escribe && acceso.acceso !== 'total') return error(403, 'Esta clave es de solo lectura.')
-  const sit = situacion(await suscripcionDe(acceso.empresaId), hoyArgentina())
-  for (const f of ['api', ...(opciones.funciones ?? [])] as Funcion[]) {
-    if (!sit.funciones.includes(f)) return error(403, `El plan de la empresa no incluye ${f === 'api' ? 'la API' : f}.`)
-  }
-  if (opciones.unaDe && !opciones.unaDe.some((f) => sit.funciones.includes(f))) {
-    return error(403, `El plan de la empresa no incluye ${opciones.unaDe.join(' ni ')}.`)
-  }
-  if (opciones.escribe && sit.soloLectura) return error(403, 'La suscripción no está al día: la API es de solo lectura.')
+  const a = await accesoApi(request, opciones)
+  if ('respuesta' in a) return a.respuesta
   try {
-    // Con el usuario que creó la clave: la API ve lo mismo que él (grupos de clientes incluidos).
-    const quien = acceso.usuarioId ? { empresa: { id: acceso.empresaId }, usuario: { id: acceso.usuarioId } } : acceso.empresaId
-    return await conEmpresa(quien, (tx) => trabajo(tx, acceso))
+    return await enApi(a.acceso, (tx) => trabajo(tx, a.acceso))
   } catch (e) {
     if (e instanceof ErrorApi) return error(e.estado, e.message)
     throw e

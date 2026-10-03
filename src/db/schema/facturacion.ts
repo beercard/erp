@@ -179,11 +179,16 @@ export const comprobantes = pgTable(
     /** Datos opcionales de ARCA (CBU y modalidad de la FCE, anulación). */
     opcionales: jsonb('opcionales'),
     observaciones: text('observaciones'),
+    /** Identificador del sistema que la pidió por la API (pedido, venta): el mismo no se factura dos veces. */
+    referenciaExterna: text('referencia_externa'),
     usuarioId: uuid('usuario_id'),
     autorizado: timestamp('autorizado', { withTimezone: true }),
     ...marcasDeTiempo(),
   },
   (t) => [
+    uniqueIndex('comprobantes_referencia_externa')
+      .on(t.empresaId, t.referenciaExterna)
+      .where(sql`${t.referenciaExterna} is not null`),
     uniqueIndex('comprobantes_numero').on(t.empresaId, t.tipo, t.puntoVenta, t.numero),
     index().on(t.empresaId, t.terceroId),
     index().on(t.empresaId, t.fecha),

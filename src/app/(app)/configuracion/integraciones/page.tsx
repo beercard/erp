@@ -23,6 +23,15 @@ const ENDPOINTS = [
   ['GET', '/api/v1/ordenes/{id}', 'Una orden con instrucciones, informe, visitas e insumos'],
   ['POST', '/api/v1/ordenes', 'Abrir una orden: { cliente, equipo?, tipo?, falla, prioridad?, instrucciones? }'],
   ['POST', '/api/v1/lecturas', 'Contadores: { lecturas: [{ serie, contador, fecha?, creditos? }] }'],
+  ['GET', '/api/v1/facturas', 'Facturas (desde, hasta, cliente, estado, referencia)'],
+  ['GET', '/api/v1/facturas/{id}', 'Una factura con su CAE y el enlace público'],
+  [
+    'POST',
+    '/api/v1/facturas',
+    'Facturar, autorizar en ARCA y mandar: { referencia?, cliente: { documento, razonSocial?, condicionIva?, email? }, concepto?, renglones: [{ descripcion, cantidad, precioUnitario, iva }], autorizar?, enviar? }',
+  ],
+  ['POST', '/api/v1/lotes', 'Hasta 500 facturas: { nombre?, autorizar?, enviar?, facturas: [ …como arriba ] }'],
+  ['GET', '/api/v1/lotes/{id}', 'Avance del lote y estado de cada factura'],
 ]
 
 export default async function Integraciones() {

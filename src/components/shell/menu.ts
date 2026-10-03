@@ -34,6 +34,7 @@ import {
   Percent,
   Printer,
   Receipt,
+  Repeat,
   ReceiptText,
   RefreshCw,
   Scale,
@@ -169,6 +170,20 @@ export const SECCIONES: Seccion[] = [
     icono: Receipt,
     items: [
       { href: '/facturas', permiso: 'ventas.ver', texto: 'Facturas y notas', icono: Receipt, funcion: 'facturacion' },
+      {
+        href: '/facturas/recurrentes',
+        permiso: 'ventas.ver',
+        texto: 'Facturas recurrentes',
+        icono: Repeat,
+        funcion: 'facturacion',
+      },
+      {
+        href: '/facturas/masiva',
+        permiso: 'ventas.facturar',
+        texto: 'Facturación masiva',
+        icono: FileSpreadsheet,
+        funcion: 'facturacion',
+      },
       { href: '/cobranzas', permiso: 'ventas.ver', texto: 'Cobranzas', icono: Wallet, funcion: 'facturacion' },
       { href: '/cobranzas/caja', permiso: 'ventas.ver', texto: 'Cierre de caja', icono: Calculator, funcion: 'facturacion' },
       {
