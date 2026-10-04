@@ -11,6 +11,7 @@ import { decimal, primerError } from '../comercial/documentos'
 import { siguienteNumero } from '../comercial/numeracion'
 import { resolverCuenta } from '../tesoreria/cuentas'
 import { MEDIOS_COBRO_CON_CUENTA } from '../tesoreria/medios'
+import { avisarCobranza, avisarSaldado } from './eventos'
 import { MEDIOS } from './medios'
 
 /**
@@ -123,6 +124,8 @@ export async function imputar(
       fecha,
     })),
   )
+  for (const d of validos)
+    if (monto(d.importe).eq(deuda.get(d.comprobanteId)!.saldo)) await avisarSaldado(tx, d.comprobanteId, origen)
   await auditar(tx, {
     usuarioId,
     accion: 'alta',
@@ -340,6 +343,7 @@ export async function emitirRecibo(
   // Si la imputación no cierra, se revierte todo el recibo (y el número).
   if (!r.ok) throw new ReciboInvalido(r.error)
   await auditar(tx, { usuarioId, accion: 'emision', entidad: 'recibo', entidadId: recibo.id, despues: { numero, ...d } })
+  await avisarCobranza(tx, 'cobranza.registrada', recibo.id)
   return { ok: true, id: recibo.id, numero }
 }
 
@@ -354,6 +358,7 @@ export async function anularRecibo(tx: Transaccion, usuarioId: string, id: strin
   if (cerrado) return { ok: false as const, error: cerrado }
   await tx.update(recibos).set({ estado: 'anulado', anulado: new Date(), anuladoPor: usuarioId }).where(eq(recibos.id, id))
   await auditar(tx, { usuarioId, accion: 'anulacion', entidad: 'recibo', entidadId: id, antes: { estado: r.estado } })
+  await avisarCobranza(tx, 'cobranza.anulada', id)
   return { ok: true as const }
 }
 

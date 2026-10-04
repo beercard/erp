@@ -928,6 +928,12 @@ export const GUIAS: Guia[] = [
         titulo: 'Webhooks',
         texto: [
           'Agregá la dirección https de tu sistema y elegí los eventos. Cada aviso va firmado en el encabezado X-ERP-Firma con el secreto que se muestra al crearlo; verificá la firma antes de procesarlo. Si tu sistema no responde, se reintenta hasta 8 veces.',
+          'Para facturación y cobranzas:',
+          '- comprobante.autorizado: ARCA autorizó una factura o nota. Trae número, CAE, total, cliente y la "referencia" que mandaste al crearla por la API.',
+          '- cobranza.registrada: se emitió un recibo (también los de cobros online), con sus medios de pago y a qué facturas se aplicó.',
+          '- comprobante.saldado: una factura quedó sin deuda. Es el aviso para marcar un pedido como pagado en tu sistema.',
+          '- cobranza.anulada: se anuló un recibo y la deuda que cancelaba vuelve.',
+          'Los avisos salen solo si la operación se guardó: si algo falla y se revierte, no llega nada.',
         ],
       },
     ],
