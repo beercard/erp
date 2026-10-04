@@ -81,7 +81,7 @@ export const GUIAS: Guia[] = [
       {
         titulo: 'Cargá clientes y artículos',
         texto: [
-          'Desde Maestros → Clientes y proveedores y Artículos y precios. Con el servicio de padrón activo, al cargar un CUIT el sistema completa los datos solo. Si venís de otro sistema y tenés muchos registros, escribinos y te ayudamos con la migración.',
+          'Desde Maestros → Clientes y proveedores y Artículos y precios. Con el servicio de padrón activo, al cargar un CUIT el sistema completa los datos solo. Si venís de otro sistema o de Excel, importalos en bloque: ver la guía "Importar desde planillas".',
         ],
       },
       {
@@ -95,7 +95,67 @@ export const GUIAS: Guia[] = [
         ],
       },
     ],
-    relacionadas: ['arca', 'punto-de-venta', 'usuarios', 'diseno-factura'],
+    relacionadas: ['arca', 'importar', 'punto-de-venta', 'usuarios', 'diseno-factura'],
+  },
+  {
+    id: 'importar',
+    titulo: 'Importar desde planillas',
+    resumen:
+      'Clientes, proveedores, artículos con precio y stock, y saldos iniciales desde Excel o CSV, sin cargarlos uno por uno.',
+    categoria: 'inicio',
+    minutos: 30,
+    quien: 'Quien pueda cargar clientes o artículos (los saldos, quien administre la empresa)',
+    pantalla: { href: '/configuracion/importar', texto: 'Ir a Importar desde planillas' },
+    antes: [
+      'Los listados exportados del sistema anterior, en Excel (.xlsx) o CSV. Hasta 2.000 filas y 5 MB por archivo.',
+      'Los saldos de cuentas corrientes a una fecha de corte (por ejemplo, el último día del mes anterior).',
+    ],
+    pasos: [
+      {
+        titulo: 'Descargá la planilla modelo',
+        texto: [
+          'Cada sección tiene la suya, con un ejemplo y una hoja que explica cada columna. Podés usar tu propia planilla: lo que cuenta es el nombre de la columna en la primera fila (sin importar mayúsculas ni acentos).',
+        ],
+      },
+      {
+        titulo: 'Primero clientes y proveedores',
+        texto: [
+          'Se buscan por CUIT o DNI: si ya existen, se actualizan con lo que traiga la planilla y lo vacío no se toca. Así podés importar dos veces sin duplicar.',
+          '- La condición frente al IVA admite "RI", "Monotributo", "Exento" o "Consumidor final".',
+          '- La columna tipo dice si es cliente, proveedor o ambos.',
+        ],
+      },
+      {
+        titulo: 'Después los artículos',
+        texto: [
+          'Se buscan por código. El precio va a la lista general con vigencia desde hoy; los rubros y marcas que no existan se crean. El stock inicial entra solo en los artículos nuevos, en el primer depósito.',
+        ],
+      },
+      {
+        titulo: 'Por último los saldos iniciales',
+        texto: [
+          'Una fila por cliente o proveedor con lo que se debe a la fecha de corte. Positivo es deuda; negativo, saldo a favor. Entra como saldo inicial: aparece en la cuenta corriente y se cancela con cobranzas y pagos, pero no va al Libro IVA ni a la contabilidad.',
+        ],
+        ojo: 'Cada cliente o proveedor admite un solo saldo importado, para que importar dos veces no duplique la deuda. Revisá bien la vista previa antes de confirmar.',
+      },
+      {
+        titulo: 'Revisá y confirmá',
+        texto: [
+          'Al subir el archivo ves cuántas altas y actualizaciones habrá y qué filas tienen errores (con el número de fila de la planilla). Nada se guarda hasta que tocás "Importar". Las filas con errores se saltean: corregilas y subí solo esas.',
+        ],
+      },
+    ],
+    problemas: [
+      {
+        sintoma: 'Todas las filas dicen "Falta la razón social" o "Falta el código"',
+        solucion: 'La primera fila tiene que tener los títulos de las columnas. Compará con la planilla modelo.',
+      },
+      {
+        sintoma: 'Un saldo dice que no existe el cliente o proveedor',
+        solucion: 'Importá antes clientes y proveedores, o revisá que el CUIT sea el mismo.',
+      },
+    ],
+    relacionadas: ['primeros-pasos'],
   },
   {
     id: 'seguridad',

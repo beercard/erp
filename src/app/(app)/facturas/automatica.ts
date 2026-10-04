@@ -4,8 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { enLaEmpresa, exigirPermiso, SinPermiso } from '@/lib/auth/servidor'
-import { leerCsv } from '@/lib/csv'
-import { leerXlsx } from '@/lib/xlsx'
+import { leerPlanillaSubida } from '@/lib/planillaSubida'
 import { clienteArca } from '@/modulos/arca/cliente'
 import {
   activarRecurrente,
@@ -15,7 +14,7 @@ import {
   eliminarRecurrente,
   guardarRecurrente,
 } from '@/modulos/facturacion/automatica'
-import { aFacturaDeLote, leerPlanillaFacturas, registrosDeFilas, type FacturaExterna } from '@/modulos/facturacion/externa'
+import { aFacturaDeLote, leerPlanillaFacturas, type FacturaExterna } from '@/modulos/facturacion/externa'
 
 /**
  * Acciones de la facturación automática: facturas recurrentes y facturación
@@ -71,26 +70,12 @@ export type Vista = {
 /** Lee la planilla y devuelve lo que se va a facturar, para revisar antes de armar el lote. */
 export async function leerPlanillaAccion(_: Vista | undefined, fd: FormData): Promise<Vista> {
   await exigirPermiso('ventas.facturar')
-  const archivo = fd.get('planilla')
-  if (!(archivo instanceof File) || !archivo.size) return { error: 'Elegí la planilla (.xlsx o .csv).' }
-  if (archivo.size > 5 * 1024 * 1024) return { error: 'La planilla pesa más de 5 MB.' }
-  const bytes = new Uint8Array(await archivo.arrayBuffer())
-  let registros: Record<string, string>[]
-  try {
-    if (/\.xlsx$/i.test(archivo.name)) registros = registrosDeFilas(await leerXlsx(bytes))
-    else {
-      const texto = new TextDecoder().decode(bytes)
-      const primera = texto.split(/\r?\n/, 1)[0] ?? ''
-      const separador = primera.includes(';') ? ';' : primera.includes('\t') ? '\t' : ','
-      registros = leerCsv(texto, separador)
-    }
-  } catch {
-    return { error: 'No se pudo leer la planilla: guardala como .xlsx o .csv y probá de nuevo.' }
-  }
-  if (registros.length > 2000) return { error: 'Van hasta 2.000 filas por planilla.' }
+  const l = await leerPlanillaSubida(fd.get('planilla'))
+  if (!l.ok) return { error: l.error }
+  const { registros } = l
   const r = leerPlanillaFacturas(registros)
   if (r.facturas.length > 500) return { error: 'Van hasta 500 facturas por planilla: partila en varias.' }
-  return { nombre: archivo.name, ...r }
+  return { nombre: l.nombre, ...r }
 }
 
 export async function crearLoteAccion(datos: {

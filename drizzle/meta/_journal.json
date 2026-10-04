@@ -659,6 +659,13 @@
       "when": 1791074525904,
       "tag": "0093_precios_fecha_argentina",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1791075027267,
+      "tag": "0094_compras_origen_planilla",
+      "breakpoints": true
     }
   ]
 }
