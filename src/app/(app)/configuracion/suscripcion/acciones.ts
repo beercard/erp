@@ -27,8 +27,8 @@ export async function cambiarSuscripcionAccion(_: EstadoSuscripcion, formData: F
   revalidatePath('/', 'layout')
   return {
     ok: r.aplicado
-      ? 'Listo: la suscripción ya tiene los cambios.'
-      : 'Recibimos el pedido. Te mandamos el enlace de pago y, apenas se acredita, el cambio queda aplicado.',
+      ? 'Listo: la suscripción ya tiene los cambios. Si tenés débito automático, los próximos cobros ya son por el importe nuevo.'
+      : 'Listo. Tocá "Pagar con Mercado Pago" para autorizar el débito: el plan se activa apenas se acredita el primer pago.',
   }
 }
 

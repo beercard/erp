@@ -18,6 +18,7 @@ import {
 } from '../../db/schema'
 import { codigoLibre } from './codigos'
 import { PREPARAR_RUBRO } from './rubros'
+import { cambiarImporteDebito, cancelarDebito, importeDebito } from './debito'
 import { encolarFacturaSuscripcion } from './facturasSuscripcion'
 import { rubroPorId } from '../../lib/rubros'
 import { mensajeDeBase } from '../../lib/errores'
@@ -236,6 +237,7 @@ export async function pedirCambio(
   usuarioId: string,
   entrada: unknown,
   hoy = hoyArgentina(),
+  f: typeof fetch = fetch,
 ): Promise<ResultadoCambio> {
   const p = EsquemaCambio.safeParse(entrada)
   if (!p.success) return { ok: false, error: p.error.issues[0].message }
@@ -265,8 +267,33 @@ export async function pedirCambio(
     }
   }
 
-  const enPrueba = actual.estado === 'prueba'
-  const aplicarYa = enPrueba || plan.precioMensual === 0
+  /*
+   * Cuándo se aplica:
+   * - El plan gratis, en el acto (y se cancela el débito, si había).
+   * - Con débito automático activo y el mismo ciclo: se actualiza el importe en
+   *   Mercado Pago y se aplica en el acto (los próximos cobros ya son del plan nuevo).
+   * - Si no (en la prueba, pagando por transferencia o cambiando de ciclo): queda
+   *   pedido y se aplica con el primer pago que lo cubre. La prueba es siempre del
+   *   plan Inicial: elegir un plan pago no lo habilita gratis.
+   */
+  const gratis = plan.precioMensual === 0
+  const conDebito = Boolean(actual.mpSuscripcion) && actual.mpEstado === 'authorized' && actual.estado !== 'prueba'
+  let aplicarYa = gratis
+  let mpEstado = actual.mpEstado
+  if (actual.mpSuscripcion && process.env.MP_ACCESS_TOKEN) {
+    try {
+      if (gratis && conDebito) {
+        await cancelarDebito(f, actual.mpSuscripcion)
+        mpEstado = 'cancelled'
+      } else if (!gratis && conDebito && pedido.ciclo === actual.ciclo) {
+        const importe = importeDebito({ ...pedido, precioAcordado: pedido.plan === actual.plan ? actual.precioAcordado : null })
+        await cambiarImporteDebito(f, actual.mpSuscripcion, importe)
+        aplicarYa = true
+      }
+    } catch {
+      return { ok: false, error: 'Mercado Pago no respondió al actualizar el débito automático. Probá de nuevo en unos minutos.' }
+    }
+  }
   await comoPlataforma(async (tx) => {
     if (aplicarYa) {
       await tx
@@ -277,7 +304,7 @@ export async function pedirCambio(
           aplicaciones: plan.admiteAplicaciones ? pedido.aplicaciones : [],
           usuariosAdicionales: pedido.usuariosAdicionales,
           // El plan gratis no vence.
-          ...(plan.precioMensual === 0 ? { estado: 'activa', pruebaHasta: null, pagadoHasta: null } : {}),
+          ...(gratis ? { estado: 'activa', pruebaHasta: null, pagadoHasta: null, mpEstado } : {}),
           actualizado: new Date(),
         })
         .where(eq(suscripciones.empresaId, empresaId))

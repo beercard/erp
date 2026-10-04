@@ -62,9 +62,15 @@ ERP en la nube para pymes argentinas, vendido como servicio (SaaS). El primer cl
 - **Límites:** se controlan al invitar usuarios, al pedir un CAE y al dar de alta un punto de venta electrónico (`controlarLimite`).
 - **Alta:** `/registro` crea la cuenta, la empresa y 15 días de prueba del plan Inicial más la aplicación de su rubro (`DIAS_DE_PRUEBA` y `PLAN_DE_PRUEBA` en `src/lib/planes.ts`). Quien ya tiene cuenta crea otra empresa desde "Elegir empresa".
 - **Cambios de plan:**
-  - Durante la prueba, o al pasar al plan gratis, se aplican en el momento.
-  - Si hay que cobrar, quedan como pedido y la plataforma los confirma al registrar el pago.
-  - El cobro automático (Mercado Pago Suscripciones) es el paso siguiente.
+  - Al plan gratis: en el momento, y se cancela el débito de Mercado Pago si había.
+  - Con débito automático activo y el mismo ciclo: se actualiza el importe del débito en Mercado Pago y se aplica en el
+    momento (`cambiarImporteDebito` en `plataforma/debito.ts`).
+  - En la prueba (que es siempre del plan Inicial), pagando por transferencia o cambiando de ciclo: queda como pedido y
+    se aplica con el primer pago que lo cubre (débito de Mercado Pago) o cuando la plataforma lo confirma.
+  - Un débito nuevo cancela antes el anterior (si no, un cobro del viejo no se podría registrar).
+- **Cobro:** débito automático de Mercado Pago (preapproval sin plan): `crearDebito` → la persona autoriza en Mercado
+  Pago → cada cobro avisa a `/api/pagos/mercadopago` → `registrarPago` corre `pagado_hasta` y deja pendiente la factura
+  de Vektra (`facturas_suscripcion`). Baja: `plataforma/baja.ts` (cancela el débito, consulta desde el fin del período).
 - **Consola de la plataforma:** `/plataforma`, solo para usuarios con `admin_plataforma`. Tiene menú lateral con estas secciones:
   - **Resumen:** ingreso mensual recurrente, conversión de la prueba, cobrado y altas por mes, y vencimientos de la semana.
   - **Empresas:** buscador y ficha de cada una. La ficha tiene suscripción, pagos, notas internas, suspender o reactivar, extender la prueba, dar de baja, usuarios, invitaciones y últimos ingresos.

@@ -127,7 +127,7 @@ export default async function Suscripcion({ searchParams }: PageProps<'/configur
           )}
           {mpConfigurado() && (precio > 0 || pendiente) && tienePermiso(sesion.permisos, 'empresa.suscripcion') && (
             <div className="flex flex-wrap items-center gap-3 border-t border-borde pt-3">
-              {s.mpEstado === 'authorized' ? (
+              {s.mpEstado === 'authorized' && !(pendiente && (pendiente.detalle as { ciclo?: string }).ciclo !== s.ciclo) ? (
                 <Chip tono="ok">Débito automático de Mercado Pago activo</Chip>
               ) : (
                 <>

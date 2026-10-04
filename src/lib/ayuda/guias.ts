@@ -580,7 +580,7 @@ export const GUIAS: Guia[] = [
       {
         titulo: 'Cambiar de plan o sumar aplicaciones',
         texto: [
-          'En "Cambiar la suscripción" elegí el plan, las aplicaciones, los usuarios adicionales y la forma de pago (mensual o anual, que paga 10 meses). En la prueba se aplica al instante; si no, se aplica al acreditarse el pago.',
+          'En "Cambiar la suscripción" elegí el plan, las aplicaciones, los usuarios adicionales y la forma de pago (mensual o anual, que paga 10 meses). Durante la prueba seguís con el plan Inicial: el plan elegido se activa con el primer pago. Si ya pagás con débito automático y mantenés el ciclo, el cambio es inmediato y el débito pasa al importe nuevo.',
         ],
       },
       {
