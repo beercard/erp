@@ -3,7 +3,8 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-import { controlarEnvio, MENSAJE_BOT } from '@/lib/antibots'
+import { mensajeBot } from '@/lib/antibots'
+import { controlarEnvio } from '@/lib/antibotsServidor'
 import { ipDe } from '@/lib/auth/servidor'
 import { pedirRecuperacion, usarRecuperacion } from '@/lib/auth/recuperar'
 import { anotar, claveIp, superado } from '@/lib/frenos'
@@ -25,7 +26,10 @@ export async function pedirAccion(_: Estado, fd: FormData): Promise<Estado> {
     .toLowerCase()
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: 'Escribí un email válido.' }
   const bot = await controlarEnvio(fd, ipDe(await headers()))
-  if (bot) return bot === 'trampa' ? { ok: RESPUESTA } : { error: MENSAJE_BOT }
+  if (bot) {
+    console.warn('[recuperar] rechazado por', bot)
+    return bot === 'trampa' ? { ok: RESPUESTA } : { error: mensajeBot(bot) }
+  }
   // Un correo por email cada 15 minutos y pocos por conexión: no sirve para llenarle la casilla a nadie.
   const porEmail = `recuperar:${email}`
   const ip = claveIp('recuperar', ipDe(await headers()))

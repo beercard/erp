@@ -72,8 +72,8 @@ Pone al día órdenes vencidas, preventivos, avisos, SLA y recordatorios; avisa 
 
 ## 6. ARCA en producción
 
-1. Empezar por **homologación** (Configuración › ARCA explica cómo sacar el certificado de prueba) y emitir algunos comprobantes de prueba.
-2. Para producción: certificado desde "Administración de Certificados Digitales" y autorización del servicio `wsfe` en el Administrador de Relaciones, con la clave fiscal de la empresa.
+1. Empezar por **homologación**: en Configuración › ARCA, "Generar el pedido de certificado" (el sistema crea la clave, cifrada, y el CSR; `src/modulos/arca/pedido.ts`), subirlo en WSASS, cargar el .crt sin clave y emitir algunos comprobantes de prueba.
+2. Para producción: el mismo pedido (o uno nuevo) en "Administración de Certificados Digitales" y autorización del servicio `wsfe` en el Administrador de Relaciones, con la clave fiscal de la empresa. Quien prefiera su propia clave puede subir .crt y .key (opción "Avanzado").
 3. Crear un **punto de venta nuevo, exclusivo** para el ERP (tipo "RECE / Factura electrónica – Web Services").
 4. Subir el `.crt` y el `.key` en Configuración › ARCA, pasar a producción y probar la conexión.
 5. Emitir la primera factura real por un importe chico y verificarla en "Mis Comprobantes".

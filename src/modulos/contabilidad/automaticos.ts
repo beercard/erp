@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, isNotNull, lte, ne, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, isNotNull, lte, ne, notInArray, sql, type SQL } from 'drizzle-orm'
 
 import type { Transaccion } from '../../db/conexion'
 import {
@@ -47,6 +47,9 @@ type Resultado = {
 }
 
 class FaltaCuenta extends Error {}
+
+/** Saldos migrados (de PYMEXIS o de una planilla): ya están en la contabilidad anterior, no se vuelven a asentar. */
+const ORIGENES_MIGRADOS = ['pymexis', 'planilla']
 
 const SIN_ASIENTO = (origen: Origen, columna: SQL | unknown) =>
   sql`not exists (select 1 from asientos a where a.origen = ${origen} and a.origen_id = ${columna} and a.revierte_id is null and a.estado = 'registrado')`
@@ -202,7 +205,7 @@ export async function contabilizar(
     .where(
       and(
         eq(comprobantes.estado, 'autorizado'),
-        ne(comprobantes.origen, 'pymexis'),
+        notInArray(comprobantes.origen, ORIGENES_MIGRADOS),
         gte(comprobantes.fecha, desde),
         lte(comprobantes.fecha, hasta),
         SIN_ASIENTO('venta', comprobantes.id),
@@ -243,7 +246,7 @@ export async function contabilizar(
       .where(
         and(
           eq(comprobantes.estado, 'autorizado'),
-          ne(comprobantes.origen, 'pymexis'),
+          notInArray(comprobantes.origen, ORIGENES_MIGRADOS),
           gte(comprobantes.fecha, config.inicio),
           sql`${comprobantes.fecha} < ${desde}`,
           SIN_ASIENTO('venta', comprobantes.id),
@@ -257,7 +260,12 @@ export async function contabilizar(
     .from(compras)
     .innerJoin(terceros, eq(terceros.id, compras.terceroId))
     .where(
-      and(gte(compras.fecha, desde), lte(compras.fecha, hasta), ne(compras.origen, 'pymexis'), SIN_ASIENTO('compra', compras.id)),
+      and(
+        gte(compras.fecha, desde),
+        lte(compras.fecha, hasta),
+        notInArray(compras.origen, ORIGENES_MIGRADOS),
+        SIN_ASIENTO('compra', compras.id),
+      ),
     )
     .orderBy(asc(compras.fecha))
     .limit(limite)
@@ -610,7 +618,7 @@ export async function pendientesDeContabilizar(tx: Transaccion, hasta = hoyArgen
         .where(
           and(
             eq(comprobantes.estado, 'autorizado'),
-            ne(comprobantes.origen, 'pymexis'),
+            notInArray(comprobantes.origen, ORIGENES_MIGRADOS),
             gte(comprobantes.fecha, desde),
             lte(comprobantes.fecha, hasta),
             SIN_ASIENTO('venta', comprobantes.id),
@@ -624,7 +632,7 @@ export async function pendientesDeContabilizar(tx: Transaccion, hasta = hoyArgen
         .where(
           and(
             eq(compras.estado, 'registrado'),
-            ne(compras.origen, 'pymexis'),
+            notInArray(compras.origen, ORIGENES_MIGRADOS),
             gte(compras.fecha, desde),
             lte(compras.fecha, hasta),
             SIN_ASIENTO('compra', compras.id),

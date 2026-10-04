@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
   // Las acciones del servidor solo se aceptan desde el mismo origen (por
   // defecto en Next); no se agregan orígenes extra.
   poweredByHeader: false,
+  experimental: {
+    // Las planillas de importación y de facturación masiva llegan hasta 5 MB (planillaSubida.ts); el tope de Next es 1 MB.
+    serverActions: { bodySizeLimit: '6mb' },
+  },
   // Solo en desarrollo: hosts extra para probar los subdominios de empresas
   // (por ejemplo DEV_ORIGENES=erp.prueba,*.erp.prueba).
   allowedDevOrigins: process.env.DEV_ORIGENES?.split(',').filter(Boolean),

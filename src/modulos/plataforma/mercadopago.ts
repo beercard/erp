@@ -1,12 +1,13 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import { comoPlataforma } from '../../db/empresa'
 import { eventosSuscripcion, suscripciones } from '../../db/schema'
-import { MESES_COBRADOS_EN_ANUAL, planPorId, precioDeLista, type DatosSuscripcion } from '../../lib/planes'
+import { planPorId } from '../../lib/planes'
 import { pedirJson } from '../tiendas/http'
 import type { Fetch } from '../tiendas/tipos'
+import { cabecerasMp, cancelarDebito, importeDebito } from './debito'
 import { registrarPago, resolverPedido } from './suscripciones'
 
 /**
@@ -20,24 +21,12 @@ import { registrarPago, resolverPedido } from './suscripciones'
  */
 
 const API = 'https://api.mercadopago.com'
-const IVA = 1.21
 
 export const mpConfigurado = () => Boolean(process.env.MP_ACCESS_TOKEN && process.env.MP_WEBHOOK_SECRET)
 
-const cabeceras = () => ({
-  authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`,
-  'content-type': 'application/json',
-  accept: 'application/json',
-})
+const cabeceras = cabecerasMp
 
-/** Lo que se debita cada vez, con IVA: un mes, o en el anual diez meses por año. */
-export function importeDebito(
-  s: Pick<DatosSuscripcion, 'plan' | 'aplicaciones' | 'usuariosAdicionales'> & { ciclo: string; precioAcordado: string | null },
-) {
-  const mensual = s.precioAcordado ? Number(s.precioAcordado) : precioDeLista(s)
-  const neto = s.ciclo === 'anual' ? mensual * MESES_COBRADOS_EN_ANUAL : mensual
-  return Math.round(neto * IVA * 100) / 100
-}
+export { importeDebito }
 
 /**
  * Crea el débito automático y devuelve la dirección de Mercado Pago donde la
@@ -55,6 +44,14 @@ export async function crearDebito(
   const plan = planPorId(d.suscripcion.plan)
   const monto = importeDebito(d.suscripcion)
   if (monto <= 0) throw new Error('El plan gratis no se cobra.')
+  // Un débito anterior que siga vivo se cancela antes: si llegara a cobrar, ese cobro no se podría registrar.
+  const [previo] = await comoPlataforma((tx) =>
+    tx
+      .select({ id: suscripciones.mpSuscripcion, estado: suscripciones.mpEstado })
+      .from(suscripciones)
+      .where(eq(suscripciones.empresaId, d.empresaId)),
+  )
+  if (previo?.id && previo.estado !== 'cancelled') await cancelarDebito(f, previo.id)
   const r = await pedirJson<{ id: string; init_point: string }>(f, `${API}/preapproval`, {
     method: 'POST',
     headers: cabeceras(),

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   boolean,
   date,
@@ -255,7 +256,11 @@ export const precios = pgTable(
      */
     moneda: text('moneda').references(() => monedas.codigo),
     /** Queda el historial: el precio vigente es el de mayor vigente_desde <= hoy. */
-    vigenteDesde: date('vigente_desde').notNull().defaultNow(),
+    // Fecha de negocio en hora argentina: con now() a secas, de 21 a 24 h quedaba el día siguiente (UTC) y el precio recién
+    // cargado no estaba vigente hasta mañana.
+    vigenteDesde: date('vigente_desde')
+      .notNull()
+      .default(sql`(now() at time zone 'America/Argentina/Buenos_Aires')::date`),
     ...marcasDeTiempo(),
   },
   (t) => [

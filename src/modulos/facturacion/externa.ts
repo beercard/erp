@@ -142,7 +142,8 @@ const COLUMNAS: Record<string, string> = {
   descuento: 'descuento',
 }
 
-const clave = (v: string) =>
+/** Nombre de columna normalizado: sin tildes, en minúscula y con guiones bajos. */
+export const clave = (v: string) =>
   v
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
@@ -190,14 +191,7 @@ function conceptoDePlanilla(v: string): number | undefined {
   return 1
 }
 
-/** Una planilla como lista de registros { columna: valor } a partir de filas (la primera es la cabecera). */
-export function registrosDeFilas(filas: string[][]): Record<string, string>[] {
-  const [cabecera, ...resto] = filas
-  if (!cabecera) return []
-  return resto
-    .filter((f) => f.some((c) => String(c ?? '').trim()))
-    .map((f) => Object.fromEntries(cabecera.map((n, i) => [n, String(f[i] ?? '')])))
-}
+export { registrosDeFilas } from '../../lib/planillaSubida'
 
 /**
  * Lee una planilla de facturas: un renglón por fila. Las filas con el mismo

@@ -59,6 +59,14 @@ export const arcaConfiguracion = pgTable(
     certificado: text('certificado'),
     claveCifrada: text('clave_cifrada'),
     certificadoVence: timestamp('certificado_vence', { withTimezone: true }),
+    /**
+     * Pedido de certificado generado en el sistema: la clave privada nueva
+     * (cifrada, igual que la vigente) y el CSR para subir a ARCA. Al cargar el
+     * certificado que devuelve ARCA, la clave pasa a ser la vigente.
+     */
+    clavePendienteCifrada: text('clave_pendiente_cifrada'),
+    pedidoCsr: text('pedido_csr'),
+    pedidoCreado: timestamp('pedido_creado', { withTimezone: true }),
     /** Consumidor final: desde este total hay que identificar al comprador. */
     umbralConsumidorFinal: importe('umbral_consumidor_final').notNull().default('10000000'),
     /** RG 5762/2025: comun | sujeta_retencion (A con códigos 51 a 53) | cbu_informada. */

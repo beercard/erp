@@ -172,7 +172,7 @@ export const compras = pgTable(
     unique('compras_empresa_id').on(t.empresaId, t.id),
     check('compras_clase', sql`${t.clase} in ('factura', 'nota_debito', 'nota_credito')`),
     check('compras_estado', sql`${t.estado} in ('registrado', 'anulado')`),
-    check('compras_origen', sql`${t.origen} in ('erp', 'mis_comprobantes', 'pymexis')`),
+    check('compras_origen', sql`${t.origen} in ('erp', 'mis_comprobantes', 'pymexis', 'planilla')`),
     check('compras_periodo', sql`${t.periodoIva} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
     deLaEmpresa('compras_tercero_fk', t.empresaId, t.terceroId, terceros),
     deLaEmpresa('compras_deposito_fk', t.empresaId, t.depositoId, depositos),

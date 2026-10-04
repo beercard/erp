@@ -1,0 +1,2 @@
+ALTER TABLE "compras" DROP CONSTRAINT "compras_origen";--> statement-breakpoint
+ALTER TABLE "compras" ADD CONSTRAINT "compras_origen" CHECK ("compras"."origen" in ('erp', 'mis_comprobantes', 'pymexis', 'planilla'));

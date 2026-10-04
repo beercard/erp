@@ -5,7 +5,7 @@ import { eventosSuscripcion, suscripciones } from '../../db/schema'
 import { hoyArgentina, sumarDias } from '../../lib/fechas'
 import { MARCA } from '../../lib/marca'
 import { enviarDePlataforma } from '../comunicaciones/correo'
-import { pedirJson } from '../tiendas/http'
+import { cancelarDebito } from './debito'
 
 /**
  * Baja de la suscripción pedida por la propia empresa ("botón de baja"): se
@@ -16,19 +16,6 @@ import { pedirJson } from '../tiendas/http'
 
 type Fetch = typeof fetch
 const dma = (f: string) => f.split('-').reverse().join('/')
-
-/** Cancela el débito automático en Mercado Pago. */
-async function cancelarDebito(f: Fetch, id: string) {
-  await pedirJson(f, `https://api.mercadopago.com/preapproval/${encodeURIComponent(id)}`, {
-    method: 'PUT',
-    headers: {
-      authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`,
-      'content-type': 'application/json',
-      accept: 'application/json',
-    },
-    body: JSON.stringify({ status: 'cancelled' }),
-  })
-}
 
 export async function pedirBaja(
   empresaId: string,

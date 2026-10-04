@@ -40,7 +40,7 @@ Lo anterior a la fecha de inicio se carga con un **asiento manual de apertura** 
 
 - Moneda extranjera: los comprobantes, compras y pagos se pasan a pesos con su cotización; los centavos que deja el redondeo van a "Diferencias de redondeo". Los movimientos de cajas en dólares no tienen cotización: quedan como pendientes para asentar a mano.
 - Lo de fechas ya bloqueadas no se asienta: se informa como pendiente.
-- Los comprobantes importados de Pymexis no se contabilizan (son historia anterior).
+- Los comprobantes importados de Pymexis y los saldos iniciales cargados desde planillas (`origen = 'planilla'`) no se contabilizan: son historia anterior (`ORIGENES_MIGRADOS` en `contabilidad/automaticos.ts`).
 
 ## Liquidación de IVA
 

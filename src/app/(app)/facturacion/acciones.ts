@@ -9,10 +9,17 @@ import { enLaEmpresa, exigirPermiso, SinPermiso } from '@/lib/auth/servidor'
 import { auditar } from '@/lib/auditoria'
 import { normalizarNumero } from '@/lib/dinero'
 import { cifrar, revisarCertificado } from '@/modulos/arca/certificado'
+import { claveDelCertificado, generarPedido } from '@/modulos/arca/pedido'
 import { clienteArca, probarServidores } from '@/modulos/arca/cliente'
-import { eliminarBorrador, emitirComprobante, guardarComprobante, verificarComprobante } from '@/modulos/facturacion/comprobantes'
+import {
+  eliminarBorrador,
+  emitirComprobante,
+  empresaEmisora,
+  guardarComprobante,
+  verificarComprobante,
+} from '@/modulos/facturacion/comprobantes'
 import { anularRecibo, emitirRecibo, pendientes, ReciboInvalido } from '@/modulos/facturacion/cuentas'
-import { REGIMENES_CLASE_A } from '@/modulos/facturacion/tipos'
+import { emiteClaseA, percibeIibb, REGIMENES_CLASE_A } from '@/modulos/facturacion/tipos'
 
 /** Ejecuta y convierte "sin permiso" en un mensaje para el usuario. */
 async function intentar<T>(trabajo: () => Promise<T>): Promise<T | { ok: false; error: string }> {
@@ -110,13 +117,35 @@ async function textoDeArchivo(valor: FormDataEntryValue | null): Promise<string>
 
 export async function guardarCertificadoAccion(_: EstadoFormulario, formData: FormData): Promise<EstadoFormulario> {
   const certificado = await textoDeArchivo(formData.get('certificado'))
-  const clave = await textoDeArchivo(formData.get('clave'))
+  const claveSubida = await textoDeArchivo(formData.get('clave'))
   const ambiente = formData.get('ambiente') === 'produccion' ? 'produccion' : 'homologacion'
-  if (!certificado || !clave) return { error: 'Subí los dos archivos: el certificado (.crt) y la clave privada (.key).' }
-  const revision = revisarCertificado(certificado, clave)
-  if (!revision.ok) return { error: revision.error }
+  if (!certificado) return { error: 'Subí el certificado (.crt) que descargaste de ARCA.' }
   const r = await intentar(() =>
     enLaEmpresa('empresa.datos', async (tx, s) => {
+      // Sin clave subida: la del pedido generado en el sistema (o la vigente, si se renovó con el mismo pedido).
+      let clave = claveSubida
+      let dePedido = false
+      if (!clave) {
+        const [actual] = await tx
+          .select({
+            clavePendienteCifrada: arcaConfiguracion.clavePendienteCifrada,
+            claveCifrada: arcaConfiguracion.claveCifrada,
+          })
+          .from(arcaConfiguracion)
+        const encontrada = claveDelCertificado(certificado, actual)
+        if (!encontrada) {
+          return {
+            ok: false as const,
+            error: actual?.clavePendienteCifrada
+              ? 'Este certificado no corresponde al pedido generado acá. Revisá que hayas subido a ARCA el último pedido, o subí también la clave privada con la que lo pediste.'
+              : 'Subí también la clave privada (.key), o generá el pedido desde acá para no necesitarla.',
+          }
+        }
+        clave = encontrada.clavePem
+        dePedido = encontrada.dePedido
+      }
+      const revision = revisarCertificado(certificado, clave)
+      if (!revision.ok) return revision
       if (revision.datos.cuit && revision.datos.cuit !== s.empresa.cuit) {
         return { ok: false as const, error: `El certificado es del CUIT ${revision.datos.cuit}, no de esta empresa.` }
       }
@@ -126,7 +155,14 @@ export async function guardarCertificadoAccion(_: EstadoFormulario, formData: Fo
       } catch (e) {
         return { ok: false as const, error: (e as Error).message }
       }
-      const valores = { ambiente, certificado, claveCifrada, certificadoVence: revision.datos.vence }
+      const valores = {
+        ambiente,
+        certificado,
+        claveCifrada,
+        certificadoVence: revision.datos.vence,
+        // El pedido ya se usó: su clave es ahora la vigente. El CSR queda, para pedir con él el certificado del otro ambiente.
+        ...(dePedido ? { clavePendienteCifrada: null } : {}),
+      }
       await tx.insert(arcaConfiguracion).values(valores).onConflictDoUpdate({ target: arcaConfiguracion.empresaId, set: valores })
       // Con otro certificado, el ticket anterior ya no sirve.
       await tx.delete(arcaTickets)
@@ -134,7 +170,7 @@ export async function guardarCertificadoAccion(_: EstadoFormulario, formData: Fo
         usuarioId: s.usuario.id,
         accion: 'modificacion',
         entidad: 'arca_certificado',
-        despues: { ambiente, vence: revision.datos.vence, titular: revision.datos.titular },
+        despues: { ambiente, vence: revision.datos.vence, titular: revision.datos.titular, dePedido },
       })
       return { ok: true as const }
     }),
@@ -142,6 +178,14 @@ export async function guardarCertificadoAccion(_: EstadoFormulario, formData: Fo
   if (!r.ok) return { error: r.error }
   revalidatePath('/configuracion/arca')
   return { ok: 'Certificado guardado. La clave privada quedó cifrada.' }
+}
+
+/** Genera en el servidor la clave privada y el pedido de certificado (CSR) para subir a ARCA. */
+export async function generarPedidoAccion(): Promise<EstadoFormulario> {
+  const r = await intentar(() => enLaEmpresa('empresa.datos', (tx, s) => generarPedido(tx, s.usuario.id)))
+  if (!r.ok) return { error: r.error }
+  revalidatePath('/configuracion/arca')
+  return { ok: 'Pedido generado. Bajalo o copialo y subilo en ARCA.' }
 }
 
 export async function cambiarAmbienteAccion(ambiente: 'homologacion' | 'produccion') {
@@ -161,6 +205,9 @@ export async function guardarRegimenAccion(_: EstadoFormulario, formData: FormDa
   if (cbu && cbu.length !== 22) return { error: 'La CBU tiene 22 dígitos.' }
   const r = await intentar(() =>
     enLaEmpresa('empresa.datos', async (tx, s) => {
+      if (!emiteClaseA((await empresaEmisora(tx)).condicionIva)) {
+        return { ok: false as const, error: 'Solo los responsables inscriptos emiten comprobantes A.' }
+      }
       const valores = { regimenClaseA: regimen, cbuInformada: cbu || null }
       await tx.insert(arcaConfiguracion).values(valores).onConflictDoUpdate({ target: arcaConfiguracion.empresaId, set: valores })
       await auditar(tx, { usuarioId: s.usuario.id, accion: 'modificacion', entidad: 'arca_regimen_clase_a', despues: valores })
@@ -206,6 +253,9 @@ export async function guardarPercepcionAccion(_: EstadoFormulario, formData: For
   }
   const r = await intentar(() =>
     enLaEmpresa('empresa.datos', async (tx, s) => {
+      if (!percibeIibb((await empresaEmisora(tx)).condicionIva)) {
+        return { ok: false as const, error: 'Un monotributista no actúa como agente de percepción de Ingresos Brutos.' }
+      }
       const [actual] = await tx.select().from(percepcionesIibb).limit(1)
       if (actual) {
         await tx.update(percepcionesIibb).set(valores).where(eq(percepcionesIibb.id, actual.id))

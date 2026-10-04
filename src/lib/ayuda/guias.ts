@@ -81,7 +81,7 @@ export const GUIAS: Guia[] = [
       {
         titulo: 'Cargá clientes y artículos',
         texto: [
-          'Desde Maestros → Clientes y proveedores y Artículos y precios. Con el servicio de padrón activo, al cargar un CUIT el sistema completa los datos solo. Si venís de otro sistema y tenés muchos registros, escribinos y te ayudamos con la migración.',
+          'Desde Maestros → Clientes y proveedores y Artículos y precios. Con el servicio de padrón activo, al cargar un CUIT el sistema completa los datos solo. Si venís de otro sistema o de Excel, importalos en bloque: ver la guía "Importar desde planillas".',
         ],
       },
       {
@@ -95,7 +95,67 @@ export const GUIAS: Guia[] = [
         ],
       },
     ],
-    relacionadas: ['arca', 'punto-de-venta', 'usuarios', 'diseno-factura'],
+    relacionadas: ['arca', 'importar', 'punto-de-venta', 'usuarios', 'diseno-factura'],
+  },
+  {
+    id: 'importar',
+    titulo: 'Importar desde planillas',
+    resumen:
+      'Clientes, proveedores, artículos con precio y stock, y saldos iniciales desde Excel o CSV, sin cargarlos uno por uno.',
+    categoria: 'inicio',
+    minutos: 30,
+    quien: 'Quien pueda cargar clientes o artículos (los saldos, quien administre la empresa)',
+    pantalla: { href: '/configuracion/importar', texto: 'Ir a Importar desde planillas' },
+    antes: [
+      'Los listados exportados del sistema anterior, en Excel (.xlsx) o CSV. Hasta 2.000 filas y 5 MB por archivo.',
+      'Los saldos de cuentas corrientes a una fecha de corte (por ejemplo, el último día del mes anterior).',
+    ],
+    pasos: [
+      {
+        titulo: 'Descargá la planilla modelo',
+        texto: [
+          'Cada sección tiene la suya, con un ejemplo y una hoja que explica cada columna. Podés usar tu propia planilla: lo que cuenta es el nombre de la columna en la primera fila (sin importar mayúsculas ni acentos).',
+        ],
+      },
+      {
+        titulo: 'Primero clientes y proveedores',
+        texto: [
+          'Se buscan por CUIT o DNI: si ya existen, se actualizan con lo que traiga la planilla y lo vacío no se toca. Así podés importar dos veces sin duplicar.',
+          '- La condición frente al IVA admite "RI", "Monotributo", "Exento" o "Consumidor final".',
+          '- La columna tipo dice si es cliente, proveedor o ambos.',
+        ],
+      },
+      {
+        titulo: 'Después los artículos',
+        texto: [
+          'Se buscan por código. El precio va a la lista general con vigencia desde hoy; los rubros y marcas que no existan se crean. El stock inicial entra solo en los artículos nuevos, en el primer depósito.',
+        ],
+      },
+      {
+        titulo: 'Por último los saldos iniciales',
+        texto: [
+          'Una fila por cliente o proveedor con lo que se debe a la fecha de corte. Positivo es deuda; negativo, saldo a favor. Entra como saldo inicial: aparece en la cuenta corriente y se cancela con cobranzas y pagos, pero no va al Libro IVA ni a la contabilidad.',
+        ],
+        ojo: 'Cada cliente o proveedor admite un solo saldo importado, para que importar dos veces no duplique la deuda. Revisá bien la vista previa antes de confirmar.',
+      },
+      {
+        titulo: 'Revisá y confirmá',
+        texto: [
+          'Al subir el archivo ves cuántas altas y actualizaciones habrá y qué filas tienen errores (con el número de fila de la planilla). Nada se guarda hasta que tocás "Importar". Las filas con errores se saltean: corregilas y subí solo esas.',
+        ],
+      },
+    ],
+    problemas: [
+      {
+        sintoma: 'Todas las filas dicen "Falta la razón social" o "Falta el código"',
+        solucion: 'La primera fila tiene que tener los títulos de las columnas. Compará con la planilla modelo.',
+      },
+      {
+        sintoma: 'Un saldo dice que no existe el cliente o proveedor',
+        solucion: 'Importá antes clientes y proveedores, o revisá que el CUIT sea el mismo.',
+      },
+    ],
+    relacionadas: ['primeros-pasos'],
   },
   {
     id: 'seguridad',
@@ -226,28 +286,23 @@ export const GUIAS: Guia[] = [
     pantalla: { href: '/configuracion/arca', texto: 'Ir a ARCA y factura electrónica' },
     antes: [
       'Clave fiscal nivel 3.',
-      'Una computadora con OpenSSL (en Windows viene con Git para Windows, o se instala aparte; en Mac y Linux ya está).',
       'El punto de venta dado de alta (ver "Punto de venta para factura electrónica").',
+      'No hace falta instalar nada: la clave privada la genera y la guarda cifrada el sistema.',
     ],
     pasos: [
       {
-        titulo: 'Generá la clave privada',
-        texto: ['En una carpeta de tu computadora, abrí una terminal y ejecutá:'],
-        codigo: 'openssl genrsa -out erp.key 2048',
-        ojo: 'El archivo erp.key es secreto: es la firma digital de tu empresa. No lo mandes por email ni chat; solo se sube en la pantalla de ARCA del sistema.',
-      },
-      {
-        titulo: 'Generá el pedido de certificado (CSR)',
+        titulo: 'Generá el pedido de certificado en el sistema',
         texto: [
-          'La pantalla de ARCA del sistema te muestra este comando ya completo con tu razón social y CUIT: copialo de ahí. Tiene esta forma:',
+          'Configuración → ARCA y factura electrónica → "Generar el pedido de certificado". El sistema crea la clave privada (queda cifrada, nunca sale del servidor) y el pedido (CSR) con tu razón social y CUIT.',
+          'Copialo con "Copiar" o bajalo con "Descargar (.csr)".',
         ],
-        codigo: 'openssl req -new -key erp.key -subj "/C=AR/O=TU RAZON SOCIAL/CN=erp/serialNumber=CUIT 30XXXXXXXXX" -out erp.csr',
+        ojo: '¿Preferís usar tu propia clave? En la misma pantalla, "Avanzado" muestra los comandos de OpenSSL; en ese caso subís el .crt junto con tu .key.',
       },
       {
         titulo: 'Para probar: certificado de homologación',
         texto: [
           'En ARCA abrí "WSASS - Autogestión Certificados Homologación" (si no está, agregalo desde el Administrador de Relaciones).',
-          '- "Nuevo certificado": nombre erp, pegá el contenido de erp.csr y descargá el .crt.',
+          '- "Nuevo certificado": nombre erp, pegá el pedido y descargá el .crt.',
           '- "Crear autorización a servicio": el certificado erp con el servicio wsfe.',
         ],
       },
@@ -255,15 +310,15 @@ export const GUIAS: Guia[] = [
         titulo: 'Para facturar de verdad: certificado de producción',
         texto: [
           'En ARCA abrí "Administración de Certificados Digitales" (si no está, agregalo desde el Administrador de Relaciones).',
-          '- Elegí el CUIT, "Agregar alias": alias erp, subí el archivo erp.csr y descargá el certificado (.crt).',
+          '- Elegí el CUIT, "Agregar alias": alias erp, subí el pedido (.csr) y descargá el certificado (.crt).',
           '- Después, en "Administrador de Relaciones de Clave Fiscal" → "Nueva relación" → buscá ARCA → Web Services → "Facturación Electrónica" (wsfe). Como representante elegí el certificado (alias erp) y confirmá.',
         ],
-        ojo: 'El certificado de homologación no sirve en producción ni al revés: son dos distintos, con la misma clave privada o con otra.',
+        ojo: 'El certificado de homologación no sirve en producción ni al revés. Podés pedir los dos con el mismo pedido: el sistema lo guarda.',
       },
       {
         titulo: 'Subilo al sistema',
         texto: [
-          'Configuración → ARCA y factura electrónica: subí el .crt y el .key, elegí el ambiente (homologación o producción) y tocá "Guardar certificado". El sistema controla que sean del CUIT de la empresa, que la clave corresponda al certificado y la fecha de vencimiento.',
+          'Configuración → ARCA y factura electrónica: subí el .crt (sin clave), elegí el ambiente (homologación o producción) y tocá "Guardar certificado". El sistema busca la clave del pedido y controla que sea del CUIT de la empresa y la fecha de vencimiento.',
         ],
       },
       {
@@ -283,7 +338,8 @@ export const GUIAS: Guia[] = [
     problemas: [
       {
         sintoma: '"La clave privada no corresponde a este certificado"',
-        solucion: 'El .crt se pidió con otro .key. Subí el par correcto o repetí los pasos 1 a 4.',
+        solucion:
+          'El .crt se pidió con otro pedido. Subí en ARCA el último pedido generado en el sistema y descargá el certificado de nuevo.',
       },
       {
         sintoma: '"El certificado es del CUIT X, no de esta empresa"',
@@ -580,7 +636,7 @@ export const GUIAS: Guia[] = [
       {
         titulo: 'Cambiar de plan o sumar aplicaciones',
         texto: [
-          'En "Cambiar la suscripción" elegí el plan, las aplicaciones, los usuarios adicionales y la forma de pago (mensual o anual, que paga 10 meses). En la prueba se aplica al instante; si no, se aplica al acreditarse el pago.',
+          'En "Cambiar la suscripción" elegí el plan, las aplicaciones, los usuarios adicionales y la forma de pago (mensual o anual, que paga 10 meses). Durante la prueba seguís con el plan Inicial: el plan elegido se activa con el primer pago. Si ya pagás con débito automático y mantenés el ciclo, el cambio es inmediato y el débito pasa al importe nuevo.',
         ],
       },
       {

@@ -1,7 +1,7 @@
 import { eq, sql } from 'drizzle-orm'
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import { conEmpresa } from '../../db/empresa'
+import { comoPlataforma, conEmpresa } from '../../db/empresa'
 import { baseDePrueba } from '../../db/pruebas'
 import { arcaConfiguracion, comprobantes, empresas, percepcionesIibb, puntosVenta, terceros } from '../../db/schema'
 import type { ClienteArca } from '../arca/cliente'
@@ -16,7 +16,16 @@ import {
   verificarComprobante,
 } from './comprobantes'
 import { anularRecibo, cuentaCorriente, emitirRecibo, imputar, ReciboInvalido } from './cuentas'
-import { codigoComprobante, datosTipo, documentoReceptor, letraPara, nombreComprobante, urlQr } from './tipos'
+import {
+  codigoComprobante,
+  datosTipo,
+  documentoReceptor,
+  emiteClaseA,
+  letraPara,
+  nombreComprobante,
+  percibeIibb,
+  urlQr,
+} from './tipos'
 
 const U = '00000000-0000-4000-8000-000000000001'
 const HOY = '2026-10-01'
@@ -208,6 +217,26 @@ describe('borradores', () => {
     expect(c?.detalleTributos.map((t) => [t.importe, t.alicuota])).toEqual([['42.00', '3.5000']])
     expect(c?.total).toBe('1473.00')
     await en((tx) => eliminarBorrador(tx, U, id))
+  })
+
+  it('una empresa monotributista emite C y no percibe IIBB aunque haya quedado una percepción activa', async () => {
+    const poner = (condicionIva: number, soloLetraA: boolean) =>
+      comoPlataforma(async (tx) => {
+        await tx.update(empresas).set({ condicionIva }).where(eq(empresas.id, empresa))
+        await tx.update(percepcionesIibb).set({ soloLetraA }).where(eq(percepcionesIibb.empresaId, empresa))
+      })
+    await poner(6, false)
+    try {
+      const id = await guardar(factura(inscripto))
+      const c = await en((tx) => obtenerComprobante(tx, id))
+      expect(c?.letra).toBe('C')
+      expect(c?.detalleTributos).toEqual([])
+      await en((tx) => eliminarBorrador(tx, U, id))
+    } finally {
+      await poner(1, true)
+    }
+    expect([emiteClaseA(1), emiteClaseA(4), emiteClaseA(6)]).toEqual([true, false, false])
+    expect([percibeIibb(1), percibeIibb(4), percibeIibb(6)]).toEqual([true, true, false])
   })
 
   it('a un consumidor final es B y sin percepción (solo se percibe en A)', async () => {

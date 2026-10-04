@@ -114,3 +114,11 @@ La IA, además de leer, dice qué tan segura está de la lectura. Si la confianz
 ## Quién cierra períodos
 
 El cierre de períodos por módulo (Configuración → Cierre de períodos, permiso `empresa.bloqueos`) lo tienen el rol Contador y quien tenga todos los permisos. El rol Administración no: carga y corrige operaciones, y si pudiera reabrir un período podría tocar lo que el contador ya cerró. Una empresa que quiera dárselo lo hace con un rol propio.
+
+## Quién ve qué en Configuración → ARCA
+
+- **Comprobantes A (RG 5762/2025):** solo responsables inscriptos (`emiteClaseA` en `facturacion/tipos.ts`); exentos y
+  monotributistas emiten C.
+- **Percepción de IIBB:** responsables inscriptos y exentos (si su provincia los designa agentes); nunca monotributistas
+  (`percibeIibb`). Además de ocultarse en la pantalla, la acción lo rechaza y la factura no aplica una percepción que haya
+  quedado activa de antes.

@@ -10,6 +10,7 @@ import {
   Palette,
   Plug,
   ShieldCheck,
+  Upload,
 } from 'lucide-react'
 import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda'
 import type { Metadata } from 'next'
@@ -88,6 +89,13 @@ export default async function Configuracion() {
       texto: 'Ventas, cobranzas, deuda, caja y alertas, por correo o WhatsApp cada día o cada semana.',
       icono: Newspaper,
       permiso: 'empresa.datos',
+    },
+    {
+      href: '/configuracion/importar',
+      titulo: 'Importar desde planillas',
+      texto: 'Clientes, proveedores, artículos con precio y stock, y saldos iniciales desde Excel o CSV.',
+      icono: Upload,
+      permiso: ['maestros.terceros', 'maestros.articulos', 'empresa.datos'].find(puede) ?? 'empresa.datos',
     },
     {
       href: '/configuracion/integraciones',

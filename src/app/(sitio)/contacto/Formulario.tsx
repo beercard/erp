@@ -32,7 +32,6 @@ export function FormularioContacto({ origen }: { origen: string }) {
   return (
     <form action={accion} className="grid gap-4 rounded-xl border border-borde bg-superficie p-6 sm:grid-cols-2 sm:p-8">
       <input type="hidden" name="origen" value={origen} />
-      <Antibots />
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Nombre y apellido
         <input name="nombre" required autoComplete="name" className={campo} />
@@ -70,6 +69,7 @@ export function FormularioContacto({ origen }: { origen: string }) {
           className={`${campo} h-auto py-2`}
         />
       </label>
+      <Antibots intento={estado} className="sm:col-span-2" />
       {estado?.error && (
         <p role="alert" className="rounded-lg bg-error-suave px-3 py-2 text-sm text-error sm:col-span-2">
           {estado.error}

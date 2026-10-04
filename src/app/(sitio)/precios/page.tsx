@@ -15,8 +15,7 @@ import {
 
 export const metadata: Metadata = {
   title: 'Planes y precios del sistema de gestión',
-  description:
-    'Planes de Vektra ERP para pymes argentinas: gratis para facturar con ARCA y la gestión completa con stock, compras, bancos e impuestos. Probalo 30 días sin tarjeta.',
+  description: `Planes de Vektra ERP para pymes argentinas: gratis para facturar con ARCA y la gestión completa con stock, compras, bancos e impuestos. Probalo ${DIAS_DE_PRUEBA} días sin tarjeta.`,
   alternates: { canonical: '/precios' },
 }
 

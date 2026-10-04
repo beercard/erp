@@ -139,12 +139,21 @@ export function FormularioSuscripcion(props: {
         </span>
         {props.puedeCambiar && (
           <Boton type="submit" variante="primario" disabled={enviando || !cambio}>
-            {enviando ? 'Enviando…' : props.enPrueba || elegido.precioMensual === 0 ? 'Aplicar' : 'Pedir el cambio'}
+            {enviando
+              ? 'Enviando…'
+              : elegido.precioMensual === 0
+                ? 'Aplicar'
+                : props.enPrueba
+                  ? 'Elegir este plan'
+                  : 'Cambiar el plan'}
           </Boton>
         )}
       </div>
       {props.enPrueba && elegido.precioMensual > 0 && (
-        <p className="text-xs text-texto-3">Durante la prueba el cambio se aplica en el momento y no se cobra nada.</p>
+        <p className="text-xs text-texto-3">
+          Durante la prueba seguís con el plan Inicial. El plan que elijas se activa cuando se acredita el primer pago con Mercado
+          Pago.
+        </p>
       )}
       <Resultado estado={estado} />
     </form>

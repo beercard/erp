@@ -82,11 +82,14 @@ describe('alta de una empresa', () => {
 })
 
 describe('cambios de plan', () => {
-  it('durante la prueba el cambio se aplica en el momento', async () => {
+  it('durante la prueba un plan pago no se habilita gratis: queda pedido hasta el primer pago', async () => {
     const r = await pedirCambio(empresa, usuario, { plan: 'empresa', aplicaciones: ['contratos'] }, '2026-10-05')
-    expect(r).toEqual({ ok: true, aplicado: true })
+    expect(r).toEqual({ ok: true, aplicado: false })
+    expect((await suscripcionDe(empresa)).plan).toBe('inicial')
+    const [pedido] = await pedidosPendientes()
+    expect(await resolverPedido(admin, pedido.id, true)).toEqual({ ok: true, empresaId: empresa })
     const s = await suscripcionDe(empresa)
-    expect([s.plan, s.aplicaciones, s.estado]).toEqual(['empresa', ['contratos'], 'prueba'])
+    expect([s.plan, s.aplicaciones]).toEqual(['empresa', ['contratos']])
   })
 
   it('una aplicación no se contrata sobre un plan que no la admite', async () => {
@@ -123,7 +126,7 @@ describe('cambios de plan', () => {
   it('el plan gratis no deja sumar otro usuario y todo queda en el historial', async () => {
     expect(await controlarLimite(empresa, 'usuarios')).toContain('máximo de usuarios (1)')
     const eventos = await base.select().from(eventosSuscripcion).where(eq(eventosSuscripcion.empresaId, empresa))
-    expect(eventos.map((e) => e.tipo).sort()).toEqual(['alta', 'cambio', 'cambio', 'cambio', 'pago', 'pedido'])
+    expect(eventos.map((e) => e.tipo).sort()).toEqual(['alta', 'cambio', 'cambio', 'cambio', 'pago', 'pedido', 'pedido'])
     expect((await base.select().from(empresas).where(eq(empresas.id, empresa)))[0].razonSocial).toBe('Nueva Pyme S.R.L.')
     expect(await base.select().from(suscripciones).where(eq(suscripciones.empresaId, empresa))).toHaveLength(1)
   })
