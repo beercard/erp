@@ -1,0 +1,1 @@
+ALTER TABLE "precios" ALTER COLUMN "vigente_desde" SET DEFAULT (now() at time zone 'America/Argentina/Buenos_Aires')::date;
