@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { Aviso, Boton } from '@/components/ui'
 import { MarcoAcceso } from '@/components/MarcoAcceso'
 import { codigoDelPedido, empresaDelPedido, sesionActual } from '@/lib/auth/servidor'
+import { DIAS_DE_PRUEBA } from '@/lib/planes'
 import { dominioEmpresas } from '@/lib/subdominio'
 
 import { FormularioIngreso } from './FormularioIngreso'
@@ -75,7 +76,7 @@ export default async function PaginaIngreso({ searchParams }: PageProps<'/ingres
         <p className="mt-6 text-center text-sm text-texto-2">
           ¿Todavía no lo usás?{' '}
           <Link href="/registro" className="text-acento hover:underline">
-            Probalo gratis 30 días
+            Probalo gratis {DIAS_DE_PRUEBA} días
           </Link>
         </p>
         <p className="mt-2 text-center text-xs text-texto-3">
@@ -121,7 +122,7 @@ export default async function PaginaIngreso({ searchParams }: PageProps<'/ingres
         <p className="mt-6 text-center text-sm text-texto-2">
           ¿Todavía no lo usás?{' '}
           <Link href="/registro" className="text-acento hover:underline">
-            Probalo gratis 30 días
+            Probalo gratis {DIAS_DE_PRUEBA} días
           </Link>{' '}
           ·{' '}
           <Link href="/precios" className="text-acento hover:underline">

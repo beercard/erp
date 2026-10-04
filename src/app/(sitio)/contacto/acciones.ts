@@ -2,7 +2,8 @@
 
 import { headers } from 'next/headers'
 
-import { controlarEnvio, MENSAJE_BOT } from '@/lib/antibots'
+import { mensajeBot } from '@/lib/antibots'
+import { controlarEnvio } from '@/lib/antibotsServidor'
 import { ipDe } from '@/lib/auth/servidor'
 import { registrarConsulta } from '@/modulos/plataforma/consultas'
 
@@ -14,7 +15,10 @@ export async function enviarConsultaAccion(_: EstadoContacto, fd: FormData): Pro
   // Robots (trampa, tiempo, Turnstile): la trampa se contesta como si hubiera salido, para no darles pistas.
   const bot = await controlarEnvio(fd, ip)
   if (bot === 'trampa') return { ok: true }
-  if (bot) return { error: MENSAJE_BOT }
+  if (bot) {
+    console.warn('[contacto] rechazado por', bot)
+    return { error: mensajeBot(bot) }
+  }
   const dato = (k: string) => String(fd.get(k) ?? '')
   const r = await registrarConsulta(
     {

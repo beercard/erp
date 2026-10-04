@@ -56,6 +56,15 @@ function DatosEmpresa({ valores }: { valores?: Record<string, string> }) {
   )
 }
 
+/**
+ * Después de un error, React 19 reinicia el formulario a los valores de su
+ * primer render (el rubro quedaba vacío y el navegador frenaba el reenvío sin
+ * decir por qué). Con otra clave el formulario se arma de nuevo con lo ya
+ * cargado, y el desafío antibots se renueva.
+ */
+const claveFormulario = (estado: { error?: string; valores?: Record<string, string> } | undefined) =>
+  estado?.error ? `${estado.error}|${JSON.stringify(estado.valores ?? {})}` : 'inicial'
+
 /** Cuenta nueva con su empresa. */
 export function FormularioRegistro() {
   const [estado, accion, enviando] = useActionState(registrarse, undefined)
@@ -77,7 +86,7 @@ export function FormularioRegistro() {
     setCopiada(true)
   }
   return (
-    <form action={accion} className="flex flex-col gap-4">
+    <form key={claveFormulario(estado)} action={accion} className="flex flex-col gap-4">
       {estado?.error && <Aviso>{estado.error}</Aviso>}
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-2 text-xs font-semibold tracking-wider text-texto-3 uppercase">Tus datos</legend>
@@ -147,7 +156,7 @@ export function FormularioRegistro() {
           .
         </span>
       </label>
-      <Antibots />
+      <Antibots intento={estado} />
       <Boton type="submit" variante="primario" disabled={enviando} className="mt-1 h-10">
         {enviando ? 'Creando la cuenta…' : 'Empezar la prueba gratis'}
       </Boton>
@@ -161,7 +170,7 @@ export function FormularioOtraEmpresa() {
   const [estado, accion, enviando] = useActionState(crearOtraEmpresa, undefined)
   useIrA(estado?.irA)
   return (
-    <form action={accion} className="flex flex-col gap-4">
+    <form key={claveFormulario(estado)} action={accion} className="flex flex-col gap-4">
       {estado?.error && <Aviso>{estado.error}</Aviso>}
       <DatosEmpresa valores={estado?.valores} />
       <Boton type="submit" variante="primario" disabled={enviando}>

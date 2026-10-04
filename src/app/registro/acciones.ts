@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation'
 
 import { datosDelPedido, guardarCookieDeSesion, tokenDeSesion } from '@/lib/auth/servidor'
 import { elegirEmpresa, iniciarSesion } from '@/lib/auth/sesiones'
-import { controlarEnvio, correoDescartable, MENSAJE_BOT } from '@/lib/antibots'
+import { correoDescartable, mensajeBot } from '@/lib/antibots'
+import { controlarEnvio } from '@/lib/antibotsServidor'
 import { anotar, claveIp, superado } from '@/lib/frenos'
 import { registrarCuenta } from '@/modulos/plataforma/registro'
 import { crearEmpresa } from '@/modulos/plataforma/suscripciones'
@@ -21,14 +22,15 @@ export async function registrarse(_: EstadoRegistro, formData: FormData): Promis
   const sinClaves = { ...valores, clave: '', repetir: '', 'cf-turnstile-response': '' }
   const meta = await datosDelPedido()
   const ip = claveIp('registro', meta.ip)
-  if (await superado([ip], 5, HORA))
+  // 10 por hora: alcanza para corregir errores al completar, y frena a quien prueba en serie.
+  if (await superado([ip], 10, HORA))
     return { error: 'Se intentaron muchas altas desde esta conexión. Probá de nuevo en una hora.', valores: sinClaves }
   // Se cuenta cada intento, no solo los buenos: así tampoco sirve para averiguar qué emails o CUIT están.
   await anotar([ip])
   const bot = await controlarEnvio(formData, meta.ip)
   if (bot) {
     console.warn('[registro] rechazado por', bot, meta.ip)
-    return { error: MENSAJE_BOT, valores: sinClaves }
+    return { error: mensajeBot(bot), valores: sinClaves }
   }
   if (correoDescartable(valores.email ?? '')) {
     return {

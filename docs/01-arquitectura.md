@@ -60,7 +60,7 @@ ERP en la nube para pymes argentinas, vendido como servicio (SaaS). El primer cl
 - Cada sección tiene un `layout.tsx` que llama a `exigirFuncion`. Lo que el plan no incluye se ve en el menú con un candado y lleva a Configuración › Suscripción.
 - **Prueba vencida, impaga después de los días de gracia, suspendida o cancelada:** la empresa queda en **solo lectura**. Se conservan los permisos `*.ver` y `empresa.suscripcion`, y nunca se borran datos.
 - **Límites:** se controlan al invitar usuarios, al pedir un CAE y al dar de alta un punto de venta electrónico (`controlarLimite`).
-- **Alta:** `/registro` crea la cuenta, la empresa y 30 días de prueba del plan Pyme. Quien ya tiene cuenta crea otra empresa desde "Elegir empresa".
+- **Alta:** `/registro` crea la cuenta, la empresa y 15 días de prueba del plan Inicial más la aplicación de su rubro (`DIAS_DE_PRUEBA` y `PLAN_DE_PRUEBA` en `src/lib/planes.ts`). Quien ya tiene cuenta crea otra empresa desde "Elegir empresa".
 - **Cambios de plan:**
   - Durante la prueba, o al pasar al plan gratis, se aplican en el momento.
   - Si hay que cobrar, quedan como pedido y la plataforma los confirma al registrar el pago.

@@ -7,41 +7,19 @@
  *    servidor, contra su API. Sin las claves, se saltea (desarrollo).
  * 2. Trampa: un campo oculto que una persona no completa y un bot sí.
  * 3. Tiempo mínimo: un formulario enviado en menos de 3 segundos desde que se
- *    abrió no lo llenó una persona.
+ *    abrió no lo llenó una persona. La hora la firma el servidor (el reloj de
+ *    la computadora de la persona puede estar adelantado o atrasado).
  * 4. Correos descartables (mailinator y similares): no sirven para recuperar
  *    la cuenta ni para recibir facturas.
  *
- * Los frenos por IP y por email (src/lib/frenos.ts) siguen aparte.
+ * Los frenos por IP y por email (src/lib/frenos.ts) siguen aparte. Lo que
+ * corre solo en el servidor está en antibotsServidor.ts; esto lo usa también
+ * el navegador.
  */
 
-type Fetch = typeof fetch
-
-export const CAMPO_TRAMPA = 'sitio_web'
+// Un nombre que ningún navegador autocompleta (con "sitio web" algunos lo llenaban solos).
+export const CAMPO_TRAMPA = 'zz_dejar_vacio'
 export const CAMPO_TIEMPO = 'abierto'
-const SEGUNDOS_MINIMOS = 3
-
-export const turnstileSiteKey = () => process.env.TURNSTILE_SITE_KEY || null
-
-/** Verifica el token del widget de Turnstile. Sin clave secreta configurada, no exige nada. */
-export async function verificarTurnstile(token: string | null, ip: string | null, f: Fetch = fetch): Promise<boolean> {
-  const secreto = process.env.TURNSTILE_SECRET
-  if (!secreto) return true
-  if (!token) return false
-  const cuerpo = new URLSearchParams({ secret: secreto, response: token })
-  if (ip) cuerpo.set('remoteip', ip)
-  try {
-    const r = await f('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      body: cuerpo,
-      signal: AbortSignal.timeout(10_000),
-    })
-    const d = (await r.json()) as { success?: boolean }
-    return d.success === true
-  } catch {
-    // Si Cloudflare no responde, mejor dejar pasar que bloquear a todos (quedan los demás frenos).
-    return true
-  }
-}
 
 /** Dominios de correo descartable más usados. */
 const DESCARTABLES = new Set([
@@ -77,25 +55,18 @@ export function correoDescartable(email: string) {
   return DESCARTABLES.has(dominio) || [...DESCARTABLES].some((d) => dominio.endsWith(`.${d}`))
 }
 
-/**
- * Controla lo que manda el formulario. Devuelve el motivo del rechazo (para el
- * registro interno) o null si pasa. A la persona se le muestra un mensaje genérico.
- */
-export async function controlarEnvio(
-  fd: FormData,
-  ip: string | null,
-  ahora = Date.now(),
-  f: Fetch = fetch,
-): Promise<string | null> {
-  if (String(fd.get(CAMPO_TRAMPA) ?? '').trim()) return 'trampa'
-  const abierto = Number(fd.get(CAMPO_TIEMPO) ?? 0)
-  if (!abierto || ahora - abierto < SEGUNDOS_MINIMOS * 1000 || ahora - abierto > 24 * 3600_000) return 'tiempo'
-  const token = String(fd.get('cf-turnstile-response') ?? '') || null
-  if (!(await verificarTurnstile(token, ip, f))) return 'turnstile'
-  return null
-}
+export type MotivoBot = 'trampa' | 'rapido' | 'vencido' | 'turnstile'
 
 export const MENSAJE_BOT = 'No pudimos verificar que seas una persona. Recargá la página y probá de nuevo.'
+
+/** Qué decirle a una persona según qué control no pasó (a un bot le da lo mismo). */
+export function mensajeBot(motivo: MotivoBot) {
+  if (motivo === 'rapido') return 'Se envió demasiado rápido. Esperá unos segundos y volvé a tocar el botón.'
+  if (motivo === 'vencido') return 'El formulario estuvo abierto mucho tiempo. Recargá la página y completalo de nuevo.'
+  if (motivo === 'turnstile')
+    return 'Falta la verificación de Cloudflare: esperá a que aparezca el tilde verde arriba del botón y volvé a enviar.'
+  return MENSAJE_BOT
+}
 
 /** Contraseña segura al azar (en el navegador o en el servidor). */
 export function generarClave(largo = 18) {
