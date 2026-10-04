@@ -11,9 +11,15 @@ import { normalizarNumero } from '@/lib/dinero'
 import { cifrar, revisarCertificado } from '@/modulos/arca/certificado'
 import { claveDelCertificado, generarPedido } from '@/modulos/arca/pedido'
 import { clienteArca, probarServidores } from '@/modulos/arca/cliente'
-import { eliminarBorrador, emitirComprobante, guardarComprobante, verificarComprobante } from '@/modulos/facturacion/comprobantes'
+import {
+  eliminarBorrador,
+  emitirComprobante,
+  empresaEmisora,
+  guardarComprobante,
+  verificarComprobante,
+} from '@/modulos/facturacion/comprobantes'
 import { anularRecibo, emitirRecibo, pendientes, ReciboInvalido } from '@/modulos/facturacion/cuentas'
-import { REGIMENES_CLASE_A } from '@/modulos/facturacion/tipos'
+import { emiteClaseA, percibeIibb, REGIMENES_CLASE_A } from '@/modulos/facturacion/tipos'
 
 /** Ejecuta y convierte "sin permiso" en un mensaje para el usuario. */
 async function intentar<T>(trabajo: () => Promise<T>): Promise<T | { ok: false; error: string }> {
@@ -199,6 +205,9 @@ export async function guardarRegimenAccion(_: EstadoFormulario, formData: FormDa
   if (cbu && cbu.length !== 22) return { error: 'La CBU tiene 22 dígitos.' }
   const r = await intentar(() =>
     enLaEmpresa('empresa.datos', async (tx, s) => {
+      if (!emiteClaseA((await empresaEmisora(tx)).condicionIva)) {
+        return { ok: false as const, error: 'Solo los responsables inscriptos emiten comprobantes A.' }
+      }
       const valores = { regimenClaseA: regimen, cbuInformada: cbu || null }
       await tx.insert(arcaConfiguracion).values(valores).onConflictDoUpdate({ target: arcaConfiguracion.empresaId, set: valores })
       await auditar(tx, { usuarioId: s.usuario.id, accion: 'modificacion', entidad: 'arca_regimen_clase_a', despues: valores })
@@ -244,6 +253,9 @@ export async function guardarPercepcionAccion(_: EstadoFormulario, formData: For
   }
   const r = await intentar(() =>
     enLaEmpresa('empresa.datos', async (tx, s) => {
+      if (!percibeIibb((await empresaEmisora(tx)).condicionIva)) {
+        return { ok: false as const, error: 'Un monotributista no actúa como agente de percepción de Ingresos Brutos.' }
+      }
       const [actual] = await tx.select().from(percepcionesIibb).limit(1)
       if (actual) {
         await tx.update(percepcionesIibb).set(valores).where(eq(percepcionesIibb.id, actual.id))

@@ -40,6 +40,7 @@ import {
   documentoReceptor,
   letraPara,
   nombreComprobante,
+  percibeIibb,
   rangoFecha,
   type Clase,
   type Letra,
@@ -264,7 +265,10 @@ export async function guardarComprobante(
     }
   }
 
-  const activas = await tx.select().from(percepcionesIibb).where(eq(percepcionesIibb.activa, true))
+  // Un monotributista no percibe IIBB, aunque haya quedado una percepción activa de antes.
+  const activas = percibeIibb(empresa.condicionIva)
+    ? await tx.select().from(percepcionesIibb).where(eq(percepcionesIibb.activa, true))
+    : []
   const calculo = calcularComprobante(
     letra,
     d.items.map((i) => ({ ...i, descuento: i.descuento ?? '0' })),

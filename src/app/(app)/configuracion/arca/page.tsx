@@ -8,6 +8,8 @@ import { arcaConfiguracion, percepcionesIibb, provincias } from '@/db/schema'
 import { enLaEmpresa, exigirPermiso } from '@/lib/auth/servidor'
 import { formatearCuit } from '@/lib/cuit'
 import { diasHasta } from '@/modulos/arca/certificado'
+import { empresaEmisora } from '@/modulos/facturacion/comprobantes'
+import { emiteClaseA, percibeIibb } from '@/modulos/facturacion/tipos'
 
 import { cambiarAmbienteAccion } from '../../facturacion/acciones'
 import {
@@ -37,7 +39,8 @@ export default async function ConfiguracionArca() {
     const [percepcion] = await tx.select().from(percepcionesIibb).limit(1)
     const provs = await tx.select().from(provincias).orderBy(provincias.nombre)
     const diasParaVencer = config?.vence ? diasHasta(config.vence) : null
-    return { config, percepcion, provs, diasParaVencer }
+    const condicionIva = (await empresaEmisora(tx)).condicionIva
+    return { config, percepcion, provs, diasParaVencer, condicionIva }
   })
   const { config, percepcion, diasParaVencer } = datos
   const cuit = sesion.empresa.cuit
@@ -85,18 +88,26 @@ export default async function ConfiguracionArca() {
               </div>
             )}
           </Panel>
-          <FormularioRegimen regimen={config?.regimen ?? 'comun'} cbu={config?.cbu ?? ''} />
-          <FormularioPercepcion
-            provincias={datos.provs.map((p) => ({ valor: p.codigo, texto: p.nombre }))}
-            inicial={{
-              nombre: percepcion?.nombre ?? 'Percepción IIBB',
-              provincia: percepcion?.provincia ?? '',
-              alicuota: percepcion ? String(Number(percepcion.alicuota)).replace('.', ',') : '',
-              minimoBase: percepcion ? String(Number(percepcion.minimoBase)).replace('.', ',') : '0',
-              soloLetraA: percepcion?.soloLetraA ?? true,
-              activa: percepcion?.activa ?? false,
-            }}
-          />
+          {!percibeIibb(datos.condicionIva) && (
+            <Panel className="p-4 text-sm text-texto-2">
+              Como la empresa es monotributista emite comprobantes C: el régimen de comprobantes A y la percepción de Ingresos
+              Brutos no le corresponden. Si cambia la condición frente al IVA, actualizala en Configuración → Datos de la empresa.
+            </Panel>
+          )}
+          {emiteClaseA(datos.condicionIva) && <FormularioRegimen regimen={config?.regimen ?? 'comun'} cbu={config?.cbu ?? ''} />}
+          {percibeIibb(datos.condicionIva) && (
+            <FormularioPercepcion
+              provincias={datos.provs.map((p) => ({ valor: p.codigo, texto: p.nombre }))}
+              inicial={{
+                nombre: percepcion?.nombre ?? 'Percepción IIBB',
+                provincia: percepcion?.provincia ?? '',
+                alicuota: percepcion ? String(Number(percepcion.alicuota)).replace('.', ',') : '',
+                minimoBase: percepcion ? String(Number(percepcion.minimoBase)).replace('.', ',') : '0',
+                soloLetraA: percepcion?.soloLetraA ?? true,
+                activa: percepcion?.activa ?? false,
+              }}
+            />
+          )}
         </div>
         <Panel className="h-fit p-4 text-sm">
           <h2 className="font-semibold">Cómo sacar el certificado</h2>

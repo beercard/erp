@@ -39,6 +39,20 @@ const CODIGOS: Record<Variante, Partial<Record<Letra, Record<Clase, number>>>> =
 export const LEYENDA_SUJETA_RETENCION = 'OPERACIÓN SUJETA A RETENCIÓN'
 export const LEYENDA_CBU_INFORMADA = 'PAGO EN CBU INFORMADA'
 
+/**
+ * Quién emite comprobantes A: solo el responsable inscripto (condición 1). El
+ * exento y el monotributista emiten C, así que el régimen de la RG 5762/2025
+ * no les corresponde.
+ */
+export const emiteClaseA = (condicionIva: number) => condicionIva === 1
+
+/**
+ * Quién puede actuar como agente de percepción de Ingresos Brutos: el
+ * responsable inscripto y el exento en IVA (si su provincia lo designa). El
+ * monotributista no es agente de percepción.
+ */
+export const percibeIibb = (condicionIva: number) => condicionIva === 1 || condicionIva === 4
+
 /** Régimen de emisión de comprobantes A de la empresa (lo informa ARCA). */
 export const REGIMENES_CLASE_A = {
   comun: 'Factura A común',
