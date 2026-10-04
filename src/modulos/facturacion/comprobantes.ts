@@ -26,6 +26,7 @@ import { aImporte, D, monto } from '../../lib/dinero'
 import { hoyArgentina, sumarDias } from '../../lib/fechas'
 import type { ClienteArca } from '../arca/cliente'
 import { ErrorArca, ErrorIncierto, ErrorSinEnviar } from '../arca/soap'
+import { avisarAutorizado } from './eventos'
 import type { SolicitudCae } from '../arca/wsfe'
 import { calcularTotales } from '../comercial/calculo'
 import { decimal, EsquemaItem, errorDeBase, opcionalUuid, primerError } from '../comercial/documentos'
@@ -602,6 +603,7 @@ export async function emitirComprobante(
         despues: { numero, cae: respuesta.cae, ambiente: arca.ambiente },
       })
       await aplicarNota(tx, usuarioId, id)
+      await avisarAutorizado(tx, id)
       return { ok: true as const, numero, cae: respuesta.cae, observaciones: textoMensajes(respuesta.observaciones) }
     }
     await tx
@@ -657,6 +659,7 @@ export async function verificarComprobante(
         despues: { numero: c.numero, cae: consultado!.cae, verificado: true },
       })
       await aplicarNota(tx, usuarioId, id)
+      await avisarAutorizado(tx, id)
       return { ok: true as const, numero: c.numero, cae: consultado!.cae, observaciones: [] }
     }
     await tx

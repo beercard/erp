@@ -1,6 +1,7 @@
 import { and, count, eq, gte, inArray, sql } from 'drizzle-orm'
 import {
   ArrowUpRight,
+  BookOpen,
   Boxes,
   Circle,
   CircleCheck,
@@ -32,6 +33,7 @@ import {
   articulos,
   auditoria,
   comprobantes,
+  empresaMarca,
   empresas,
   membresias,
   pedidos,
@@ -163,7 +165,10 @@ export default async function Inicio() {
       .where(inArray(pedidos.estado, ['pendiente', 'parcial']))
     const [enviados] = await tx.select({ n: count() }).from(presupuestos).where(eq(presupuestos.estado, 'enviado'))
     // Para "Primeros pasos".
-    const [arca] = await tx.select({ certificado: arcaConfiguracion.certificado }).from(arcaConfiguracion)
+    const [arca] = await tx
+      .select({ certificado: arcaConfiguracion.certificado, ambiente: arcaConfiguracion.ambiente })
+      .from(arcaConfiguracion)
+    const [marca] = await tx.select({ logo: empresaMarca.logoTipo }).from(empresaMarca)
     const [puntos] = await tx
       .select({ n: count() })
       .from(puntosVenta)
@@ -171,6 +176,8 @@ export default async function Inicio() {
     const [emitidos] = await tx.select({ n: count() }).from(comprobantes).where(eq(comprobantes.estado, 'autorizado'))
     return {
       arca: !!arca?.certificado,
+      produccion: !!arca?.certificado && arca.ambiente === 'produccion',
+      logo: !!marca?.logo,
       puntosVenta: puntos.n,
       emitidos: emitidos.n,
       clientes: clientes.n,
@@ -187,20 +194,75 @@ export default async function Inicio() {
     (await tx.select().from(empresas).where(eq(empresas.id, sesion.empresa.id)))[0],
     (await tx.select({ n: count() }).from(membresias).where(eq(membresias.empresaId, sesion.empresa.id)))[0].n,
   ])
+  /** Lo que deja la empresa lista para facturar, en el orden de la guía "Puesta en marcha". */
   const pasos = [
     {
       hecho: !!(empresa.domicilioFiscal && empresa.inicioActividades),
       texto: 'Completar los datos fiscales de la empresa',
+      detalle: 'Domicilio fiscal, Ingresos Brutos e inicio de actividades, tal como figuran en tu constancia de ARCA.',
       href: '/configuracion/empresa',
+      guia: 'primeros-pasos',
     },
-    { hecho: datos.arca, texto: 'Conectar con ARCA (certificado de factura electrónica)', href: '/configuracion/arca' },
-    { hecho: datos.puntosVenta > 0, texto: 'Dar de alta el punto de venta electrónico', href: '/configuracion/puntos-venta' },
-    { hecho: datos.clientes > 0, texto: 'Cargar o importar los clientes', href: '/terceros' },
-    { hecho: datos.articulos > 0, texto: 'Cargar o importar los artículos y precios', href: '/articulos' },
-    { hecho: equipo > 1, texto: 'Invitar al equipo', href: '/configuracion/usuarios' },
-    { hecho: datos.emitidos > 0, texto: 'Emitir la primera factura', href: '/facturas/nueva' },
+    {
+      hecho: datos.arca,
+      texto: 'Conectar con ARCA (certificado de factura electrónica)',
+      detalle:
+        'El sistema genera el pedido de certificado: lo subís en ARCA con tu clave fiscal y cargás acá lo que te devuelve.',
+      href: '/configuracion/arca',
+      guia: 'arca',
+    },
+    {
+      hecho: datos.puntosVenta > 0,
+      texto: 'Dar de alta el punto de venta electrónico',
+      detalle: 'Primero lo creás en ARCA (“Administración de puntos de venta”) y después lo cargás acá con el mismo número.',
+      href: '/configuracion/puntos-venta',
+      guia: 'punto-de-venta',
+    },
+    {
+      hecho: datos.clientes > 0,
+      texto: 'Cargar o importar los clientes',
+      detalle: 'Si los tenés en otro sistema o en Excel, importalos todos juntos desde una planilla.',
+      href: '/configuracion/importar',
+      guia: 'importar',
+    },
+    {
+      hecho: datos.articulos > 0,
+      texto: 'Cargar o importar los artículos y precios',
+      detalle: 'Desde una planilla, con precio de venta y stock inicial, o de a uno en Artículos y precios.',
+      href: '/configuracion/importar',
+      guia: 'importar',
+    },
+    {
+      hecho: datos.logo,
+      texto: 'Subir el logo y elegir el diseño de factura',
+      detalle: 'Tu logo en las facturas, el PDF y el enlace que le llega al cliente.',
+      href: '/configuracion/factura',
+      guia: 'diseno-factura',
+    },
+    {
+      hecho: equipo > 1,
+      texto: 'Invitar al equipo',
+      detalle: 'Cada persona con su usuario y un rol con lo que necesita. Tu contador puede entrar con el rol Contador.',
+      href: '/configuracion/usuarios',
+      guia: 'usuarios',
+    },
+    {
+      hecho: datos.produccion,
+      texto: 'Pasar ARCA a producción',
+      detalle: 'Cuando la factura de prueba salió bien en homologación, cargá el certificado de producción.',
+      href: '/configuracion/arca',
+      guia: 'arca',
+    },
+    {
+      hecho: datos.emitidos > 0,
+      texto: 'Emitir la primera factura',
+      detalle: 'Verificala después en ARCA → Mis Comprobantes → Emitidos: si está, todo funciona.',
+      href: '/facturas/nueva',
+      guia: 'primeros-pasos',
+    },
   ]
   const hechos = pasos.filter((p) => p.hecho).length
+  const siguiente = pasos.find((p) => !p.hecho)
   // Los primeros pasos son tarea de quien configura la empresa, y desaparecen al completarlos.
   const verPasos = tienePermiso(sesion.permisos, 'empresa.datos') && hechos < pasos.length
   const tareas = TAREAS.filter((t) => tienePermiso(sesion.permisos, t.permiso)).slice(0, 8)
@@ -377,18 +439,39 @@ export default async function Inicio() {
               <div className="h-full rounded-r-full bg-acento" style={{ width: `${(hechos / pasos.length) * 100}%` }} />
             </div>
             <ol className="divide-y divide-borde">
-              {pasos.map((p) => (
-                <li key={p.texto}>
-                  <Link href={p.href} className="group flex items-center gap-3 px-4 py-2.5 hover:bg-superficie-2">
-                    {p.hecho ? (
-                      <CircleCheck aria-label="Hecho" className="size-5 shrink-0 fill-acento text-sobre-acento" />
-                    ) : (
-                      <Circle aria-label="Pendiente" strokeDasharray="3 3" className="size-5 shrink-0 text-texto-3" />
-                    )}
-                    <span className={`text-sm ${p.hecho ? 'text-texto-2 line-through' : 'font-medium'}`}>{p.texto}</span>
-                  </Link>
-                </li>
-              ))}
+              {pasos.map((p) =>
+                p === siguiente ? (
+                  <li key={p.texto} className="flex gap-3 bg-acento/[0.04] px-4 py-3">
+                    <Circle aria-label="Siguiente" className="mt-0.5 size-5 shrink-0 text-acento" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                      <span className="text-sm font-semibold">{p.texto}</span>
+                      <span className="text-xs text-texto-2">{p.detalle}</span>
+                      <span className="flex flex-wrap items-center gap-3">
+                        <BotonEnlace href={p.href} variante="primario">
+                          Empezar
+                        </BotonEnlace>
+                        <Link
+                          href={`/ayuda/${p.guia}`}
+                          className="inline-flex items-center gap-1 text-xs text-acento hover:underline"
+                        >
+                          <BookOpen aria-hidden className="size-3.5" /> Ver la guía
+                        </Link>
+                      </span>
+                    </div>
+                  </li>
+                ) : (
+                  <li key={p.texto}>
+                    <Link href={p.href} className="group flex items-center gap-3 px-4 py-2.5 hover:bg-superficie-2">
+                      {p.hecho ? (
+                        <CircleCheck aria-label="Hecho" className="size-5 shrink-0 fill-acento text-sobre-acento" />
+                      ) : (
+                        <Circle aria-label="Pendiente" strokeDasharray="3 3" className="size-5 shrink-0 text-texto-3" />
+                      )}
+                      <span className={`text-sm ${p.hecho ? 'text-texto-2 line-through' : 'font-medium'}`}>{p.texto}</span>
+                    </Link>
+                  </li>
+                ),
+              )}
             </ol>
             <p className="border-t border-borde px-4 py-3 text-xs text-texto-2">
               Plan {sesion.suscripcion.nombrePlan}.{' '}

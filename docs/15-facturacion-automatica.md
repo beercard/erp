@@ -35,13 +35,20 @@ la página, lo sigue la tarea periódica.
 ## 3. API
 
 - `POST /api/v1/facturas`: `{ referencia?, cliente: { documento, razonSocial?,
-  condicionIva?, email? }, concepto?, renglones: [{ descripcion, cantidad,
-  precioUnitario, iva?, descuento? }], autorizar?, enviar? }`. 201 con CAE,
+condicionIva?, email? }, concepto?, renglones: [{ descripcion, cantidad,
+precioUnitario, iva?, descuento? }], autorizar?, enviar? }`. 201 con CAE,
   número y enlace; 422 si quedó en borrador (con el motivo).
 - `referencia` es la clave de idempotencia: repetir el pedido devuelve la
   misma factura (200).
 - `GET /api/v1/facturas`, `GET /api/v1/facturas/<id>`, `POST /api/v1/lotes`,
   `GET /api/v1/lotes/<id>`.
+- Webhooks de facturación (`src/modulos/facturacion/eventos.ts`), encolados en
+  la misma transacción que la operación: `comprobante.autorizado` (al obtener
+  el CAE, también al verificar uno pendiente), `cobranza.registrada` (recibo,
+  con valores e imputaciones), `comprobante.saldado` (una factura o nota de
+  débito queda sin deuda, por recibo o nota de crédito; trae `canceladoCon`) y
+  `cobranza.anulada`. Llevan el cliente y la `referencia` de la API, así el
+  otro sistema no tiene que volver a consultar.
 
 ## 4. Vektra se factura sola
 

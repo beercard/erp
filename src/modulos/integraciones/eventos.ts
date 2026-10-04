@@ -8,5 +8,9 @@ export const EVENTOS = {
   'encuesta.respondida': 'Un cliente respondió la encuesta de satisfacción',
   'lectura.registrada': 'Se cargó un contador desde el portal o la API',
   'formulario.enviado': 'Llegó un formulario suelto a la bandeja de entrada',
+  'comprobante.autorizado': 'ARCA autorizó una factura o nota (con su CAE)',
+  'comprobante.saldado': 'Una factura o nota de débito quedó sin deuda (por cobranza o nota de crédito)',
+  'cobranza.registrada': 'Se emitió un recibo de cobranza (también por un cobro online)',
+  'cobranza.anulada': 'Se anuló un recibo de cobranza: la deuda que cancelaba vuelve',
 } as const
 export type Evento = keyof typeof EVENTOS
