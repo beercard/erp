@@ -1,8 +1,11 @@
 'use client'
 
-import { useActionState } from 'react'
+import { Check, Copy, Download } from 'lucide-react'
+import Link from 'next/link'
+import { useActionState, useState } from 'react'
 
 import {
+  generarPedidoAccion,
   guardarCertificadoAccion,
   guardarPercepcionAccion,
   guardarRegimenAccion,
@@ -15,6 +18,7 @@ const control = 'h-9 w-full rounded-md border border-borde bg-superficie px-2 te
 
 export function FormularioCertificado({ ambiente }: { ambiente: string }) {
   const [estado, accion, enviando] = useActionState(guardarCertificadoAccion, undefined)
+  const [conClave, setConClave] = useState(false)
   return (
     <form action={accion} className="flex flex-col gap-3">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -22,10 +26,19 @@ export function FormularioCertificado({ ambiente }: { ambiente: string }) {
           <span className="text-xs font-medium text-texto-2">Certificado (.crt)</span>
           <input type="file" name="certificado" accept=".crt,.pem,.cer" required className="text-sm" />
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-texto-2">Clave privada (.key)</span>
-          <input type="file" name="clave" accept=".key,.pem" required className="text-sm" />
-        </label>
+        {conClave ? (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-texto-2">Clave privada (.key)</span>
+            <input type="file" name="clave" accept=".key,.pem" className="text-sm" />
+          </label>
+        ) : (
+          <p className="self-end text-xs text-texto-3">
+            Si generaste el pedido acá, no hace falta la clave: el sistema ya la tiene guardada.{' '}
+            <button type="button" className="text-acento hover:underline" onClick={() => setConClave(true)}>
+              Tengo mi propia clave
+            </button>
+          </p>
+        )}
       </div>
       <fieldset className="flex flex-wrap gap-4 text-sm">
         <legend className="mb-1 text-xs font-medium text-texto-2">Ambiente del certificado</legend>
@@ -166,5 +179,65 @@ export function FormularioRegimen({ regimen, cbu }: { regimen: string; cbu: stri
         </Boton>
       </form>
     </Panel>
+  )
+}
+
+/** Paso 1: el sistema genera la clave (queda guardada cifrada) y el pedido de certificado para ARCA. */
+export function PedidoCertificado({ csr, pendiente }: { csr: string | null; pendiente: boolean }) {
+  const [estado, generar, generando] = useActionState(generarPedidoAccion, undefined)
+  const [copiado, setCopiado] = useState(false)
+  return (
+    <div className="flex flex-col gap-2">
+      {csr && (
+        <>
+          <textarea
+            readOnly
+            value={csr}
+            rows={5}
+            aria-label="Pedido de certificado"
+            className="w-full rounded-md border border-borde bg-superficie-2 p-2 font-mono text-[11px] leading-tight text-texto"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Boton
+              type="button"
+              onClick={() =>
+                navigator.clipboard?.writeText(csr).then(() => {
+                  setCopiado(true)
+                  setTimeout(() => setCopiado(false), 1500)
+                })
+              }
+            >
+              {copiado ? <Check /> : <Copy />} {copiado ? 'Copiado' : 'Copiar'}
+            </Boton>
+            <Link
+              href="/configuracion/arca/pedido"
+              download
+              prefetch={false}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold text-acento hover:bg-acento-suave"
+            >
+              <Download aria-hidden className="size-4" /> Descargar (.csr)
+            </Link>
+          </div>
+          {!pendiente && (
+            <p className="text-xs text-texto-3">
+              Este pedido ya se usó. Sirve para pedir el certificado del otro ambiente (homologación o producción) con la misma
+              clave; para renovar, generá uno nuevo.
+            </p>
+          )}
+        </>
+      )}
+      <form
+        action={generar}
+        onSubmit={(e) => {
+          if (pendiente && !confirm('Ya hay un pedido sin usar. ¿Generar uno nuevo? El anterior deja de servir.'))
+            e.preventDefault()
+        }}
+      >
+        <Boton type="submit" variante={csr ? 'fantasma' : 'primario'} disabled={generando}>
+          {generando ? 'Generando…' : csr ? 'Generar un pedido nuevo' : 'Generar el pedido de certificado'}
+        </Boton>
+      </form>
+      {estado?.error && <Aviso>{estado.error}</Aviso>}
+    </div>
   )
 }

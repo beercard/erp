@@ -226,28 +226,23 @@ export const GUIAS: Guia[] = [
     pantalla: { href: '/configuracion/arca', texto: 'Ir a ARCA y factura electrónica' },
     antes: [
       'Clave fiscal nivel 3.',
-      'Una computadora con OpenSSL (en Windows viene con Git para Windows, o se instala aparte; en Mac y Linux ya está).',
       'El punto de venta dado de alta (ver "Punto de venta para factura electrónica").',
+      'No hace falta instalar nada: la clave privada la genera y la guarda cifrada el sistema.',
     ],
     pasos: [
       {
-        titulo: 'Generá la clave privada',
-        texto: ['En una carpeta de tu computadora, abrí una terminal y ejecutá:'],
-        codigo: 'openssl genrsa -out erp.key 2048',
-        ojo: 'El archivo erp.key es secreto: es la firma digital de tu empresa. No lo mandes por email ni chat; solo se sube en la pantalla de ARCA del sistema.',
-      },
-      {
-        titulo: 'Generá el pedido de certificado (CSR)',
+        titulo: 'Generá el pedido de certificado en el sistema',
         texto: [
-          'La pantalla de ARCA del sistema te muestra este comando ya completo con tu razón social y CUIT: copialo de ahí. Tiene esta forma:',
+          'Configuración → ARCA y factura electrónica → "Generar el pedido de certificado". El sistema crea la clave privada (queda cifrada, nunca sale del servidor) y el pedido (CSR) con tu razón social y CUIT.',
+          'Copialo con "Copiar" o bajalo con "Descargar (.csr)".',
         ],
-        codigo: 'openssl req -new -key erp.key -subj "/C=AR/O=TU RAZON SOCIAL/CN=erp/serialNumber=CUIT 30XXXXXXXXX" -out erp.csr',
+        ojo: '¿Preferís usar tu propia clave? En la misma pantalla, "Avanzado" muestra los comandos de OpenSSL; en ese caso subís el .crt junto con tu .key.',
       },
       {
         titulo: 'Para probar: certificado de homologación',
         texto: [
           'En ARCA abrí "WSASS - Autogestión Certificados Homologación" (si no está, agregalo desde el Administrador de Relaciones).',
-          '- "Nuevo certificado": nombre erp, pegá el contenido de erp.csr y descargá el .crt.',
+          '- "Nuevo certificado": nombre erp, pegá el pedido y descargá el .crt.',
           '- "Crear autorización a servicio": el certificado erp con el servicio wsfe.',
         ],
       },
@@ -255,15 +250,15 @@ export const GUIAS: Guia[] = [
         titulo: 'Para facturar de verdad: certificado de producción',
         texto: [
           'En ARCA abrí "Administración de Certificados Digitales" (si no está, agregalo desde el Administrador de Relaciones).',
-          '- Elegí el CUIT, "Agregar alias": alias erp, subí el archivo erp.csr y descargá el certificado (.crt).',
+          '- Elegí el CUIT, "Agregar alias": alias erp, subí el pedido (.csr) y descargá el certificado (.crt).',
           '- Después, en "Administrador de Relaciones de Clave Fiscal" → "Nueva relación" → buscá ARCA → Web Services → "Facturación Electrónica" (wsfe). Como representante elegí el certificado (alias erp) y confirmá.',
         ],
-        ojo: 'El certificado de homologación no sirve en producción ni al revés: son dos distintos, con la misma clave privada o con otra.',
+        ojo: 'El certificado de homologación no sirve en producción ni al revés. Podés pedir los dos con el mismo pedido: el sistema lo guarda.',
       },
       {
         titulo: 'Subilo al sistema',
         texto: [
-          'Configuración → ARCA y factura electrónica: subí el .crt y el .key, elegí el ambiente (homologación o producción) y tocá "Guardar certificado". El sistema controla que sean del CUIT de la empresa, que la clave corresponda al certificado y la fecha de vencimiento.',
+          'Configuración → ARCA y factura electrónica: subí el .crt (sin clave), elegí el ambiente (homologación o producción) y tocá "Guardar certificado". El sistema busca la clave del pedido y controla que sea del CUIT de la empresa y la fecha de vencimiento.',
         ],
       },
       {
@@ -283,7 +278,8 @@ export const GUIAS: Guia[] = [
     problemas: [
       {
         sintoma: '"La clave privada no corresponde a este certificado"',
-        solucion: 'El .crt se pidió con otro .key. Subí el par correcto o repetí los pasos 1 a 4.',
+        solucion:
+          'El .crt se pidió con otro pedido. Subí en ARCA el último pedido generado en el sistema y descargá el certificado de nuevo.',
       },
       {
         sintoma: '"El certificado es del CUIT X, no de esta empresa"',
